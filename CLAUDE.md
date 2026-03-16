@@ -118,6 +118,14 @@ git commit -m "feat: description"
 
 This script calls Claude Code agents and can cause dangerous recursion. Always ask the user to run the script manually and report the results back to you.
 
+## Code Contribution Guidelines
+
+**Keep all modifications project-agnostic.**
+
+When fixing bugs or adding features to the ai-v-model submodule:
+
+This ensures the submodule remains portable and reusable across all projects that depend on it.
+
 ---
 
 ## Documentation Links

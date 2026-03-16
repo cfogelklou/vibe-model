@@ -160,6 +160,10 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
+**Important**: When contributing to this submodule, keep all modifications **project-agnostic**:
+
+This ensures the submodule remains portable and reusable across all projects that depend on it.
+
 ---
 
 ## Links
