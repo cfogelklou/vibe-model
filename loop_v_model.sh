@@ -1510,7 +1510,7 @@ Write story decompositions, research notes, and implementation details to the ep
 # Extract the epic progress table from journey file
 extract_epic_progress_table() {
     local journey_file="$1"
-    awk '/^## Epic Progress/{found=1} found && /^## / && !/^## Epic Progress/{exit} found{print}' "${journey_file}" | grep '^| E[0-9]'
+    awk '/^## Epic Progress/{found=1} found && /^## / && !/^## Epic Progress/{exit} found{print}' "${journey_file}" | grep '^| E[0-9]' || true
 }
 
 # Get list of completed epics that haven't been archived yet
@@ -1796,14 +1796,12 @@ main_loop() {
             BLOCKED|WAITING_FOR_USER)
                 # Check if there are actual pending questions
                 local pending_questions
-                pending_questions=$(grep -A 20 "^## Pending Questions" "${journey_file}" | grep "^- \[ \]" | grep -v "^\*")
-                log_debug "BLOCKED handler: pending_questions='${pending_questions}'"
+                pending_questions=$(grep -A 20 "^## Pending Questions" "${journey_file}" | grep "^- \[ \]" | grep -v "^\*" || true)
 
                 if [[ -z "${pending_questions}" ]]; then
                     # No real questions - check if we can auto-continue
                     local current_epic
                     current_epic=$(get_current_epic "${journey_file}")
-                    log_debug "BLOCKED handler: current_epic='${current_epic}'"
 
                     # Check if epic is complete and we have a next epic
                     if [[ "${current_epic}" != "TBD" ]] && should_continue_to_next_epic "${journey_file}" "${current_epic}"; then
@@ -1818,7 +1816,7 @@ main_loop() {
                     # No real questions and epic is in-progress - run iteration to process hints/continue
                     log_info "No pending questions found - resuming iteration (hints or in-progress epic)"
                     set_journey_state "${journey_file}" "IMPLEMENTATION"
-                    run_iteration "${journey_file}"
+                    run_iteration "${journey_file}" || true
                     continue
                 fi
 
