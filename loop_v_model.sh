@@ -28,18 +28,20 @@ set -euo pipefail
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="${SCRIPT_DIR}"
 
-# V-Model output directory (all V-Model files go here)
+# Parent project is one directory up from submodule
+# (this submodule lives in parent-project/ai-v-model/)
+PROJECT_ROOT="$(dirname "${SCRIPT_DIR}")"
+
+# V-Model output directory (in parent project root, not submodule)
 V_MODEL_DIR="${PROJECT_ROOT}/v_model"
 JOURNEY_DIR="${V_MODEL_DIR}/journey"
 PROTOTYPES_DIR="${V_MODEL_DIR}/prototypes"
+VENV_DIR="${V_MODEL_DIR}/.venv"
 CONFIG_FILE="${PROJECT_ROOT}/.v_model.conf"
 
-# Memory files (matches .mcp.json config + markdown fallback)
-LOOPS_DIR="${PROJECT_ROOT}/loops"
-MEMORY_JSON="${PROJECT_ROOT}/memory.json"
-MEMORY_MD="${LOOPS_DIR}/memory.md"
+# Memory file (markdown format, no MCP server required)
+MEMORY_MD="${V_MODEL_DIR}/memory.md"
 
 # Colors for output
 RED='\033[0;31m'
