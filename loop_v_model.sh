@@ -493,8 +493,9 @@ should_continue_to_next_epic() {
     local journey_file="$1"
     local current_epic="$2"
 
-    # Check learnings log for epic completion marker
-    if grep -q "Epic ${current_epic}.*COMPLETED" "${journey_file}"; then
+    # Check if current epic is marked COMPLETE in the Epic Progress table
+    local epic_status=$(get_epic_status "${journey_file}" "${current_epic}")
+    if [[ "${epic_status}" =~ COMPLETE ]]; then
         return 0
     fi
     return 1
