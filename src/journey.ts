@@ -446,7 +446,7 @@ export async function addPendingQuestion(journeyFile: string, question: string):
   const content = await fs.readFile(journeyFile, "utf-8");
 
   // Check if there are any unchecked questions
-  const hasUncheckedQuestions = /\- \[ \] .+/.test(content);
+  const hasUncheckedQuestions = /- \[ \] .+/.test(content);
 
   if (!hasUncheckedQuestions) {
     // Replace the placeholder
@@ -466,7 +466,7 @@ export async function addPendingQuestion(journeyFile: string, question: string):
       );
     } else {
       // Find the last unchecked question and insert after it
-      const lastQuestionLineNum = await findLineNumber(journeyFile, /^\- \[ \] .+$/m);
+      const lastQuestionLineNum = await findLineNumber(journeyFile, /^- \[ \] .+$/m);
       if (lastQuestionLineNum > 0) {
         const nextLineContent = (await fs.readFile(journeyFile, "utf-8")).split("\n")[lastQuestionLineNum];
         if (nextLineContent?.includes("*(No pending questions)*")) {
@@ -557,7 +557,7 @@ function extractLearnings(content: string): string[] {
   if (learningsSection) {
     const lines = learningsSection[1].split("\n");
     for (const line of lines) {
-      if (line.match(/^\- \d{4}-\d{2}-\d{2}: /)) {
+      if (line.match(/^- \d{4}-\d{2}-\d{2}: /)) {
         learnings.push(line);
       }
     }
@@ -574,7 +574,7 @@ function parseMemoryLearnings(content: string): string[] {
   const lines = content.split("\n");
 
   for (const line of lines) {
-    if (line.match(/^\- \d{4}-\d{2}-\d{2}: /)) {
+    if (line.match(/^- \d{4}-\d{2}-\d{2}: /)) {
       learnings.push(line);
     }
   }

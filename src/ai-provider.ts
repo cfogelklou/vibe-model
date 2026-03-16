@@ -299,7 +299,7 @@ ${researchContent ? `Research Notes:\n${researchContent}\n` : ""}`;
       output += chunk.toString();
     });
 
-    proc.on("close", (code) => {
+    proc.on("close", (_code) => {
       // Remove from tracking
       const index = childProcesses.indexOf(proc);
       if (index > -1) {

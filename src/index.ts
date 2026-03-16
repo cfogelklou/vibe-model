@@ -14,102 +14,24 @@ import {
   logSuccess,
   logWarning,
   logError,
-  logPhase,
-  logState,
-  logDebug,
 } from "./logger.js";
 import {
   createJourneyFile,
   findActiveJourney,
   listJourneys,
-  addLearning,
-  addDeadEnd,
-  addAntiPattern,
   addUserHint,
-  addPendingQuestion,
-  addCheckpoint,
   getJourneyState,
   setJourneyState,
-  getJourneyGoal,
-  getJourneyProgress,
   getCurrentApproach,
-  getCurrentEpic,
-  getPreviousPhase,
-  getPreviousState,
-  getJourneyPath,
-  sanitizeJourneyName,
-  setJourneyProgress,
-  setCurrentApproach,
-  setCurrentEpic,
-  setPreviousPhase,
   setPreviousState,
 } from "./journey.js";
 import { mainLoop } from "./main-loop.js";
 import {
-  createCheckpoint as createGitCheckpoint,
   rollbackToCheckpoint,
   listCheckpoints,
-  commitChanges,
-  pushChanges,
 } from "./checkpoint.js";
 import { killAllChildProcesses } from "./ai-provider.js";
 
-/**
- * Print usage information
- */
-function printUsage(): void {
-  console.log(`
-Usage: v-model [COMMAND] [ARGUMENTS]
-
-An autonomous R&D agent that works toward ambitious goals without pre-defined plans.
-
-Commands:
-  v-model "goal description"     Start a new journey with the given goal
-  v-model                        Continue the active journey
-  v-model status                 Show status of all journeys
-  v-model pivot                  Force pivot to next approach
-  v-model reflect                Force reflection phase
-  v-model archive                Archive completed epics
-  v-model hint "message"         Add a user hint to the journey
-  v-model rollback [N]           Rollback to checkpoint N (default: last checkpoint)
-  v-model list-checkpoints       List all checkpoints for current journey
-
-Options:
-  -v, --verbose             Enable verbose output
-  -g, --gemini              Use Gemini AI instead of Claude
-  --no-consult              Disable Gemini consultation
-  --project-dir <path>      Specify project directory
-  --config <path>           Specify config file
-  --no-push                 Disable auto-push after iterations
-  --commit-interval <n>     Commit every N iterations (default: 1)
-  -h, --help                Show this help message
-
-States:
-  REQUIREMENTS     - Formalizing User Requirements into System Requirements
-  SYSTEM_DESIGN    - High-level architectural planning (Epics)
-  ARCH_DESIGN      - Component-level design (Sub-systems/Interfaces)
-  MODULE_DESIGN    - Low-level logic design for a single Story
-  IMPLEMENTATION   - Coding the specific module/story
-  UNIT_TEST        - Verifying the specific module logic
-  INTEGRATION_TEST - Verifying interaction with the system
-  SYSTEM_TEST      - Verifying against original Spec
-  ACCEPTANCE_TEST  - Final validation against User Requirements
-  PROTOTYPING      - Optional experimental phase
-  WAITING_FOR_USER - Awaiting clarification or sign-off
-  CONSOLIDATING    - Cleaning up, syncing to memory.md, final verification
-  COMPLETE         - Goal achieved, journey finished
-  BLOCKED          - Blocked by external dependency or error
-
-Environment:
-  JOURNEY_DIR    Directory for journey files (default: ./v_model/journey)
-  PROTOTYPES_DIR Directory for prototype files (default: ./v_model/prototypes)
-
-Examples:
-  v-model "Improve low-frequency detection using ML"
-  v-model hint "Try harmonic product spectrum first"
-  v-model rollback 3
-`);
-}
 
 /**
  * Ensure required directories exist
@@ -310,7 +232,7 @@ async function handleStatus(): Promise<void> {
     );
     const pendingQuestions = pendingQuestionsMatch?.[1]
       .split("\n")
-      .filter((line) => line.match(/^\- \[ \] /))
+      .filter((line) => line.match(/^- \[ \] /))
       .join("\n");
 
     if (pendingQuestions) {

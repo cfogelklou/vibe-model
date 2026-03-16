@@ -10,11 +10,9 @@ import { config } from "./config.js";
 import {
   getJourneyState,
   getCurrentEpic,
-  addPendingQuestion,
   setJourneyState,
   getPreviousState,
   setPreviousState,
-  addLearning,
 } from "./journey.js";
 import { appendToFile } from "./file-utils.js";
 import { logPhase, logState, logInfo, logSuccess, logWarning, logError, logDebug } from "./logger.js";
@@ -24,10 +22,9 @@ import {
   transitionToNextEpic,
   checkContinueToNextEpic,
   getPreviousDesignPhase,
-  ensurePreviousPhaseMarker,
   autoTransitionFromReview,
 } from "./state-machine.js";
-import { createCheckpoint, commitChanges, pushChanges, hasUncommittedChanges } from "./checkpoint.js";
+import { commitChanges, pushChanges, hasUncommittedChanges } from "./checkpoint.js";
 
 /**
  * Generate iteration prompt for current state
@@ -88,12 +85,6 @@ export async function runIteration(journeyFile: string): Promise<number> {
   logState(`Current state: ${state}`);
   logPhase(`Running iteration for ${journeyName}...`);
 
-  // Get design spec path for reference
-  const designSpecPath = path.join(
-    path.dirname(journeyFile),
-    `${journeyName}.spec.md`
-  );
-
   // Dynamic epic file path for template injection (empty when not in epic phase)
   const currentEpic = await getCurrentEpic(journeyFile);
   let epicFile = "";
@@ -153,13 +144,6 @@ Current working directory: ${process.cwd()}
       // Temp file cleanup failed, ignore
     }
   }
-}
-
-/**
- * Handle REQUIREMENTS state
- */
-async function handleRequirements(journeyFile: string): Promise<void> {
-  await runIteration(journeyFile);
 }
 
 /**
@@ -234,7 +218,7 @@ async function handleWaitingForUser(journeyFile: string): Promise<void> {
   const pendingQuestions =
     pendingQuestionsMatch?.[1]
       .split("\n")
-      .filter((line) => line.match(/^\- \[ \] /))
+      .filter((line) => line.match(/^- \[ \] /))
       .join("\n") || "";
 
   if (!pendingQuestions) {
@@ -323,7 +307,7 @@ export async function mainLoop(journeyFile: string): Promise<void> {
         await handleArchiving(journeyFile);
         break;
 
-      default:
+      default: {
         // Run iteration for all other states
         await runIteration(journeyFile);
 
@@ -349,6 +333,7 @@ export async function mainLoop(journeyFile: string): Promise<void> {
         // Archive completed epics after state transition
         await archive_completed_epics_if_needed(journeyFile);
         break;
+      }
     }
 
     // Small delay to prevent overwhelming the API

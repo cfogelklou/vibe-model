@@ -8,7 +8,7 @@ import { getNextEpicId, shouldContinueToNextEpic, getEpicNameFromTable } from ".
 import { setJourneyState, setCurrentEpic, addLearning } from "./journey.js";
 import { appendToFile } from "./file-utils.js";
 import { createCheckpoint } from "./checkpoint.js";
-import { logInfo, logSuccess } from "./logger.js";
+import { logInfo } from "./logger.js";
 
 /**
  * Get the next state in the V-Model lifecycle
@@ -111,7 +111,7 @@ export async function autoTransitionFromReview(
     return;
   }
 
-  const currentState = stateMatch[1].toUpperCase() as VModelState;
+  const _currentState = stateMatch[1].toUpperCase() as VModelState;
 
   let nextState: VModelState;
 
@@ -169,8 +169,8 @@ export async function transitionToNextEpic(
     const nextEpicName = await getEpicNameFromTable(journeyFile, nextEpic);
 
     const { createOrUpdateEpicFile } = await import("./epic-archival.js");
-    const journeyName = journeyFile.split("/").pop()?.replace(".journey.md", "") || "";
-    const epicFile = await createOrUpdateEpicFile(
+    const _journeyName = journeyFile.split("/").pop()?.replace(".journey.md", "") || "";
+    const _epicFile = await createOrUpdateEpicFile(
       journeyFile,
       nextEpicNum,
       nextEpicName

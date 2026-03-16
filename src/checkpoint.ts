@@ -4,9 +4,8 @@
  */
 
 import { spawn } from "child_process";
-import { promises as fs } from "fs";
+import { promises as fs, existsSync } from "fs";
 import path from "path";
-import { existsSync } from "fs";
 import { VModelError } from "./types.js";
 import { config } from "./config.js";
 import { logInfo, logSuccess, logWarning, logError } from "./logger.js";

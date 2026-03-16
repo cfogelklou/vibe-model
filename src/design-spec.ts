@@ -3,13 +3,12 @@
  * Handles design spec creation, template resolution, and prompt substitution.
  */
 
-import { promises as fs } from "fs";
+import { promises as fs, existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { existsSync } from "fs";
 import { VModelState } from "./types.js";
 import { config } from "./config.js";
-import { getJourneyGoal, getJourneyPath, sanitizeJourneyName } from "./journey.js";
+import { getJourneyGoal } from "./journey.js";
 
 // Get the directory where this script is located
 const __filename = fileURLToPath(import.meta.url);
@@ -278,19 +277,21 @@ export async function extractDesignContent(
       }
       break;
 
-    case VModelState.ARCH_DESIGN:
+    case VModelState.ARCH_DESIGN: {
       // Get current Epic and Stories from journey
       const journeyContent = await fs.readFile(journeyFile, "utf-8");
       const epicMatch = journeyContent.match(/## Current Epic\n([\s\S]+?)\n## /);
       content = epicMatch?.[1] || "";
       break;
+    }
 
-    case VModelState.MODULE_DESIGN:
+    case VModelState.MODULE_DESIGN: {
       // Get current Story design from journey
       const journeyContent2 = await fs.readFile(journeyFile, "utf-8");
       const storyMatch = journeyContent2.match(/## Current Story\n([\s\S]+?)\n## /);
       content = storyMatch?.[1] || "";
       break;
+    }
   }
 
   // Fallback to entire journey if nothing specific found

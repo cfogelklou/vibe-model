@@ -3,14 +3,12 @@
  * Handles epic file creation, progress tracking, and archival of completed epics.
  */
 
-import { promises as fs } from "fs";
+import { promises as fs, existsSync } from "fs";
 import path from "path";
-import { existsSync } from "fs";
-import { getCurrentEpic, getJourneyPath, sanitizeJourneyName } from "./journey.js";
+import { getCurrentEpic, sanitizeJourneyName } from "./journey.js";
 import { logInfo, logSuccess, logWarning } from "./logger.js";
 import { loadPrompt } from "./design-spec.js";
 import { runAIWithPrompt } from "./ai-provider.js";
-import { appendToFile, stripAnsi } from "./file-utils.js";
 
 /**
  * Get epic file path for a given journey and epic number
@@ -116,7 +114,7 @@ export async function getCompletedUnarchivedEpics(
     const match = line.match(/^\| E(\d+) \| (.+?) \| (\w+) /);
     if (!match) continue;
 
-    const [, epicNumStr, epicName, epicStatus] = match;
+    const [, epicNumStr, _epicName, epicStatus] = match;
     const epicNum = parseInt(epicNumStr, 10);
 
     // Skip if not complete
@@ -145,7 +143,6 @@ export async function archiveEpicDetails(
   journeyFile: string,
   epicNum: number
 ): Promise<void> {
-  const journeyDir = path.dirname(journeyFile);
   const journeyName = path.basename(journeyFile, ".journey.md");
   const epicFilePath = getEpicFilePath(journeyFile, epicNum);
 

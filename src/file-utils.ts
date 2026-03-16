@@ -3,8 +3,7 @@
  * Replaces bash sed helpers with TypeScript implementations.
  */
 
-import { promises as fs } from "fs";
-import path from "path";
+import { promises as fs, existsSync } from "fs";
 
 /**
  * Strip ANSI escape sequences from text.
@@ -152,6 +151,5 @@ export function exists(file: string): boolean {
 }
 
 /**
- * Synchronous file exists check (import from fs)
+ * Synchronous file exists check
  */
-import { existsSync } from "fs";
