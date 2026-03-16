@@ -190,6 +190,75 @@ ensure_directories() {
     mkdir -p "${PROTOTYPES_DIR}"
 }
 
+# Ensure .gitignore is properly configured for V-Model artifacts
+ensure_gitignore() {
+    local gitignore_file="${V_MODEL_DIR}/.gitignore"
+    local venv_entry=".venv/"
+    local pycache_entry="prototypes/__pycache__/"
+    local pyc_entry="prototypes/*.pyc"
+
+    # Create .gitignore if it doesn't exist
+    if [[ ! -f "${gitignore_file}" ]]; then
+        cat > "${gitignore_file}" << 'EOF'
+# V-Model artifact exclusions
+# Journey files and specs should be committed
+# These entries exclude only generated/cache artifacts
+
+.venv/
+prototypes/__pycache__/
+prototypes/*.pyc
+EOF
+        log_debug "Created ${gitignore_file}"
+    else
+        # Check if entries exist, add them if missing
+        local needs_update=false
+
+        for entry in "${venv_entry}" "${pycache_entry}" "${pyc_entry}"; do
+            if ! grep -q "^${entry}" "${gitignore_file}" 2>/dev/null; then
+                needs_update=true
+                break
+            fi
+        done
+
+        if [[ "${needs_update}" == "true" ]]; then
+            # Backup existing content
+            local backup_content
+            backup_content=$(cat "${gitignore_file}")
+
+            # Write updated content
+            cat > "${gitignore_file}" << 'EOF'
+# V-Model artifact exclusions
+# Journey files and specs should be committed
+# These entries exclude only generated/cache artifacts
+
+.venv/
+prototypes/__pycache__/
+prototypes/*.pyc
+EOF
+
+            # Append any custom entries that weren't duplicates
+            echo "" >> "${gitignore_file}"
+            echo "${backup_content}" | while IFS= read -r line; do
+                case "${line}" in
+                    .venv/|prototypes/__pycache__/|prototypes/*.pyc|"# V-Model"*)
+                        # Skip - already included
+                        ;;
+                    "# "*|"")
+                        # Keep comments and blank lines
+                        echo "${line}" >> "${gitignore_file}"
+                        ;;
+                    *)
+                        # Keep other custom entries
+                        echo "${line}" >> "${gitignore_file}"
+                        ;;
+                esac
+            done
+
+            log_debug "Updated ${gitignore_file}"
+        fi
+    fi
+}
+
 # ============================================================================
 # JOURNEY FILE FUNCTIONS
 # ============================================================================
@@ -1458,6 +1527,7 @@ handle_list_checkpoints() {
 # Handle status command
 handle_status() {
     ensure_directories
+    ensure_gitignore
     list_journeys
 
     # Show details for active journey
@@ -1528,6 +1598,7 @@ main() {
 
     # Ensure directories exist
     ensure_directories
+    ensure_gitignore
 
     # Handle commands
     case "${command}" in

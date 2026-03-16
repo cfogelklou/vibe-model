@@ -362,7 +362,7 @@ pip install numpy scipy matplotlib soundfile pandas
 - **Project-scoped**: Prototyping dependencies belong with the project, not the submodule
 - **Isolated**: Doesn't pollute global Python or parent project's own venv
 - **Portable**: The submodule remains generic; venv is per-project
-- **Ignored**: Add `v_model/.venv/` to `.gitignore` (not committed)
+- **Auto-ignored**: The script automatically adds `.venv/` to `v_model/.gitignore`
 
 ### Prototype Workflow
 
@@ -382,14 +382,19 @@ deactivate
 
 ### .gitignore
 
-Add to parent project's `.gitignore`:
+The script automatically creates `v_model/.gitignore` to exclude generated artifacts:
 
 ```
-# V-Model outputs (keep journey files, ignore generated artifacts)
-v_model/.venv/
-v_model/prototypes/__pycache__/
-v_model/prototypes/*.pyc
+# V-Model artifact exclusions
+# Journey files and specs should be committed
+# These entries exclude only generated/cache artifacts
+
+.venv/
+prototypes/__pycache__/
+prototypes/*.pyc
 ```
+
+**Note**: Journey files (`.journey.md`) and spec files (`.spec.md`) are **committed** as they are part of your project's documentation. Only cache files and build artifacts are ignored.
 
 ---
 
