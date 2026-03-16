@@ -44,6 +44,10 @@ your-project/                    # Parent project (git repository)
 │   └── memory.md               # Knowledge persistence
 ├── ai-v-model/                 # This submodule (separate git tracking)
 │   ├── loop_v_model.sh         # Main loop script
+│   ├── prompts/                # AI prompt templates
+│   │   ├── main-iteration.md
+│   │   ├── gemini-design-review-with-research.md
+│   │   └── gemini-design-review-no-research.md
 │   ├── CLAUDE.md               # This file
 │   └── v_model.md              # Protocol documentation
 └── ... (your project files)
@@ -232,6 +236,37 @@ export AI_PROVIDER="claude"
 | TEST_COMMAND | `./sau_src/motuner/test/motunit` | Command to run primary tests |
 | AI_PROVIDER | `claude` | Primary AI provider (claude/gemini) |
 | CONSULT_GEMINI | `true` | Enable Gemini consultation during design |
+
+---
+
+## Prompt Templates
+
+AI prompts are stored externally in `ai-v-model/prompts/*.md` for easier editing and version control.
+
+### Prompt Files
+
+- `main-iteration.md` - Main V-Model phase execution prompt
+- `gemini-design-review-with-research.md` - Gemini consultation with research context
+- `gemini-design-review-no-research.md` - Gemini consultation fallback
+
+### Placeholders
+
+Prompts use `{{PLACEHOLDER}}` syntax for dynamic content substitution:
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{{AI_PROVIDER}}` | AI provider being used (claude/gemini) |
+| `{{JOURNEY_CONTENT}}` | Full journey file content |
+| `{{PHASE}}` | V-Model phase being reviewed |
+| `{{DESIGN_CONTENT}}` | Design content for review |
+| `{{RESEARCH_CONTENT}}` | Research notes from phase |
+
+### Modifying Prompts
+
+To modify prompts:
+1. Edit the `.md` file directly in `ai-v-model/prompts/`
+2. Use `{{PLACEHOLDER}}` syntax for dynamic values
+3. Test changes by running the loop with `./loop_v_model.sh -g -v`
 
 ---
 

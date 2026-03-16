@@ -1080,6 +1080,25 @@ append_to_journey() {
     echo -e "${content}" | sed 's/\x1b\[[0-9;]*m//g' >> "${journey_file}"
 }
 
+# Load a prompt template and substitute placeholders
+# Usage: load_prompt <prompt_file> <placeholder1> <value1> <placeholder2> <value2> ...
+load_prompt() {
+    local prompt_file="$1"
+    shift
+    local content
+    content=$(cat "$prompt_file")
+
+    # Substitute placeholders in key-value pairs
+    while [[ $# -ge 2 ]]; do
+        local placeholder="$1"
+        local value="$2"
+        shift 2
+        content="${content//${placeholder}/${value}}"
+    done
+
+    echo "$content"
+}
+
 # Ensure the Previous Phase marker is set in the Meta section
 ensure_previous_phase_marker() {
     local journey_file="$1"
@@ -1133,62 +1152,14 @@ consult_gemini() {
 
     local consult_prompt
     if [[ -n "${research_content}" && "${research_content}" != *"To be populated"* ]]; then
-        consult_prompt=$(cat <<EOF
-You are a design consultant reviewing a V-Model ${phase} phase.
-
-Evaluate BOTH the design AND the research that supports it.
-
-Provide your review in this EXACT format:
----
-DECISION: [APPROVED / ITERATE]
-RESEARCH_QUALITY: [THOROUGH / ADEQUATE / INSUFFICIENT]
-ISSUES:
-- [issue 1, if any]
-- [issue 2, if any]
-RECOMMENDATIONS:
-- [recommendation 1]
-- [recommendation 2]
----
-
-Design content to review:
-${design_content}
-
-Research Notes:
-${research_content}
-
-Rules:
-- APPROVED: Design is sound, minor suggestions only
-- ITERATE: Major issues that must be addressed before proceeding
-- THOROUGH: Good research coverage, multiple sources consulted
-- ADEQUATE: Basic research done, some gaps acceptable
-- INSUFFICIENT: Must do more research before proceeding
-EOF
-)
+        consult_prompt=$(load_prompt "${SCRIPT_DIR}/prompts/gemini-design-review-with-research.md" \
+            "{{PHASE}}" "${phase}" \
+            "{{DESIGN_CONTENT}}" "${design_content}" \
+            "{{RESEARCH_CONTENT}}" "${research_content}")
     else
-        # Fallback to original prompt if no research
-        consult_prompt=$(cat <<EOF
-You are a design consultant reviewing a V-Model ${phase} phase.
-
-Provide your review in this EXACT format:
----
-DECISION: [APPROVED / ITERATE]
-RESEARCH_QUALITY: [NOT_APPLICABLE]
-ISSUES:
-- [issue 1, if any]
-RECOMMENDATIONS:
-- [recommendation 1]
----
-
-Design content to review:
-${design_content}
-
-Rules:
-- APPROVED: Design is sound, minor suggestions only
-- ITERATE: Major issues that must be addressed before proceeding
-
-Note: No research notes were provided for this phase.
-EOF
-)
+        consult_prompt=$(load_prompt "${SCRIPT_DIR}/prompts/gemini-design-review-no-research.md" \
+            "{{PHASE}}" "${phase}" \
+            "{{DESIGN_CONTENT}}" "${design_content}")
     fi
 
     echo "$consult_prompt" | $GEMINI_CONSULT_CMD $GEMINI_CONSULT_FLAGS 2>&1
@@ -1200,154 +1171,10 @@ generate_iteration_prompt() {
     local journey_content
     journey_content=$(cat "${journey_file}")
 
-    cat << 'EOF'
-You are an autonomous R&D agent working toward a high-level goal using a V-Model workflow.
-Refer to v_model.md for the Master Protocol.
-
-AI Provider: EOF
-    echo "${AI_PROVIDER}"
-    cat << 'EOF'
-
-## Your Journey
-
-EOF
-    echo "${journey_content}"
-
-    cat << 'EOF'
-
-## Your Task: V-Model Phase Execution
-
-**IMPORTANT: When transitioning to DESIGN_REVIEW, always update the "Previous Phase:" field in the Meta section to reflect the phase you just completed.**
-
-Format: In the Meta section at the top of the journey file, update the line:
-`- Previous Phase: REQUIREMENTS`
-to match the phase you just completed (REQUIREMENTS, SYSTEM_DESIGN, ARCH_DESIGN, or MODULE_DESIGN).
-
-**CRITICAL: Always check the "## User Hints" section in the journey file and incorporate ALL user feedback into your design.** User hints represent explicit requirements or preferences that MUST be followed.
-
-Based on the current journey state, perform the appropriate phase:
-
-### Research Phase (Part of Each Design Phase)
-
-Before finalizing any design, conduct research:
-
-1. **Web Search** (if applicable):
-   - Search for existing libraries that solve this problem
-   - Look for best practices, design patterns, anti-patterns
-   - Use the WebSearch tool with current year (2026)
-
-2. **Gemini Rubber Duck** (optional, use for complex decisions):
-   - Use Gemini to "talk through" your design reasoning
-   - Ask: "What are the tradeoffs between X and Y?"
-   - Ask: "What edge cases might I be missing?"
-   - Command: `echo "your question" | gemini --yolo`
-
-3. **Codebase Research**:
-   - Search for existing implementations of similar functionality
-   - Check memory.md for anti-patterns and successful patterns
-   - Review test_data/ for relevant test cases
-
-4. **Document Findings**:
-   - Add key findings to journey file under "## Research Notes"
-   - Cite sources (URLs, file paths, memory entries)
-
-### If REQUIREMENTS:
-- **Execute Spec Initiation Protocol** (see v_model.md).
-- **RESEARCH**: Before finalizing requirements:
-  - Web search for similar systems/libraries
-  - Consult memory.md for past learnings
-  - Use Gemini rubber duck for complex tradeoffs
-- Document research in "## Research Notes > ### REQUIREMENTS Phase Research"
-- If the spec file does not exist, you MUST ask the user clarifying questions to establish goals, metrics, and constraints.
-- Create or update `{journey_name}.spec.md` with User Requirements, System Requirements, and Acceptance Criteria.
-- **Transition to WAITING_FOR_USER** if you need the user to sign off on requirements.
-- Once signed off, update the Meta section: change "- Previous Phase: TBD" to "- Previous Phase: REQUIREMENTS", then transition to DESIGN_REVIEW.
-
-### If DESIGN_REVIEW:
-- This is an automatic state - do NOT write any content.
-- The system will consult Gemini for design review (including research quality).
-- Wait for the system to process the review result.
-
-### If SYSTEM_DESIGN:
-- **RESEARCH**: Before finalizing architecture:
-  - Web search for architectural patterns for the domain
-  - Search codebase for similar implementations
-  - Use Gemini rubber duck: "What architectural tradeoffs exist?"
-- Document research in "## Research Notes > ### SYSTEM_DESIGN Phase Research"
-- Define the high-level architecture.
-- Decompose the goal into **Epics**.
-- Update the Design Spec with the architecture and Epics list.
-- Update the Meta section: change "- Previous Phase: REQUIREMENTS" to "- Previous Phase: SYSTEM_DESIGN", then transition to DESIGN_REVIEW.
-
-### If ARCH_DESIGN:
-- **RESEARCH**: Before finalizing component design:
-  - Search for existing interfaces/APIs in codebase
-  - Web search for component design patterns
-  - Use Gemini rubber duck for interface decisions
-- Document research in "## Research Notes > ### ARCH_DESIGN Phase Research"
-- Select the current Epic.
-- Decompose the Epic into **Stories** (Sub-systems/Interfaces).
-- Update the Design Spec and Journey file.
-- Update the Meta section: change "- Previous Phase: SYSTEM_DESIGN" to "- Previous Phase: ARCH_DESIGN", then transition to DESIGN_REVIEW for the first/next Story.
-
-### If MODULE_DESIGN:
-- **RESEARCH**: Before finalizing module design:
-  - Search codebase for similar functions/classes
-  - Web search for algorithm implementations
-  - Use Gemini rubber duck for edge cases
-- Document research in "## Research Notes > ### MODULE_DESIGN Phase Research"
-- Select the current Story.
-- Create a detailed technical design: signatures, state changes, error handling.
-- **Perform a Design Review**: Critique the design for leaks, complexity, and performance.
-- If review fails, stay in MODULE_DESIGN and fix.
-- If unsure, transition to WAITING_FOR_USER.
-- If passed, update the Meta section: change "- Previous Phase: ARCH_DESIGN" to "- Previous Phase: MODULE_DESIGN", then transition to DESIGN_REVIEW.
-
-### If PROTOTYPING (Optional):
-- Use Python/C++ to validate complex algorithms before production implementation.
-- If successful, transition back to MODULE_DESIGN or IMPLEMENTATION.
-
-### If IMPLEMENTATION:
-- Code exactly one Story based on the approved MODULE_DESIGN.
-- Run basic guardrails (build).
-- Transition to UNIT_TEST.
-
-### If UNIT_TEST:
-- Run tests specific to the module/story.
-- Analyze logs and edge cases.
-- If fails, transition back to MODULE_DESIGN.
-- If passes, transition to INTEGRATION_TEST.
-
-### If INTEGRATION_TEST:
-- Run system-wide tests (all_tests).
-- Verify the new module interacts correctly with existing components.
-- If fails, transition back to ARCH_DESIGN.
-- If passes, transition to SYSTEM_TEST.
-
-### If SYSTEM_TEST:
-- Verify the entire system against the **System Requirements** in the Spec.
-- Check performance metrics (CPU, latency).
-- If fails, transition back to SYSTEM_DESIGN.
-- If passes, transition to ACCEPTANCE_TEST.
-
-### If ACCEPTANCE_TEST:
-- Verify against the **User Requirements** and final **Acceptance Criteria**.
-- If everything passes, transition to CONSOLIDATING.
-- If fails, transition back to REQUIREMENTS.
-
-### If WAITING_FOR_USER:
-- Write clear questions to `## Pending Questions`.
-- Wait for user `hint` or sign-off.
-
-### If CONSOLIDATING:
-- Cleanup, document, and finalize the Design Spec.
-- Transition to COMPLETE.
-
-## Important Rules
-- Follow the V-Model: If a verification stage fails, move back to the *corresponding* design stage.
-- One Story per IMPLEMENTATION cycle.
-- Document every state change in the Learnings Log.
-EOF
+    # Load and substitute placeholders in main iteration prompt
+    load_prompt "${SCRIPT_DIR}/prompts/main-iteration.md" \
+        "{{AI_PROVIDER}}" "${AI_PROVIDER}" \
+        "{{JOURNEY_CONTENT}}" "${journey_content}"
 }
 
 run_iteration() {
