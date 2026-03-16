@@ -1779,7 +1779,7 @@ main_loop() {
             local journey_dir="$(dirname "${journey_file}")"
             local journey_name="$(basename "${journey_file}" .journey.md)"
             local epic_count
-            epic_count=$(find "${journey_dir}" -name "${journey_name}.journey.E[0-9]*.md" 2>/dev/null | wc -l | tr -d ' || echo "0")
+            epic_count=$(find "${journey_dir}" -name "${journey_name}.journey.E[0-9]*.md" 2>/dev/null | wc -l | tr -d ' ')
 
             if [[ "${epic_count}" -eq 0 ]]; then
                 # First epic - create E1 file proactively with default name
