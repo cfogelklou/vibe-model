@@ -97,6 +97,42 @@ MAX_ITERATIONS="${MAX_ITERATIONS:-100}"
 VERBOSE="${VERBOSE:-false}"
 
 # ============================================================================
+# PORTABLE SED HELPERS (macOS BSD sed + Linux GNU sed compatibility)
+# ============================================================================
+
+# Portable in-place sed - works on both macOS (BSD) and Linux (GNU)
+# Usage: sed_inplace "s/pattern/replacement/" "file"
+sed_inplace() {
+    local script="$1"
+    local file="$2"
+    local tmpfile
+    tmpfile=$(mktemp)
+    sed "$script" "$file" > "$tmpfile" && mv "$tmpfile" "$file"
+}
+
+# Insert text after line N in file (portable, avoids BSD/GNU sed differences)
+# Usage: insert_after_line N "text to insert" "file"
+insert_after_line() {
+    local line_num="$1"
+    local text="$2"
+    local file="$3"
+    local tmpfile
+    tmpfile=$(mktemp)
+    awk -v n="$line_num" -v txt="$text" 'NR==n{print; print txt; next}1' "$file" > "$tmpfile" && mv "$tmpfile" "$file"
+}
+
+# Insert text before line N in file (portable)
+# Usage: insert_before_line N "text to insert" "file"
+insert_before_line() {
+    local line_num="$1"
+    local text="$2"
+    local file="$3"
+    local tmpfile
+    tmpfile=$(mktemp)
+    awk -v n="$line_num" -v txt="$text" 'NR==n{print txt}1' "$file" > "$tmpfile" && mv "$tmpfile" "$file"
+}
+
+# ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
 
@@ -422,21 +458,21 @@ get_journey_progress() {
 set_journey_state() {
     local journey_file="$1"
     local new_state="$2"
-    sed -i '' "s/^- State: .*/- State: ${new_state}/" "${journey_file}"
+    sed_inplace "s/^- State: .*/- State: ${new_state}/" "${journey_file}"
 }
 
 # Update journey progress
 set_journey_progress() {
     local journey_file="$1"
     local progress="$2"
-    sed -i '' "s/^- Progress: .*/- Progress: ${progress}%/" "${journey_file}"
+    sed_inplace "s/^- Progress: .*/- Progress: ${progress}%/" "${journey_file}"
 }
 
 # Update current approach
 set_current_approach() {
     local journey_file="$1"
     local approach="$2"
-    sed -i '' "s/^- Current Approach: .*/- Current Approach: ${approach}/" "${journey_file}"
+    sed_inplace "s/^- Current Approach: .*/- Current Approach: ${approach}/" "${journey_file}"
 }
 
 # Get current epic from journey
@@ -449,14 +485,14 @@ get_current_epic() {
 set_current_epic() {
     local journey_file="$1"
     local epic="$2"
-    sed -i '' "s/^- Current Epic: .*/- Current Epic: ${epic}/" "${journey_file}"
+    sed_inplace "s/^- Current Epic: .*/- Current Epic: ${epic}/" "${journey_file}"
 }
 
 # Set previous phase
 set_previous_phase() {
     local journey_file="$1"
     local phase="$2"
-    sed -i '' "s/^- Previous Phase: .*/- Previous Phase: ${phase}/" "${journey_file}"
+    sed_inplace "s/^- Previous Phase: .*/- Previous Phase: ${phase}/" "${journey_file}"
 }
 
 # Get previous state (saved before entering ARCHIVING)
@@ -474,12 +510,14 @@ set_previous_state() {
     local journey_file="$1"
     local state="$2"
     if grep -q "^- Previous State:" "${journey_file}" 2>/dev/null; then
-        sed -i '' "s/^- Previous State: .*/- Previous State: ${state}/" "${journey_file}"
+        sed_inplace "s/^- Previous State: .*/- Previous State: ${state}/" "${journey_file}"
     else
         # Add after Previous Phase line if marker missing
-        sed -i '' "/^- Previous Phase: /a\\
-- Previous State: ${state}
-" "${journey_file}"
+        local previous_phase_line
+        previous_phase_line=$(grep -n "^- Previous Phase:" "${journey_file}" | cut -d: -f1)
+        if [[ -n "${previous_phase_line}" ]]; then
+            insert_after_line "${previous_phase_line}" "- Previous State: ${state}" "${journey_file}"
+        fi
     fi
 }
 
@@ -557,9 +595,7 @@ add_learning() {
     if [[ -n "${section_line}" ]]; then
         # Insert after the section header
         local insert_line=$((section_line + 2))
-        sed -i '' "${insert_line}i\\
-- ${timestamp}: ${learning}
-" "${journey_file}"
+        insert_before_line "${insert_line}" "- ${timestamp}: ${learning}" "${journey_file}"
     fi
 }
 
@@ -608,9 +644,7 @@ add_anti_pattern() {
 
     if [[ -n "${section_line}" ]]; then
         local insert_line=$((section_line + 2))
-        sed -i '' "${insert_line}i\\
-- **${pattern}**: ${description}
-" "${journey_file}"
+        insert_before_line "${insert_line}" "- **${pattern}**: ${description}" "${journey_file}"
     fi
 }
 
@@ -632,12 +666,10 @@ add_user_hint() {
         next_line=$(sed -n "$((insert_line + 1))p" "${journey_file}")
         if [[ "${next_line}" == *"*(No user hints yet)"* ]]; then
             # Replace the placeholder
-            sed -i '' "$((insert_line + 1))s@.*@- ${timestamp}: \"${hint}\"@" "${journey_file}"
+            sed_inplace "$((insert_line + 1))s@.*@- ${timestamp}: \"${hint}\"@" "${journey_file}"
         else
             # Add new hint
-            sed -i '' "${insert_line}a\\
-- ${timestamp}: \"${hint}\"
-" "${journey_file}"
+            insert_after_line "${insert_line}" "- ${timestamp}: \"${hint}\"" "${journey_file}"
         fi
     fi
 }
@@ -659,11 +691,9 @@ add_pending_question() {
         local next_line
         next_line=$(sed -n "$((insert_line + 1))p" "${journey_file}")
         if [[ "${next_line}" == *"*(No pending questions)"* ]]; then
-            sed -i '' "$((insert_line + 1))s@.*@- [ ] ${timestamp}: ${question}@" "${journey_file}"
+            sed_inplace "$((insert_line + 1))s@.*@- [ ] ${timestamp}: ${question}@" "${journey_file}"
         else
-            sed -i '' "${insert_line}a\\
-- [ ] ${timestamp}: ${question}
-" "${journey_file}"
+            insert_after_line "${insert_line}" "- [ ] ${timestamp}: ${question}" "${journey_file}"
         fi
     fi
 }
@@ -683,9 +713,7 @@ add_checkpoint() {
         local insert_line=$((section_line + 3))
         local timestamp
         timestamp=$(date -u +"%Y-%m-%d")
-        sed -i '' "${insert_line}a\\
-| ${id} | ${tag} | ${timestamp} | ${description} |
-" "${journey_file}"
+        insert_after_line "${insert_line}" "| ${id} | ${tag} | ${timestamp} | ${description} |" "${journey_file}"
     fi
 }
 
@@ -821,9 +849,7 @@ EOF
 
     if [[ -n "${section_line}" ]]; then
         local insert_line=$((section_line + 2))
-        sed -i '' "${insert_line}i\\\\
-See [${journey_name}.spec.md](${journey_name}.spec.md) for detailed design specification.
-" "${journey_file}"
+        insert_before_line "${insert_line}" "See [${journey_name}.spec.md](${journey_name}.spec.md) for detailed design specification." "${journey_file}"
     fi
 
     echo "${spec_path}"
@@ -849,8 +875,8 @@ update_design_spec() {
     artifacts=$(sed -n '/^## Generated Artifacts/,/^## Learnings Log/p' "${journey_file}" | sed '$d')
 
     # Update status to COMPLETE
-    sed -i '' 's/\*\*Status\*\*: DRAFT/\*\*Status\*\*: COMPLETE/' "${spec_path}"
-    sed -i '' "s/\*\*Created\*\*: .*/\*\*Updated**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")/" "${spec_path}"
+    sed_inplace 's/\*\*Status\*\*: DRAFT/\*\*Status\*\*: COMPLETE/' "${spec_path}"
+    sed_inplace "s/\*\*Created\*\*: .*/\*\*Updated**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")/" "${spec_path}"
 
     # Append or update sections
     # This is a simplified version - the AI will handle detailed updates
@@ -1063,7 +1089,7 @@ establish_baselines() {
     baseline_date=$(date -u +"%Y-%m-%d")
 
     # Update baselines section
-    sed -i '' "s/| Test Pass Rate    | TBD      | TBD     | No decrease |/| Test Pass Rate    | TBD      | TBD     | No decrease |/; s/^|.*|$/| Test Pass Rate    | ${baseline_date}      | ${baseline_date}     | No decrease |/" "${journey_file}"
+    sed_inplace "s/| Test Pass Rate    | TBD      | TBD     | No decrease |/| Test Pass Rate    | TBD      | TBD     | No decrease |/; s/^|.*|$/| Test Pass Rate    | ${baseline_date}      | ${baseline_date}     | No decrease |/" "${journey_file}"
 
     # Count tests
     local test_count=0
@@ -1319,12 +1345,14 @@ ensure_previous_phase_marker() {
     # Check if marker exists in Meta section
     if ! grep -q "^- Previous Phase:" "${journey_file}" 2>/dev/null; then
         # Add it to Meta section (after the State line)
-        sed -i '' "/^- State: /a\\
-- Previous Phase: ${phase}
-" "${journey_file}"
+        local state_line
+        state_line=$(grep -n "^- State:" "${journey_file}" | cut -d: -f1)
+        if [[ -n "${state_line}" ]]; then
+            insert_after_line "${state_line}" "- Previous Phase: ${phase}" "${journey_file}"
+        fi
     else
         # Update existing marker
-        sed -i '' "s/^- Previous Phase: .*/- Previous Phase: ${phase}/" "${journey_file}"
+        sed_inplace "s/^- Previous Phase: .*/- Previous Phase: ${phase}/" "${journey_file}"
     fi
 }
 
