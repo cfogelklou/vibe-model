@@ -1,280 +1,26 @@
-# V-Model Protocol - Architecture-Driven Autonomous Development
+# V-Model Protocol Specification
 
-This document defines the **V-Model Loop** (`loop_v_model.sh`) workflow. It is designed for complex R&D tasks that require formal decomposition and rigorous verification.
+**Formal specification of the V-Model development lifecycle protocol for autonomous R&D agents.**
 
----
+**Audience**: AI agents, developers implementing V-Model systems
 
-## 1. Spec Initiation Protocol (Pre-Loop)
-
-Before starting a journey, an AI agent MUST execute this protocol to establish a high-fidelity specification with the user. **The loop should not proceed to implementation until the "System Requirements" are signed off.**
-
-### 1.1 Goal Extraction Phase (Q&A)
-
-Do not assume you understand the user's intent. Start by asking these specific questions to anchor the journey:
-
-1.  **Metric-Driven Goals**: "You want to [Goal]. What are the current baseline metrics (latency, CPU, throughput)? What are the target values for success?"
-2.  **Scope and Boundaries**: "What existing files or modules are considered 'in scope'? What must NOT be touched or changed?"
-3.  **Constraint Identification**: "Are there any strict memory or threading constraints? Are there specific standards (MISRA, C++17) we must adhere to?"
-4.  **Verification Strategy**: "How should we prove the goal is achieved? Should I use existing tests, or do we need to build a new synthetic test harness?"
-5.  **Anti-Pattern Mining**: "Have you already tried any approaches that failed? Are there specific 'gotchas' in this part of the codebase I should know about?"
-
-### 1.2 Specification Construction
-
-Once you have the answers, create the `{journey_name}.spec.md` file. This file is the "Source of Truth" for the entire journey. It must contain:
-
-#### User Requirements (The "Why")
-*   Human-readable goals and the value they provide.
-*   Example: "Users need to detect notes in real-time with less than 20ms latency."
-
-#### System Requirements (The "What")
-*   Technical, measurable specifications.
-*   Example: "The FFT processing pipeline must complete within 15ms per frame on ARMv7."
-
-#### Acceptance Criteria (The "How we prove it")
-*   The exact tests or benchmarks that must pass.
-*   Example: "`test_pitch_detector` must show >98% accuracy on the `test_data/vocals.raw` dataset."
-
-#### Initial Epic Breakdown
-*   High-level milestones (Epics) needed to reach the goal.
-
-### 1.3 Sign-Off Protocol
-
-After creating the Spec, set the journey state to `WAITING_FOR_USER` and present the Spec to the user. Ask:
-
-> "I have drafted the System Specification based on our discussion. Please review the goals, metrics, and acceptance criteria in `[journey_name].spec.md`. Once you provide a sign-off or a 'proceed' hint, I will begin the SYSTEM_DESIGN phase."
-
-**Do not proceed to SYSTEM_DESIGN until the user provides confirmation.**
-
-### 1.4 Optional: Project Guardrails
-
-Before design begins, consider defining guardrails in the journey file. These are optional constraints that help maintain quality and prevent scope creep:
-
-#### Performance Constraints
-- **Performance Budgets**: Max CPU%, Latency (ms), Memory (KB)
-- **Constraints**: Platform limits (ARM clock speed, iOS background tasks, threading model)
-
-#### Quality Assurance Tooling
-- **Linters**: `clang-tidy`, `eslint`, `shellcheck` (must pass with zero errors)
-- **Static Type Checkers**: `mypy`, `flow`, C++ strict type checking
-- **Dynamic Checkers**: AddressSanitizer (ASan), UndefinedBehaviorSanitizer (UBSan), Valgrind
-- **Code Coverage**: Target coverage % for new modules (e.g., >80% line coverage)
-- **Unit Tests**: All existing tests must pass; new code requires new tests
-- **Integration Tests**: End-to-end validation of component interactions
-
-#### Dependency Guidelines
-- What libraries can/cannot be added
-- Version constraints for dependencies
-- License compatibility requirements
-
-Example guardrails section in a journey file:
-
-```markdown
-## Guardrails
-- CPU Budget: < 5% on ARM Cortex-A53
-- Latency: < 20ms end-to-end processing
-- Memory: < 100KB heap allocation
-- Linters: clang-tidy (zero errors), shellcheck (zero errors)
-- Static Analysis: clang-tidy, cppcheck
-- Dynamic Analysis: ASan, UBSan must pass
-- Code Coverage: >80% line coverage for new modules
-- No new external dependencies
-```
-
-These guardrails are referenced during ACCEPTANCE_TEST to validate the final implementation.
+**For user-facing documentation**, see [USER_GUIDE.md](USER_GUIDE.md).
 
 ---
 
-## 2. V-Model Stages
+## 1. Protocol Overview
 
-The loop cycles through these formal stages, moving down the "V" for design and back up for verification.
+The V-Model protocol defines a formal development lifecycle for autonomous R&D agents. It combines:
 
-| Stage | Type | Description |
-| :--- | :--- | :--- |
-| `REQUIREMENTS` | Design | Formalizing User Requirements into System Requirements. |
-| `DESIGN_REVIEW` | Review | Gemini consultation for design quality and research thoroughness. |
-| `SYSTEM_DESIGN` | Design | High-level architectural planning (Epics). |
-| `ARCH_DESIGN` | Design | Component-level design (Sub-systems/Interfaces). |
-| `MODULE_DESIGN` | Design | Low-level logic design for a single Story. |
-| `IMPLEMENTATION` | Build | Coding the specific module/story. |
-| `UNIT_TEST` | Verify | Verifying the specific module logic. |
-| `INTEGRATION_TEST` | Verify | Verifying how the module interacts with the system. |
-| `SYSTEM_TEST` | Verify | Verifying the entire system against the original Spec. |
-| `ACCEPTANCE_TEST` | Verify | Final validation against User Requirements and Guardrails. |
+- **Architecture-driven development**: Formal decomposition into Epics → Stories → Tasks
+- **Rigorous verification**: Each design level has a corresponding verification stage
+- **Design review**: External consultation (Gemini) for design quality and research thoroughness
+- **Safe rollback**: Git checkpointing at key milestones
+- **Dead-end detection**: Automatic pivot when approaches stagnate
 
----
+### 1.1 State Machine
 
-## 3. Workflow Diagram
-
-```text
-  REQUIREMENTS ───────────────→ ACCEPTANCE_TEST
-       ↓                              ↑
-  [DESIGN_REVIEW]                    |
-       ↓                              |
-  SYSTEM_DESIGN ──────────────→ SYSTEM_TEST
-       ↓                              ↑
-  [DESIGN_REVIEW]                    |
-       ↓                              |
-  ARCH_DESIGN ────────────→ INTEGRATION_TEST
-       ↓                              ↑
-  [DESIGN_REVIEW]                    |
-       ↓                              |
-  MODULE_DESIGN ──────────→ UNIT_TEST
-       ↓                              ↑
-  [DESIGN_REVIEW]                    |
-       ↓                              |
-  PROTOTYPING (Optional) ─────────────┘
-       ↓
-  IMPLEMENTATION (Coding)
-```
-
-**Note**: `[DESIGN_REVIEW]` is an automatic Gemini consultation phase that evaluates both design quality and research thoroughness. Use `--no-consult` flag to disable.
-
-### DESIGN_REVIEW: Persona-Based Checklist
-
-During DESIGN_REVIEW, consider reviewing the design from multiple perspectives. This is optional but helps catch issues early:
-
-#### Security Review
-- [ ] Buffer overflows / array bounds
-- [ ] Integer overflow/underflow
-- [ ] Credential/secret handling
-- [ ] Input validation at system boundaries
-- [ ] Thread safety and race conditions
-
-#### UX/Accessibility Review (for App/PWA)
-- [ ] Platform guidelines (Apple HIG, Material Design)
-- [ ] Accessibility (screen readers, color contrast, touch targets)
-- [ ] Responsive layout considerations
-- [ ] Error messages user-friendly
-
-#### Systems Architecture Review
-- [ ] No circular dependencies
-- [ ] Clear module boundaries
-- [ ] Appropriate abstraction levels
-- [ ] Memory ownership is clear
-- [ ] Error propagation is handled
-
-#### Code Quality Review
-- [ ] Code follows project style guide (clang-format, linting rules)
-- [ ] No magic numbers - constants are named and documented
-- [ ] Functions are single-purpose and testable
-- [ ] No dead code or commented-out code blocks
-- [ ] Logging/tracing at appropriate levels
-
-#### Performance Review
-- [ ] No unnecessary allocations in hot paths
-- [ ] Algorithm complexity is appropriate (O(n) vs O(n²))
-- [ ] Caching strategy is sound (if applicable)
-- [ ] No blocking operations in real-time contexts
-
-#### Maintainability Review
-- [ ] Code is self-documenting or has adequate comments
-- [ ] Error messages are actionable and informative
-- [ ] TODOs/FIXMEs are tracked or resolved
-- [ ] No premature optimization
-
----
-
-## 4. Operational Instructions for the Agent
-
-### Phase: REQUIREMENTS
-*   Analyze the current project state and user hints.
-*   If the Spec is incomplete, transition to `WAITING_FOR_USER` with specific questions.
-*   Output: Updated `System Requirements` in the Spec.
-
-### Phase: SYSTEM_DESIGN
-*   Break the journey into **Epics**.
-*   Identify cross-cutting concerns (memory, threading, API).
-*   Output: `Epics` list in the Spec.
-
-### Phase: ARCH_DESIGN / MODULE_DESIGN
-*   **Draft the Design**: Before coding, write the exact plan (signatures, state changes).
-*   **Review the Design**: Critically analyze for leaks, complexity, and performance.
-*   Output: `Current Story Design` with a "Review Passed" stamp.
-
-### Phase: VERIFICATION (Unit → System)
-*   Do not just run `ctest`.
-*   Analyze the logs, performance metrics, and edge cases.
-*   If a test fails, move **backwards** to the corresponding Design stage, not just back to coding.
-
-#### UNIT_TEST
-*   Verify the specific module logic in isolation.
-*   Run unit tests with coverage reporting enabled.
-
-#### INTEGRATION_TEST
-*   Verify how the module interacts with the system.
-*   **Automated Audit Gate**: Run linters and static analyzers as a hard gate before proceeding.
-  - All linting errors must be resolved (zero tolerance).
-  - Static analysis warnings should be addressed or explicitly documented.
-
-#### SYSTEM_TEST
-*   Verify the entire system against the original Spec.
-*   Run full test suite, not just affected tests.
-
-#### Verification Best Practices
-
-1. **Test-Driven Design (TDD)**:
-   - Draft UNIT_TEST and INTEGRATION_TEST signatures *before* IMPLEMENTATION
-   - Define expected inputs/outputs and edge cases upfront
-   - This clarifies the contract before coding begins
-
-2. **Negative Testing**:
-   - Include tests for failure modes (empty buffers, timeouts, null pointers)
-   - Test boundary conditions (max values, zero, negative)
-   - Verify graceful degradation under stress
-
-3. **Performance Benchmarking**:
-   - Run benchmarks and compare against baseline metrics
-   - If guardrails were defined, validate against them
-   - Document any performance regressions with root cause analysis
-
-4. **Regression Verification**:
-   - Ensure existing tests still pass after changes
-   - Run full test suite, not just new tests
-
-### Research During Design Phases
-
-Each design phase includes an implicit research step. Before finalizing any design:
-
-1. **Web Search** (when applicable):
-   - Search for existing libraries, frameworks, solutions
-   - Look for best practices and anti-patterns
-   - Use current year in queries (2026)
-
-2. **Gemini Rubber Duck** (for complex decisions):
-   - Use Gemini to talk through design reasoning
-   - Example: `echo "What are tradeoffs between X and Y?" | gemini --yolo`
-   - Ask about edge cases, failure modes, alternatives
-
-3. **Codebase Research**:
-   - Search for existing implementations
-   - Check memory.md for project-specific learnings
-   - Review test data and examples
-
-4. **Literature Review** (for specialized domains):
-   - Whitepapers, RFCs, technical standards (DSP, embedded, audio)
-   - Academic papers for algorithmic approaches
-   - Platform-specific documentation (Apple HIG, Android NDK guides)
-
-5. **Prior Art Search**:
-   - Grep codebase for similar implementations: `grep -r "similar_pattern" --include="*.cpp"`
-   - Check commit history for related changes
-   - Review closed issues/PRs for context
-
-6. **Constraint Discovery**:
-   - Physical limits (sample rates, buffer sizes)
-   - Platform constraints (real-time requirements, memory tiers)
-   - Backward compatibility requirements
-
-7. **Document Findings**:
-   - Add findings to journey file under "## Research Notes"
-   - Include sources (URLs, file paths)
-   - Note rejected alternatives with reasons
-
----
-
-## 5. State Machine
-
-The `loop_v_model.sh` script implements a state machine with the following states and transitions:
+The protocol implements a state machine with 15 states:
 
 ```mermaid
 stateDiagram-v2
@@ -313,13 +59,15 @@ stateDiagram-v2
         SYSTEM_TEST --> SYSTEM_DESIGN: Failed
         SYSTEM_TEST --> ACCEPTANCE_TEST: Passed
         ACCEPTANCE_TEST --> REQUIREMENTS: Failed
-        ACCEPTANCE_TEST --> COMPLETE: Passed
+        ACCEPTANCE_TEST --> CONSOLIDATING: Passed
+        CONSOLIDATING --> COMPLETE
     }
 
     state "Terminal States" as terminal {
         COMPLETE --> [*]
         BLOCKED --> [*]
         PIVOTING --> REQUIREMENTS: New approach
+        REFLECTING --> REQUIREMENTS: Analysis complete
     }
 
     %% Cross-cutting transitions
@@ -342,12 +90,12 @@ stateDiagram-v2
     end note
 ```
 
-### State Descriptions
+### 1.2 State Definitions
 
 | State | Type | Description |
-| :--- | :--- | :--- |
+|:------|:------|:-------------|
 | `REQUIREMENTS` | Design | Formalizing User Requirements into System Requirements |
-| `DESIGN_REVIEW` | Review | Automatic Gemini consultation for design quality |
+| `DESIGN_REVIEW` | Review | Automatic consultation for design quality |
 | `SYSTEM_DESIGN` | Design | High-level architectural planning (Epics) |
 | `ARCH_DESIGN` | Design | Component-level design (Sub-systems/Interfaces) |
 | `MODULE_DESIGN` | Design | Low-level logic design for a single Story |
@@ -357,19 +105,568 @@ stateDiagram-v2
 | `INTEGRATION_TEST` | Verify | Verifying interaction with the system |
 | `SYSTEM_TEST` | Verify | Verifying against original Spec |
 | `ACCEPTANCE_TEST` | Verify | Final validation against User Requirements |
+| `CONSOLIDATING` | Verify | Cleaning up, syncing to memory.md, final verification |
 | `WAITING_FOR_USER` | Control | Awaiting clarification or sign-off |
 | `COMPLETE` | Terminal | Goal achieved, journey finished |
 | `BLOCKED` | Terminal | Blocked by external dependency or error |
 | `PIVOTING` | Control | Force pivot to next approach |
+| `REFLECTING` | Control | Forced reflection phase |
 
 ---
 
-## 6. Implementation Guidelines
+## 2. Spec Initiation Protocol
 
-These principles apply throughout all phases of the V-Model:
+Before starting a journey, an AI agent MUST execute this protocol to establish a high-fidelity specification with the user.
 
-### 6.1 Anchor the Endpoint
-The `Acceptance Criteria` must include specific CLI commands to verify success. Vague criteria lead to vague implementations.
+### 2.1 Goal Extraction Phase (Q&A)
+
+The agent MUST ask these specific questions:
+
+1. **Metric-Driven Goals**: Current baseline metrics and target values for success
+2. **Scope and Boundaries**: What files/modules are in scope, what must not be touched
+3. **Constraint Identification**: Memory, threading, standards requirements
+4. **Verification Strategy**: How to prove the goal is achieved (existing tests vs new harness)
+5. **Anti-Pattern Mining**: Already-tried approaches that failed, known gotchas
+
+### 2.2 Specification Construction
+
+Create the `{journey_name}.spec.md` file with:
+
+#### User Requirements (The "Why")
+- Human-readable goals and the value they provide
+
+#### System Requirements (The "What")
+- Technical, measurable specifications
+
+#### Acceptance Criteria (The "How we prove it")
+- The exact tests or benchmarks that must pass
+
+#### Initial Epic Breakdown
+- High-level milestones (Epics) needed to reach the goal
+
+### 2.3 Sign-Off Protocol
+
+After creating the Spec, set journey state to `WAITING_FOR_USER` and present the Spec. Ask:
+
+> "I have drafted the System Specification based on our discussion. Please review the goals, metrics, and acceptance criteria in `[journey_name].spec.md`. Once you provide a sign-off or a 'proceed' hint, I will begin the SYSTEM_DESIGN phase."
+
+**Do not proceed to SYSTEM_DESIGN until the user provides confirmation.**
+
+### 2.4 Optional Guardrails
+
+Before design begins, define optional constraints:
+
+#### Performance Constraints
+- Performance Budgets: Max CPU%, Latency (ms), Memory (KB)
+- Platform limits (ARM clock speed, iOS background tasks, threading model)
+
+#### Quality Assurance Tooling
+- Linters: `clang-tidy`, `eslint`, `shellcheck` (zero tolerance)
+- Static Type Checkers: `mypy`, `flow`, C++ strict type checking
+- Dynamic Checkers: ASan, UBSan, Valgrind
+- Code Coverage: Target coverage % for new modules
+
+#### Dependency Guidelines
+- What libraries can/cannot be added
+- Version constraints
+- License compatibility requirements
+
+---
+
+## 3. V-Model Stages
+
+### 3.1 REQUIREMENTS
+
+**Purpose**: Formalize User Requirements into System Requirements
+
+**Protocol**:
+1. Execute Spec Initiation Protocol (see above)
+2. Conduct research before finalizing requirements:
+   - Web search for similar systems/libraries
+   - Consult memory.md for past learnings
+   - Use external AI (Gemini) for complex tradeoffs
+3. Document research in "## Research Notes > ### REQUIREMENTS Phase Research"
+4. Create or update `{journey_name}.spec.md`
+5. Transition to `WAITING_FOR_USER` for sign-off
+6. After sign-off, update "Previous Phase: REQUIREMENTS" in Meta section
+7. Transition to `DESIGN_REVIEW`
+
+**Output**: Updated System Requirements in the Spec
+
+### 3.2 DESIGN_REVIEW
+
+**Purpose**: Automatic external consultation for design quality and research thoroughness
+
+**Protocol**:
+1. Extract design content from the previous phase
+2. Extract research notes for that phase
+3. Consult external AI (Gemini) with both design and research
+4. Parse decision:
+   - If `DECISION: ITERATE`: Transition back to previous design phase
+   - Otherwise: Auto-transition to next design phase
+
+**Transition Mapping**:
+- `REQUIREMENTS` → `SYSTEM_DESIGN`
+- `SYSTEM_DESIGN` → `ARCH_DESIGN`
+- `ARCH_DESIGN` → `MODULE_DESIGN`
+- `MODULE_DESIGN` → `IMPLEMENTATION`
+
+### 3.3 SYSTEM_DESIGN
+
+**Purpose**: High-level architectural planning (Epics)
+
+**Protocol**:
+1. Conduct research:
+   - Web search for architectural patterns
+   - Search codebase for similar implementations
+   - Use external AI for architectural tradeoffs
+2. Document research in "## Research Notes > ### SYSTEM_DESIGN Phase Research"
+3. Decompose goal into **Epics**
+4. Identify cross-cutting concerns (memory, threading, API)
+5. Update Design Spec with architecture and Epics list
+6. Update "Previous Phase: SYSTEM_DESIGN" in Meta section
+7. Transition to `DESIGN_REVIEW`
+
+**Output**: `Epics` list in the Spec
+
+### 3.4 ARCH_DESIGN
+
+**Purpose**: Component-level design (Sub-systems/Interfaces)
+
+**Protocol**:
+1. Conduct research:
+   - Search for existing interfaces/APIs in codebase
+   - Web search for component design patterns
+   - Use external AI for interface decisions
+2. Document research in "## Research Notes > ### ARCH_DESIGN Phase Research"
+3. Select current Epic
+4. Decompose Epic into **Stories** (Sub-systems/Interfaces)
+5. Update Design Spec and Journey file
+6. Update "Previous Phase: ARCH_DESIGN" in Meta section
+7. Transition to `DESIGN_REVIEW` for the first/next Story
+
+**Output**: Component interfaces and sub-system design
+
+### 3.5 MODULE_DESIGN
+
+**Purpose**: Low-level logic design for a single Story
+
+**Protocol**:
+1. Conduct research:
+   - Search codebase for similar functions/classes
+   - Web search for algorithm implementations
+   - Use external AI for edge cases
+2. Document research in "## Research Notes > ### MODULE_DESIGN Phase Research"
+3. Select current Story
+4. Create detailed technical design: signatures, state changes, error handling
+5. **Perform Design Review**: Critique for leaks, complexity, performance
+6. If review fails, stay in `MODULE_DESIGN` and fix
+7. If unsure, transition to `WAITING_FOR_USER`
+8. If passed, update "Previous Phase: MODULE_DESIGN" in Meta section
+9. Transition to `DESIGN_REVIEW`
+
+**Output**: `Current Story Design` with "Review Passed" stamp
+
+### 3.6 PROTOTYPING (Optional)
+
+**Purpose**: Experimental phase to validate complex algorithms
+
+**Protocol**:
+1. Use Python/C++ for rapid prototyping
+2. Validate approach before production implementation
+3. If successful, transition back to `MODULE_DESIGN` or `IMPLEMENTATION`
+4. If failed, transition back to `MODULE_DESIGN` with learnings
+
+**Trigger**: Optional transition from `REQUIREMENTS` or `MODULE_DESIGN`
+
+### 3.7 IMPLEMENTATION
+
+**Purpose**: Coding the specific module/story
+
+**Protocol**:
+1. Code exactly one Story based on approved `MODULE_DESIGN`
+2. Run basic guardrails (build)
+3. Transition to `UNIT_TEST`
+
+**Output**: Production code changes
+
+### 3.8 UNIT_TEST
+
+**Purpose**: Verifying the specific module logic
+
+**Protocol**:
+1. Run tests specific to the module/story
+2. Analyze logs and edge cases
+3. If fails, transition back to `MODULE_DESIGN`
+4. If passes, transition to `INTEGRATION_TEST`
+
+### 3.9 INTEGRATION_TEST
+
+**Purpose**: Verifying interaction with the system
+
+**Protocol**:
+1. Run system-wide tests (`ALL_TESTS_COMMAND`)
+2. Verify new module interacts correctly with existing components
+3. **Automated Audit Gate**: Run linters and static analyzers
+   - All linting errors must be resolved (zero tolerance)
+   - Static analysis warnings should be addressed or documented
+4. If fails, transition back to `ARCH_DESIGN`
+5. If passes:
+   - Check if this was the last story in current epic
+   - If yes, mark Epic complete and check for more epics
+   - If more epics, transition to `WAITING_FOR_USER` (auto-transitions to next epic)
+   - If no more epics, transition to `SYSTEM_TEST`
+   - If not last story, transition back to `MODULE_DESIGN` for next story
+
+### 3.10 SYSTEM_TEST
+
+**Purpose**: Verifying against original Spec
+
+**Protocol**:
+1. Verify entire system against **System Requirements** in Spec
+2. Run full test suite, not just affected tests
+3. Check performance metrics (CPU, latency) against thresholds
+4. If fails, transition back to `SYSTEM_DESIGN`
+5. If passes, transition to `ACCEPTANCE_TEST`
+
+### 3.11 ACCEPTANCE_TEST
+
+**Purpose**: Final validation against User Requirements
+
+**Protocol**:
+1. Verify against **User Requirements** and final **Acceptance Criteria**
+2. Check guardrails if defined
+3. If everything passes, transition to `CONSOLIDATING`
+4. If fails, transition back to `REQUIREMENTS`
+
+### 3.12 CONSOLIDATING
+
+**Purpose**: Cleanup, document, and finalize
+
+**Protocol**:
+1. Cleanup and finalize Design Spec
+2. Sync learnings to `memory.md`
+3. Transition to `COMPLETE`
+
+---
+
+## 4. Data Structures
+
+### 4.1 Journey File Format
+
+Journey files are stored as `{PROJ_ROOT}/v_model/journey/{name}.journey.md`
+
+**Required Sections**:
+
+```markdown
+# Journey: {goal}
+
+## Meta
+- Goal: {goal}
+- State: {current_state}
+- Previous Phase: {last_completed_design_phase}
+- Current Epic: {epic_id}
+- Started: {UTC_timestamp}
+- Current Approach: {approach_number}
+- Progress: {percentage}
+
+## Approaches
+### Approach {N}: {name}
+- Status: PENDING/ACTIVE/ABANDONED/COMPLETE
+- Reason: {description}
+- Iterations: {count}
+
+## Current Approach Detail
+### Approach {N}: {name}
+- Hypothesis: {description}
+- Milestones: [checklist]
+
+## Guardrails
+- [status] {constraint}
+
+## Baseline Metrics
+| Metric | Baseline | Current | Threshold |
+|--------|----------|---------|-----------|
+
+## User Hints
+- {timestamp}: "{hint}"
+
+## Research Notes
+### REQUIREMENTS Phase Research
+{content}
+
+### SYSTEM_DESIGN Phase Research
+{content}
+
+### ARCH_DESIGN Phase Research
+{content}
+
+### MODULE_DESIGN Phase Research
+{content}
+
+## Epic Progress
+| Epic ID | Name | Status | Stories Complete | Total Stories |
+
+## Generated Artifacts
+{list}
+
+## Learnings Log
+- {timestamp}: {learning}
+
+## Dead Ends
+### {approach_name}
+- Status: ABANDONED
+- Reason: {description}
+- Learnings: {learnings}
+- Abandoned: {date}
+
+## Anti-Patterns
+- **{pattern}**: {description}
+
+## Pending Questions
+- [ ] {date}: {question}
+
+## Design Spec
+{link_to_spec}
+
+## Checkpoints
+| ID | Tag | Date | Description |
+```
+
+### 4.2 Spec File Format
+
+Spec files are stored as `{PROJ_ROOT}/v_model/journey/{name}.spec.md`
+
+**Required Sections**:
+
+```markdown
+# Design Spec: {goal}
+
+> **Journey**: {journey_name}
+> **Created**: {UTC_timestamp}
+> **Status**: DRAFT/COMPLETE
+
+## Overview
+**Goal**: {goal}
+
+## Approach
+{approach_details}
+
+## User Requirements
+{requirements}
+
+## System Requirements
+{requirements}
+
+## Acceptance Criteria
+{criteria}
+
+## Baseline Metrics
+{metrics}
+
+## Epics
+### E1: {epic_name}
+- Stories: {list}
+- Status: PENDING/IN_PROGRESS/COMPLETE
+
+## Architecture
+{architecture_description}
+
+## Implementation Plan
+### Phase 1: Research and Planning
+### Phase 2: Prototyping
+### Phase 3: Implementation
+### Phase 4: Consolidation
+
+## Success Criteria
+- [ ] {criterion}
+
+## Changes Made
+{changes}
+
+## Documentation Updates
+{updates}
+
+## References
+{links}
+```
+
+---
+
+## 5. Algorithms
+
+### 5.1 Dead-End Detection
+
+**Purpose**: Detect when an approach is stuck and trigger a pivot
+
+**Algorithm**:
+
+```
+IF (current_iterations_in_state >= MAX_STALE_ITERATIONS) AND
+   (progress_percent < MIN_PROGRESS_PERCENT) THEN
+    Trigger pivot to next approach
+END IF
+```
+
+**Variables**:
+- `MAX_STALE_ITERATIONS`: Default 3
+- `MIN_PROGRESS_PERCENT`: Default 5
+
+**Actions on Dead End**:
+1. Log dead end in journey file with reason and learnings
+2. Extract learnings to `memory.md`
+3. Increment approach number
+4. Reset state to `REQUIREMENTS` for new approach
+
+### 5.2 Epic Completion Detection
+
+**Purpose**: Detect when all stories in an epic are complete
+
+**Algorithm**:
+
+```
+IF (journey.learnings_log contains "Epic {Epic_ID} COMPLETED") THEN
+    Mark epic complete in progress table
+    Check for next epic
+    IF next_epic EXISTS THEN
+        Transition to WAITING_FOR_USER (auto-transition to next epic)
+    ELSE
+        Transition to SYSTEM_TEST
+    END IF
+END IF
+```
+
+### 5.3 Design Review Transition
+
+**Purpose**: Auto-transition from `DESIGN_REVIEW` to next phase
+
+**Algorithm**:
+
+```
+PREVIOUS_PHASE = journey.meta.previous_phase
+
+IF gemini_feedback contains "DECISION: ITERATE" THEN
+    NEW_STATE = PREVIOUS_PHASE
+ELSE
+    SWITCH PREVIOUS_PHASE
+        CASE REQUIREMENTS:   NEW_STATE = SYSTEM_DESIGN
+        CASE SYSTEM_DESIGN:  NEW_STATE = ARCH_DESIGN
+        CASE ARCH_DESIGN:    NEW_STATE = MODULE_DESIGN
+        CASE MODULE_DESIGN:  NEW_STATE = IMPLEMENTATION
+        DEFAULT:             NEW_STATE = SYSTEM_DESIGN
+    END SWITCH
+END IF
+
+journey.state = NEW_STATE
+```
+
+### 5.4 Previous Phase Detection
+
+**Purpose**: Determine which design phase just completed
+
+**Algorithm**:
+
+```
+IF journey.meta.previous_phase EXISTS AND != "TBD" THEN
+    RETURN journey.meta.previous_phase
+ELSE
+    # Fallback: infer from learnings log
+    IF learnings_log contains "Transitioned to.*SYSTEM_DESIGN" THEN
+        RETURN "REQUIREMENTS"
+    ELSE IF learnings_log contains "Transitioned to.*ARCH_DESIGN" THEN
+        RETURN "SYSTEM_DESIGN"
+    ELSE IF learnings_log contains "Transitioned to.*MODULE_DESIGN" THEN
+        RETURN "ARCH_DESIGN"
+    ELSE IF learnings_log contains "Transitioned to.*IMPLEMENTATION" THEN
+        RETURN "MODULE_DESIGN"
+    ELSE
+        RETURN "UNKNOWN"
+    END IF
+END IF
+```
+
+---
+
+## 6. Verification Best Practices
+
+### 6.1 Test-Driven Design (TDD)
+
+- Draft `UNIT_TEST` and `INTEGRATION_TEST` signatures **before** `IMPLEMENTATION`
+- Define expected inputs/outputs and edge cases upfront
+- This clarifies the contract before coding begins
+
+### 6.2 Negative Testing
+
+- Include tests for failure modes (empty buffers, timeouts, null pointers)
+- Test boundary conditions (max values, zero, negative)
+- Verify graceful degradation under stress
+
+### 6.3 Performance Benchmarking
+
+- Run benchmarks and compare against baseline metrics
+- If guardrails were defined, validate against them
+- Document any performance regressions with root cause analysis
+
+### 6.4 Regression Verification
+
+- Ensure existing tests still pass after changes
+- Run full test suite, not just new tests
+
+---
+
+## 7. Research Protocol
+
+Each design phase includes an implicit research step. Before finalizing any design:
+
+### 7.1 Web Search
+
+- Search for existing libraries, frameworks, solutions
+- Look for best practices and anti-patterns
+- Use current year in queries (2026)
+
+### 7.2 External AI Consultation
+
+- Use external AI to talk through design reasoning
+- Ask about edge cases, failure modes, alternatives
+- Example: `echo "What are tradeoffs between X and Y?" | gemini --yolo`
+
+### 7.3 Codebase Research
+
+- Search for existing implementations
+- Check `memory.md` for project-specific learnings
+- Review test data and examples
+
+### 7.4 Literature Review
+
+- Whitepapers, RFCs, technical standards (DSP, embedded, audio)
+- Academic papers for algorithmic approaches
+- Platform-specific documentation (Apple HIG, Android NDK guides)
+
+### 7.5 Prior Art Search
+
+- `grep -r "similar_pattern" --include="*.cpp"`
+- Check commit history for related changes
+- Review closed issues/PRs for context
+
+### 7.6 Constraint Discovery
+
+- Physical limits (sample rates, buffer sizes)
+- Platform constraints (real-time requirements, memory tiers)
+- Backward compatibility requirements
+
+### 7.7 Document Findings
+
+- Add findings to journey file under "## Research Notes"
+- Include sources (URLs, file paths)
+- Note rejected alternatives with reasons
+
+---
+
+## 8. Implementation Guidelines
+
+### 8.1 Anchor the Endpoint
+
+The `Acceptance Criteria` must include specific CLI commands to verify success.
 
 **Example**:
 ```markdown
@@ -379,22 +676,25 @@ The `Acceptance Criteria` must include specific CLI commands to verify success. 
 - Latency benchmark: `./bench_latency` reports <10ms p99
 ```
 
-### 6.2 No Vibe Coding
+### 8.2 No Vibe Coding
+
 If a design proposes a solution without citing a "Research Note" or "Existing Pattern," the `DESIGN_REVIEW` must reject it. Every implementation decision should be grounded in:
 - Prior art in the codebase
 - External research (papers, documentation, best practices)
 - Explicit trade-off analysis
 
-### 6.3 Read Before Write
-Before every `SYSTEM_DESIGN` or `ARCH_DESIGN` turn, the agent must:
+### 8.3 Read Before Write
+
+Before every `SYSTEM_DESIGN` or `ARCH_DESIGN` turn:
 1. Search the codebase for related modules (`grep`, `glob`)
 2. List relevant directories to understand structure
 3. Review existing patterns before proposing new ones
 
 This prevents redundant implementations and ensures consistency.
 
-### 6.4 Update Guardrails from Bugs
-When a bug is found during `UNIT_TEST` or `INTEGRATION_TEST`, the agent should ask:
+### 8.4 Update Guardrails from Bugs
+
+When a bug is found during `UNIT_TEST` or `INTEGRATION_TEST`, ask:
 
 > "How can I update my linter, static analysis, or test suite to prevent this class of bug forever?"
 
@@ -402,6 +702,108 @@ When a bug is found during `UNIT_TEST` or `INTEGRATION_TEST`, the agent should a
 
 ---
 
-## 7. State Management
+## 9. Design Review Checklist
+
+During `DESIGN_REVIEW`, consider reviewing from multiple perspectives:
+
+### Security Review
+- [ ] Buffer overflows / array bounds
+- [ ] Integer overflow/underflow
+- [ ] Credential/secret handling
+- [ ] Input validation at system boundaries
+- [ ] Thread safety and race conditions
+
+### UX/Accessibility Review (for App/PWA)
+- [ ] Platform guidelines (Apple HIG, Material Design)
+- [ ] Accessibility (screen readers, color contrast, touch targets)
+- [ ] Responsive layout considerations
+- [ ] Error messages user-friendly
+
+### Systems Architecture Review
+- [ ] No circular dependencies
+- [ ] Clear module boundaries
+- [ ] Appropriate abstraction levels
+- [ ] Memory ownership is clear
+- [ ] Error propagation is handled
+
+### Code Quality Review
+- [ ] Code follows project style guide
+- [ ] No magic numbers - constants are named and documented
+- [ ] Functions are single-purpose and testable
+- [ ] No dead code or commented-out code blocks
+- [ ] Logging/tracing at appropriate levels
+
+### Performance Review
+- [ ] No unnecessary allocations in hot paths
+- [ ] Algorithm complexity is appropriate (O(n) vs O(n²))
+- [ ] Caching strategy is sound (if applicable)
+- [ ] No blocking operations in real-time contexts
+
+### Maintainability Review
+- [ ] Code is self-documenting or has adequate comments
+- [ ] Error messages are actionable and informative
+- [ ] TODOs/FIXMEs are tracked or resolved
+- [ ] No premature optimization
+
+---
+
+## 10. Workflow Diagram
+
+```text
+  REQUIREMENTS ───────────────→ ACCEPTANCE_TEST
+       ↓                              ↑
+  [DESIGN_REVIEW]                    |
+       ↓                              |
+  SYSTEM_DESIGN ──────────────→ SYSTEM_TEST
+       ↓                              ↑
+  [DESIGN_REVIEW]                    |
+       ↓                              |
+  ARCH_DESIGN ────────────→ INTEGRATION_TEST
+       ↓                              ↑
+  [DESIGN_REVIEW]                    |
+       ↓                              |
+  MODULE_DESIGN ──────────→ UNIT_TEST
+       ↓                              ↑
+  PROTOTYPING (Optional) ─────────────┘
+       ↓
+  IMPLEMENTATION (Coding)
+```
+
+---
+
+## 11. State Management
 
 Every state transition must be documented in the **Learnings Log**.
+
+Format: `**[{timestamp}] State Transition: {from_state} → {to_state}**`
+
+---
+
+## 12. Extension Points
+
+### 12.1 Custom AI Providers
+
+Implement the `setup_ai()` function to support new AI providers:
+
+```bash
+setup_ai() {
+    if [[ "${AI_PROVIDER}" == "your_provider" ]]; then
+        AI_CMD="your_command"
+        AI_FLAG="--your-flags"
+    fi
+}
+```
+
+### 12.2 Custom Verification Stages
+
+Add custom verification stages by extending the state machine and adding handlers in `main_loop()`.
+
+### 12.3 Custom Prompt Templates
+
+Add new prompt templates in `prompts/` directory and load them using `load_prompt()`.
+
+---
+
+**For user-facing documentation**, see [USER_GUIDE.md](USER_GUIDE.md).
+
+**For quick reference**, see [CLAUDE.md](CLAUDE.md).

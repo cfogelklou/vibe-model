@@ -297,6 +297,8 @@ create_journey_file() {
 
 - Goal: ${goal}
 - State: REQUIREMENTS
+- Previous Phase: TBD
+- Current Epic: TBD
 - Started: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 - Current Approach: TBD
 - Progress: 0%
@@ -349,6 +351,14 @@ create_journey_file() {
 
 ### MODULE_DESIGN Phase Research
 *(To be populated)*
+
+## Epic Progress
+
+| Epic ID | Name             | Status      | Stories Complete | Total Stories |
+| ------- | ---------------- | ----------- | ---------------- | ------------- |
+| TBD     | TBD              | PENDING     | 0                | TBD           |
+
+*(Epic progress will be tracked during SYSTEM_DESIGN phase)*
 
 ## Generated Artifacts
 
@@ -429,6 +439,87 @@ set_current_approach() {
     local journey_file="$1"
     local approach="$2"
     sed -i '' "s/^- Current Approach: .*/- Current Approach: ${approach}/" "${journey_file}"
+}
+
+# Get current epic from journey
+get_current_epic() {
+    local journey_file="$1"
+    grep "^- Current Epic:" "${journey_file}" | sed 's/.*: //'
+}
+
+# Set current epic
+set_current_epic() {
+    local journey_file="$1"
+    local epic="$2"
+    sed -i '' "s/^- Current Epic: .*/- Current Epic: ${epic}/" "${journey_file}"
+}
+
+# Set previous phase
+set_previous_phase() {
+    local journey_file="$1"
+    local phase="$2"
+    sed -i '' "s/^- Previous Phase: .*/- Previous Phase: ${phase}/" "${journey_file}"
+}
+
+# Get epic status from epic table
+get_epic_status() {
+    local journey_file="$1"
+    local epic_id="$2"
+    awk "/^| ${epic_id} / {print \$4}" "${journey_file}"
+}
+
+# Get the next epic ID from epic progress table
+get_next_epic_id() {
+    local journey_file="$1"
+    local current_epic="$2"
+
+    # Parse epic progress table to find next epic
+    # Returns E2, E3, E4, or NONE if no more epics
+    local current_num
+    current_num=$(echo "${current_epic}" | sed 's/E//')
+
+    local next_num=$((current_num + 1))
+
+    # Check if E${next_num} exists in epic progress table
+    if grep -q "^| E${next_num} " "${journey_file}"; then
+        echo "E${next_num}"
+    else
+        echo "NONE"
+    fi
+}
+
+# Check if we should continue to next epic
+should_continue_to_next_epic() {
+    local journey_file="$1"
+    local current_epic="$2"
+
+    # Check learnings log for epic completion marker
+    if grep -q "Epic ${current_epic}.*COMPLETED" "${journey_file}"; then
+        return 0
+    fi
+    return 1
+}
+
+# Transition to the next epic's ARCH_DESIGN phase
+transition_to_next_epic() {
+    local journey_file="$1"
+    local completed_epic="$2"
+
+    # Extract next epic from journey file epic decomposition
+    local next_epic
+    next_epic=$(get_next_epic_id "${journey_file}" "${completed_epic}")
+
+    if [[ "${next_epic}" == "NONE" ]]; then
+        log_info "All epics complete - transitioning to SYSTEM_TEST"
+        set_journey_state "${journey_file}" "SYSTEM_TEST"
+        add_checkpoint "${journey_file}" "all-epics-complete" "All epics completed, transitioning to SYSTEM_TEST"
+    else
+        log_info "Transitioning to ${next_epic} ARCH_DESIGN phase"
+        set_current_epic "${journey_file}" "${next_epic}"
+        set_journey_state "${journey_file}" "ARCH_DESIGN"
+        add_learning "${journey_file}" "Auto-transition: Epic ${completed_epic} → ${next_epic}"
+        append_to_journey "${journey_file}" "\n**Auto-Transition: Epic ${completed_epic} → ${next_epic}**\n"
+    fi
 }
 
 # Add learning to journey
@@ -1336,9 +1427,29 @@ main_loop() {
                 break
                 ;;
             BLOCKED|WAITING_FOR_USER)
+                # Check if there are actual pending questions
+                local pending_questions
+                pending_questions=$(grep -A 20 "^## Pending Questions" "${journey_file}" | grep "^- \[ \]" | grep -v "^\*")
+
+                if [[ -z "${pending_questions}" ]]; then
+                    # No real questions - check if we can auto-continue
+                    local current_epic
+                    current_epic=$(get_current_epic "${journey_file}")
+
+                    # Check if epic is complete and we have a next epic
+                    if [[ "${current_epic}" != "TBD" ]] && should_continue_to_next_epic "${journey_file}" "${current_epic}"; then
+                        log_info "Epic ${current_epic} complete - auto-transitioning to next epic..."
+                        transition_to_next_epic "${journey_file}" "${current_epic}"
+                        continue
+                    fi
+                fi
+
+                # Only stop if there are genuine questions or we can't auto-transition
                 log_warning "Journey is ${state}. Use '$0 hint \"message\"' to provide input."
-                log_info "Current pending questions:"
-                grep -A 20 "^## Pending Questions" "${journey_file}" | grep "^- \[ \]"
+                if [[ -n "${pending_questions}" ]]; then
+                    log_info "Current pending questions:"
+                    echo "${pending_questions}"
+                fi
                 break
                 ;;
             DESIGN_REVIEW)

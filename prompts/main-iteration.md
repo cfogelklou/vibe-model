@@ -114,7 +114,12 @@ Before finalizing any design, conduct research:
 - Run system-wide tests (all_tests).
 - Verify the new module interacts correctly with existing components.
 - If fails, transition back to ARCH_DESIGN.
-- If passes, transition to SYSTEM_TEST.
+- If passes, check if this was the last story in the current epic:
+  - If yes, mark the current Epic as COMPLETE in the Learnings Log with format: "**Epic E# (Epic Name) COMPLETED**. All N stories implemented with X tests passing."
+  - Check if there are more epics defined in the epic decomposition section.
+  - If yes, transition to WAITING_FOR_USER (which will auto-transition to the next epic's ARCH_DESIGN).
+  - If no, transition to SYSTEM_TEST.
+- If this was not the last story in the current epic, transition back to MODULE_DESIGN for the next story.
 
 ### If SYSTEM_TEST:
 - Verify the entire system against the **System Requirements** in the Spec.
