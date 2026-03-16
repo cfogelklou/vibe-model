@@ -143,6 +143,7 @@ Commands:
   $0 status                 Show status of all journeys
   $0 pivot                  Force pivot to next approach
   $0 reflect                Force reflection phase
+  $0 archive                Archive completed epics that haven't been archived yet
   $0 hint "message"         Add a user hint to the journey
   $0 rollback [N]           Rollback to checkpoint N (default: last checkpoint)
   $0 list-checkpoints       List all checkpoints for current journey
@@ -1665,6 +1666,20 @@ handle_pivot() {
     log_success "Journey state set to PIVOTING"
 }
 
+# Handle archive command
+handle_archive() {
+    local active_journey
+    active_journey=$(find_active_journey)
+
+    if [[ -z "${active_journey}" ]]; then
+        log_error "No active journey found"
+        exit 1
+    fi
+
+    log_info "Archiving completed epics for active journey"
+    archive_completed_epics_if_needed "${active_journey}"
+}
+
 # Handle reflect command
 handle_reflect() {
     local active_journey
@@ -1751,7 +1766,7 @@ main() {
                 usage
                 exit 0
                 ;;
-            status|pivot|reflect|rollback|list-checkpoints)
+            status|pivot|reflect|archive|rollback|list-checkpoints)
                 command="$1"
                 shift
                 ;;
@@ -1800,6 +1815,10 @@ main() {
             ;;
         reflect)
             handle_reflect
+            exit 0
+            ;;
+        archive)
+            handle_archive
             exit 0
             ;;
         rollback)
