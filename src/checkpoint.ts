@@ -4,7 +4,7 @@
  */
 
 import { spawn } from "child_process";
-import { promises as fs, existsSync } from "fs";
+import { promises as fs, existsSync, statSync } from "fs";
 import path from "path";
 import { VModelError } from "./types";
 import { config } from "./config";
@@ -60,7 +60,7 @@ export function assertInParentProject(cwd: string): void {
   // not if .git/modules EXISTS (that's normal for a parent project with submodules)
   const gitPath = path.join(cwd, ".git");
   if (existsSync(gitPath)) {
-    const gitStat = fs.statSync(gitPath);
+    const gitStat = statSync(gitPath);
     if (gitStat.isFile()) {
       throw new VModelError(
         "Git operation attempted from submodule. Must use parent project directory.",
