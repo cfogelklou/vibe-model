@@ -1,0 +1,30 @@
+{
+  "name": "ai-v-model",
+  "version": "1.0.0",
+  "description": "Autonomous R&D agent using V-Model methodology",
+  "type": "module",
+  "module": "src/index.ts",
+  "bin": {
+    "v-model": "bin/v-model"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir bin --target bun",
+    "dev": "bun run src/index.ts",
+    "test": "bun test",
+    "test:unit": "bun test src/__tests__/unit",
+    "test:integration": "bun test tests/integration"
+  },
+  "dependencies": {
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
