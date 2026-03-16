@@ -1131,8 +1131,6 @@ consult_gemini() {
     local design_content="$2"
     local research_content="${3:-}"
 
-    log_info "Consulting Gemini for ${phase} phase review..."
-
     local consult_prompt
     if [[ -n "${research_content}" && "${research_content}" != *"To be populated"* ]]; then
         consult_prompt=$(cat <<EOF
@@ -1478,17 +1476,24 @@ main_loop() {
                 research_content=$(extract_research_content "${journey_file}" "${prev_phase}")
 
                 # Consult Gemini with research context
+                log_info "Consulting Gemini for ${prev_phase} phase review..."
                 local gemini_feedback
                 gemini_feedback=$(consult_gemini "${prev_phase}" "${design_content}" "${research_content}")
 
                 # Parse decision
                 if echo "$gemini_feedback" | grep -q "DECISION: ITERATE"; then
                     log_warning "Gemini identified major issues. Iterating..."
-                    append_to_journey "${journey_file}" "\n## Gemini Review: ITERATE\n\n${gemini_feedback}\n"
+                    # Strip ANSI codes from Gemini output before appending
+                    local clean_feedback
+                    clean_feedback=$(echo "$gemini_feedback" | sed 's/\x1b\[[0-9;]*m//g')
+                    append_to_journey "${journey_file}" "\n## Gemini Review: ITERATE\n\n${clean_feedback}\n"
                     set_journey_state "${journey_file}" "${prev_phase}"
                 else
                     log_success "Gemini approved design. Proceeding..."
-                    append_to_journey "${journey_file}" "\n## Gemini Review: APPROVED\n\n${gemini_feedback}\n"
+                    # Strip ANSI codes from Gemini output before appending
+                    local clean_feedback
+                    clean_feedback=$(echo "$gemini_feedback" | sed 's/\x1b\[[0-9;]*m//g')
+                    append_to_journey "${journey_file}" "\n## Gemini Review: APPROVED\n\n${clean_feedback}\n"
                     auto_transition_from_review "${journey_file}" "${prev_phase}"
                 fi
                 ;;
