@@ -1355,7 +1355,7 @@ get_completed_unarchived_epics() {
     local journey_name="$(basename "${journey_file}" .journey.md)"
 
     # Get current epic ID
-    local current_epic=$(get_current_epic "${journey_file}" | grep -oP 'E\K[0-9]+' || echo "0")
+    local current_epic=$(get_current_epic "${journey_file}" | grep -oE 'E[0-9]+' | sed 's/^E//' || echo "0")
 
     # Find completed epics without archival files
     while IFS='|' read -r _ epic_id _ status _; do
@@ -1363,7 +1363,7 @@ get_completed_unarchived_epics() {
         [[ ! "$epic_id" =~ ^[[:space:]]*E[0-9]+[[:space:]]*$ ]] && continue
 
         # Extract epic number
-        local epic_num=$(echo "$epic_id" | tr -d '[:space:]' | grep -oP 'E\K[0-9]+')
+        local epic_num=$(echo "$epic_id" | tr -d '[:space:]' | grep -oE 'E[0-9]+' | sed 's/^E//')
 
         # Skip if not complete
         [[ ! "$status" =~ COMPLETE ]] && continue
