@@ -1119,6 +1119,79 @@ setup_ai() {
     fi
 }
 
+# Run AI with a prompt file, printing status to stderr when VERBOSE=true.
+# In verbose mode (Claude only): uses stream-json to show tool calls and thinking live.
+# Usage: run_ai_with_prompt <temp_prompt_file>
+# Returns the AI exit code.
+run_ai_with_prompt() {
+    local temp_prompt="$1"
+
+    if [[ "${VERBOSE}" == "true" && "${AI_PROVIDER}" != "gemini" ]]; then
+        # Stream JSON and parse interesting events to stderr, pass full output to stdout
+        cat "$temp_prompt" | $AI_CMD --print \
+            --output-format stream-json \
+            --include-partial-messages \
+            --verbose 2>&1 | tee >(
+                while IFS= read -r line; do
+                    # Tool use starting
+                    if echo "$line" | grep -q '"type":"content_block_start"'; then
+                        local tool_name
+                        tool_name=$(echo "$line" | python3 -c "
+import sys, json
+try:
+    d = json.loads(sys.stdin.read())
+    cb = d.get('event',{}).get('content_block',{})
+    if cb.get('type') == 'tool_use':
+        print(cb.get('name','?'))
+except: pass
+" 2>/dev/null)
+                        if [[ -n "$tool_name" ]]; then
+                            echo -e "\033[36m[AI] → ${tool_name}\033[0m" >&2
+                        fi
+                    # Streaming text (thinking/response)
+                    elif echo "$line" | grep -q '"type":"text_delta"'; then
+                        local chunk
+                        chunk=$(echo "$line" | python3 -c "
+import sys, json
+try:
+    d = json.loads(sys.stdin.read())
+    delta = d.get('event',{}).get('delta',{})
+    if delta.get('type') == 'text_delta':
+        print(delta.get('text',''), end='')
+except: pass
+" 2>/dev/null)
+                        if [[ -n "$chunk" ]]; then
+                            printf '%s' "$chunk" >&2
+                        fi
+                    # Final result summary
+                    elif echo "$line" | grep -q '"type":"result"'; then
+                        local cost turns
+                        cost=$(echo "$line" | python3 -c "
+import sys, json
+try:
+    d = json.loads(sys.stdin.read())
+    print(f\"\${d.get('total_cost_usd',0):.4f}\")
+except: pass
+" 2>/dev/null)
+                        turns=$(echo "$line" | python3 -c "
+import sys, json
+try:
+    d = json.loads(sys.stdin.read())
+    print(d.get('num_turns',0))
+except: pass
+" 2>/dev/null)
+                        echo >&2
+                        log_debug "AI finished: ${turns} turn(s), \$${cost}"
+                    fi
+                done
+            )
+        return ${PIPESTATUS[0]}
+    else
+        cat "$temp_prompt" | $AI_CMD $AI_FLAG 2>&1
+        return $?
+    fi
+}
+
 # ============================================================================
 # MAIN LOOP FUNCTIONS
 # ============================================================================
@@ -1389,7 +1462,7 @@ archive_epic_details() {
         cat "$temp_prompt" >&2
         log_debug "--- End of prompt ---"
     fi
-    cat "$temp_prompt" | $AI_CMD $AI_FLAG 2>&1
+    run_ai_with_prompt "$temp_prompt"
     exit_code=$?
 
     rm -f "$temp_prompt"
@@ -1497,7 +1570,7 @@ run_iteration() {
         log_debug "--- End of prompt ---"
     fi
 
-    cat "$temp_prompt" | $AI_CMD $AI_FLAG 2>&1
+    run_ai_with_prompt "$temp_prompt"
     exit_code=$?
 
     rm -f "$temp_prompt"
