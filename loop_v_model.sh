@@ -1298,7 +1298,7 @@ generate_iteration_prompt() {
 # Extract the epic progress table from journey file
 extract_epic_progress_table() {
     local journey_file="$1"
-    awk '/^## Epic Progress/,/^## [Epic]/ {print}' "${journey_file}" | grep '^| E[0-9]'
+    awk '/^## Epic Progress/{found=1} found && /^## / && !/^## Epic Progress/{exit} found{print}' "${journey_file}" | grep '^| E[0-9]'
 }
 
 # Get list of completed epics that haven't been archived yet
@@ -1311,7 +1311,7 @@ get_completed_unarchived_epics() {
     local current_epic=$(get_current_epic "${journey_file}" | grep -oE 'E[0-9]+' | sed 's/^E//' || echo "0")
 
     # Find completed epics without archival files
-    while IFS='|' read -r _ epic_id _ status _; do
+    while IFS='|' read -r _ epic_id _ epic_status _; do
         # Skip non-matching lines
         [[ ! "$epic_id" =~ ^[[:space:]]*E[0-9]+[[:space:]]*$ ]] && continue
 
@@ -1319,7 +1319,7 @@ get_completed_unarchived_epics() {
         local epic_num=$(echo "$epic_id" | tr -d '[:space:]' | grep -oE 'E[0-9]+' | sed 's/^E//')
 
         # Skip if not complete
-        [[ ! "$status" =~ COMPLETE ]] && continue
+        [[ ! "$epic_status" =~ COMPLETE ]] && continue
 
         # Skip if this is the current epic
         [[ "$epic_num" == "$current_epic" ]] && continue
