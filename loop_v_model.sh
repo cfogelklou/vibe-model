@@ -303,7 +303,7 @@ create_journey_file() {
 
 ## Design Spec
 
-*(Design spec will be generated in PLANNING phase)*
+*(Design spec will be generated in REQUIREMENTS phase)*
 > **Note**: After creation, a link to the design spec will appear here.
 
 ## Next Steps (Auto-Generated)
@@ -439,7 +439,7 @@ add_user_hint() {
         next_line=$(sed -n "$((insert_line + 1))p" "${journey_file}")
         if [[ "${next_line}" == *"*(No user hints yet)"* ]]; then
             # Replace the placeholder
-            sed -i '' "$((insert_line + 1))s/.*/- ${timestamp}: \"${hint}\"/" "${journey_file}"
+            sed -i '' "$((insert_line + 1))s@.*@- ${timestamp}: \"${hint}\"@" "${journey_file}"
         else
             # Add new hint
             sed -i '' "${insert_line}a\\
@@ -466,7 +466,7 @@ add_pending_question() {
         local next_line
         next_line=$(sed -n "$((insert_line + 1))p" "${journey_file}")
         if [[ "${next_line}" == *"*(No pending questions)"* ]]; then
-            sed -i '' "$((insert_line + 1))s/.*/- [ ] ${timestamp}: ${question}/" "${journey_file}"
+            sed -i '' "$((insert_line + 1))s@.*@- [ ] ${timestamp}: ${question}@" "${journey_file}"
         else
             sed -i '' "${insert_line}a\\
 - [ ] ${timestamp}: ${question}
@@ -528,11 +528,11 @@ create_design_spec() {
 
     # Get current approach details
     local approach_details
-    approach_details=$(sed -n '/^## Current Approach Detail/,/^## [A-Z]/p' "${journey_file}" | head -n -1)
+    approach_details=$(sed -n '/^## Current Approach Detail/,/^## [A-Z]/p' "${journey_file}" | sed '$d')
 
     # Get baseline metrics
     local baseline_metrics
-    baseline_metrics=$(sed -n '/^## Baseline Metrics/,/^## /p' "${journey_file}" | head -n -1)
+    baseline_metrics=$(sed -n '/^## Baseline Metrics/,/^## /p' "${journey_file}" | sed '$d')
 
     # Create the design spec
     cat > "${spec_path}" << EOF
@@ -649,11 +649,11 @@ update_design_spec() {
 
     # Extract learnings from journey
     local learnings
-    learnings=$(sed -n '/^## Learnings Log/,/^## Dead Ends/p' "${journey_file}" | head -n -1)
+    learnings=$(sed -n '/^## Learnings Log/,/^## Dead Ends/p' "${journey_file}" | sed '$d')
 
     # Extract artifacts
     local artifacts
-    artifacts=$(sed -n '/^## Generated Artifacts/,/^## Learnings Log/p' "${journey_file}" | head -n -1)
+    artifacts=$(sed -n '/^## Generated Artifacts/,/^## Learnings Log/p' "${journey_file}" | sed '$d')
 
     # Update status to COMPLETE
     sed -i '' 's/\*\*Status\*\*: DRAFT/\*\*Status\*\*: COMPLETE/' "${spec_path}"
@@ -1007,26 +1007,26 @@ extract_design_content() {
         REQUIREMENTS)
             # Get User Requirements and System Requirements from spec
             if [[ -f "${spec_file}" ]]; then
-                content=$(sed -n '/^## User Requirements/,/^## /p' "${spec_file}" | head -n -1)
+                content=$(sed -n '/^## User Requirements/,/^## /p' "${spec_file}" | sed '$d')
                 content+="\n\n"
-                content+=$(sed -n '/^## System Requirements/,/^## /p' "${spec_file}" | head -n -1)
+                content+=$(sed -n '/^## System Requirements/,/^## /p' "${spec_file}" | sed '$d')
             fi
             ;;
         SYSTEM_DESIGN)
             # Get Epics and Architecture from spec
             if [[ -f "${spec_file}" ]]; then
-                content=$(sed -n '/^## Epics/,/^## /p' "${spec_file}" | head -n -1)
+                content=$(sed -n '/^## Epics/,/^## /p' "${spec_file}" | sed '$d')
                 content+="\n\n"
-                content+=$(sed -n '/^## Architecture/,/^## /p' "${spec_file}" | head -n -1)
+                content+=$(sed -n '/^## Architecture/,/^## /p' "${spec_file}" | sed '$d')
             fi
             ;;
         ARCH_DESIGN)
             # Get current Epic and Stories from journey
-            content=$(sed -n '/^## Current Epic/,/^## /p' "${journey_file}" | head -n -1)
+            content=$(sed -n '/^## Current Epic/,/^## /p' "${journey_file}" | sed '$d')
             ;;
         MODULE_DESIGN)
             # Get current Story design from journey
-            content=$(sed -n '/^## Current Story/,/^## /p' "${journey_file}" | head -n -1)
+            content=$(sed -n '/^## Current Story/,/^## /p' "${journey_file}" | sed '$d')
             ;;
     esac
 
@@ -1046,7 +1046,7 @@ extract_research_content() {
     # Look for phase-specific research section
     local section_pattern="### ${phase} Phase Research"
     local content
-    content=$(sed -n "/^${section_pattern}/,/^### /p" "${journey_file}" | head -n -1)
+    content=$(sed -n "/^${section_pattern}/,/^### /p" "${journey_file}" | sed '$d')
 
     # If empty or just placeholder, return empty
     if [[ -z "${content}" || "${content}" == *"To be populated"* ]]; then
@@ -1502,7 +1502,7 @@ handle_hint() {
     state=$(get_journey_state "${active_journey}")
     if [[ "${state}" == "WAITING_FOR_USER" ]]; then
         log_info "Journey was waiting - resuming..."
-        set_journey_state "${active_journey}" "PLANNING"
+        set_journey_state "${active_journey}" "REQUIREMENTS"
     fi
 }
 
