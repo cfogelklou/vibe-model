@@ -890,7 +890,7 @@ find_active_journey() {
 
     # Sort by modification time (most recent first)
     local sorted_journeys
-    sorted_journeys=$(printf '%s\n' "${journeys[@]}" | sort -r)
+    sorted_journeys=$(printf '%s\n' "${journeys[@]}" | xargs ls -t 2>/dev/null)
 
     for journey in ${sorted_journeys}; do
         local state
