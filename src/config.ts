@@ -178,14 +178,15 @@ export let config: Config;
  * Initialize configuration from all sources
  */
 export async function initializeConfig(
-  cliArgs: Partial<Config> = {}
+  cliArgs: Partial<Config> = {},
+  configFilePath?: string
 ): Promise<Config> {
   // Detect project directory first (CLI arg takes priority)
   const projectDir = await detectProjectDirectory(cliArgs.projectDir);
   cliArgs.projectDir = projectDir;
 
   // Load config file
-  const configFile = await loadConfigFile(cliArgs.config as string);
+  const configFile = await loadConfigFile(configFilePath);
 
   // Parse environment variables
   const envVars = parseEnvironmentVars();

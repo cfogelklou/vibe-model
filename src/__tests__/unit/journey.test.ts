@@ -5,6 +5,8 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { promises as fs } from "fs";
 import path from "path";
+import { initializeConfig } from "../../config.js";
+import { VModelState } from "../../types.js";
 import {
   sanitizeJourneyName,
   getJourneyPath,
@@ -27,9 +29,9 @@ describe("sanitizeJourneyName", () => {
     expect(result).toBe("test-goal-name");
   });
 
-  it("should remove special characters", () => {
+  it("should replace special characters with hyphens", () => {
     const result = sanitizeJourneyName("Test@Goal#Name$!");
-    expect(result).toBe("testgoalname");
+    expect(result).toBe("test-goal-name");
   });
 
   it("should limit to 50 characters", () => {
@@ -45,9 +47,11 @@ describe("sanitizeJourneyName", () => {
 });
 
 describe("getJourneyPath", () => {
+  beforeEach(async () => {
+    await initializeConfig({ projectDir: mockProjectDir });
+  });
+
   it("should return correct journey file path", () => {
-    // Note: This test uses the actual config.projectDir
-    // In a real test, we would mock the config
     const result = getJourneyPath("test-journey");
     expect(result).toContain("test-journey.journey.md");
   });
@@ -88,13 +92,13 @@ describe("journey file operations", () => {
 
   it("should parse journey state", async () => {
     const state = await getJourneyState(testJourneyFile);
-    expect(state).toBe("REQUIREMENTS");
+    expect(state).toBe(VModelState.REQUIREMENTS);
   });
 
   it("should set journey state", async () => {
-    await setJourneyState(testJourneyFile, "SYSTEM_DESIGN");
+    await setJourneyState(testJourneyFile, VModelState.SYSTEM_DESIGN);
     const state = await getJourneyState(testJourneyFile);
-    expect(state).toBe("SYSTEM_DESIGN");
+    expect(state).toBe(VModelState.SYSTEM_DESIGN);
   });
 
   it("should parse journey goal", async () => {

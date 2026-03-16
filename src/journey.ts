@@ -32,8 +32,10 @@ export function getJourneyDir(): string {
 export function sanitizeJourneyName(goal: string): string {
   return goal
     .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-+/g, "-")
+    .replace(/\s+/g, "-")  // Replace spaces with hyphens
+    .replace(/[^a-z0-9-]/g, "-")  // Replace special chars with hyphens
+    .replace(/-+/g, "-")  // Collapse multiple consecutive hyphens
+    .replace(/^-+|-+$/g, "")  // Trim leading/trailing hyphens
     .substring(0, 50);
 }
 
@@ -191,7 +193,7 @@ export async function getJourneyState(journeyFile: string): Promise<VModelState>
  */
 export async function setJourneyState(
   journeyFile: string,
-  state: VModelState
+  state: VModelState | string
 ): Promise<void> {
   await sedInplace(journeyFile, /^- State: .*$/m, `- State: ${state}`);
 }
@@ -499,7 +501,7 @@ export async function addCheckpoint(
   }
 
   // Count existing checkpoints
-  const checkpointSection = content.substring(checkpointMatch.index);
+  const checkpointSection = content.substring(checkpointMatch.index ?? 0);
   const existingCheckpoints = checkpointSection.match(/^\| \d+ \|/gm) || [];
   const id = existingCheckpoints.length;
 

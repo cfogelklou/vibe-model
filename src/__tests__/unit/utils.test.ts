@@ -14,7 +14,7 @@ describe("sanitizeJourneyName", () => {
 
   it("should replace special characters with hyphens", () => {
     const result = sanitizeJourneyName("Test@Goal#Name$!");
-    expect(result).toBe("test-goal-name-");
+    expect(result).toBe("test-goal-name");
   });
 
   it("should limit to 50 characters", () => {

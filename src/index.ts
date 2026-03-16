@@ -310,7 +310,7 @@ async function main(): Promise<number> {
           projectDir: options.projectDir,
           noPush: options.noPush || false,
           commitInterval: parseInt(options.commitInterval, 10),
-        });
+        }, options.config);
 
         // Setup signal handlers
         setupSignalHandlers();
@@ -326,11 +326,12 @@ async function main(): Promise<number> {
             logError("No active journey found");
             logInfo("Start a new journey with: v-model \"your goal\"");
             logInfo("Or check status with: v-model status");
-            return 1;
+            process.exitCode = 1;
+            return;
           }
 
           await mainLoop(activeJourney);
-          return 0;
+          return;
         }
 
         // Create new journey
@@ -339,26 +340,27 @@ async function main(): Promise<number> {
 
         if (!journeyFile) {
           logError("Failed to create journey file");
-          return 1;
+          process.exitCode = 1;
+          return;
         }
 
         logSuccess("Journey created! Starting loop...");
         await mainLoop(journeyFile);
-        return 0;
+        return;
       } catch (error) {
         if (error instanceof VModelError) {
           if (error.recoverable) {
             logWarning(`Recoverable error: ${error.message}`);
-            return 0;
           } else {
             logError(error.message);
-            return error.exitCode;
+            process.exitCode = error.exitCode;
           }
         } else if (error instanceof Error) {
           logError(error.message);
-          return 1;
+          process.exitCode = 1;
+        } else {
+          process.exitCode = 1;
         }
-        return 1;
       }
     });
 
