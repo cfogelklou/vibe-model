@@ -771,7 +771,70 @@ During `DESIGN_REVIEW`, consider reviewing from multiple perspectives:
 
 ---
 
-## 11. State Management
+## 11. Parallel Execution Patterns
+
+The V-Model supports both sequential and parallel execution modes.
+
+### 11.1 Sequential Mode (Default)
+
+- Single agent works through phases linearly
+- Suitable for simple tasks and stories
+- Lower coordination overhead
+
+### 11.2 Parallel Mode (Complex Tasks)
+
+**Research Phase:**
+- Multiple Explore agents investigate different areas concurrently
+- Each agent focuses on one research area:
+  - Existing implementations in codebase
+  - External research (web search, best practices)
+  - Memory patterns and anti-patterns
+- Orchestrator consolidates findings into Research Notes
+
+**Implementation Phase:**
+- Independent sub-tasks are executed by multiple agents
+- Orchestrator manages dependencies between tasks
+- Results are integrated and tested together
+
+**Coordination:**
+- Orchestrator agent consolidates results
+- Manages dependencies between parallel tasks
+- Ensures consistency and integration
+
+### 11.3 When to Use Parallel Mode
+
+Use parallel execution when:
+- Research has 3+ distinct areas to investigate
+- Implementation has 3+ independent modules
+- Performance-critical paths where time matters
+
+Use sequential mode when:
+- Tasks are simple and well-defined
+- Dependencies exist between most tasks
+- Coordination overhead would exceed benefits
+
+### 11.4 Structuring Parallel Tasks
+
+**For Parallel Research:**
+```
+1. Identify distinct research areas
+2. Launch Explore agents IN PARALLEL (single message, multiple tool calls)
+3. Each agent reports back with findings
+4. Orchestrator consolidates into Research Notes
+```
+
+**For Parallel Implementation:**
+```
+## Implementation Plan
+- [ ] Sub-task A (can run in parallel)
+- [ ] Sub-task B (can run in parallel)
+- [ ] Sub-task C (depends on A and B)
+- [ ] Sub-task D (depends on A and B)
+```
+
+---
+
+## 12. State Management
 
 Every state transition must be documented in the **Learnings Log**.
 
@@ -779,9 +842,9 @@ Format: `**[{timestamp}] State Transition: {from_state} → {to_state}**`
 
 ---
 
-## 12. Extension Points
+## 13. Extension Points
 
-### 12.1 Custom AI Providers
+### 13.1 Custom AI Providers
 
 Implement the `setup_ai()` function to support new AI providers:
 
@@ -794,11 +857,11 @@ setup_ai() {
 }
 ```
 
-### 12.2 Custom Verification Stages
+### 13.2 Custom Verification Stages
 
 Add custom verification stages by extending the state machine and adding handlers in `main_loop()`.
 
-### 12.3 Custom Prompt Templates
+### 13.3 Custom Prompt Templates
 
 Add new prompt templates in `prompts/` directory and load them using `load_prompt()`.
 
