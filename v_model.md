@@ -982,26 +982,58 @@ Archived epics are not lost - the AI agent can still read them when needed:
 
 ## 14. Extension Points
 
-### 13.1 Custom AI Providers
+### 14.1 Custom AI Providers
 
-Implement the `setup_ai()` function to support new AI providers:
+The TypeScript implementation supports extensibility through the `AIProvider` interface in `src/ai-provider.ts`:
 
-```bash
-setup_ai() {
-    if [[ "${AI_PROVIDER}" == "your_provider" ]]; then
-        AI_CMD="your_command"
-        AI_FLAG="--your-flags"
-    fi
+```typescript
+export interface AIProvider {
+  name: string;
+  consult(prompt: string, options: ConsultOptions): Promise<AIResponse>;
 }
 ```
 
-### 13.2 Custom Verification Stages
+To add a new provider:
+1. Implement the `AIProvider` interface
+2. Add provider initialization in `src/config.ts`
+3. Register the provider in the configuration
 
-Add custom verification stages by extending the state machine and adding handlers in `main_loop()`.
+### 14.2 Custom Verification Stages
 
-### 13.3 Custom Prompt Templates
+Add custom verification stages by:
+1. Extending the `VModelState` type in `src/types.ts`
+2. Adding state handlers in `src/state-machine.ts`
+3. Implementing phase-specific logic in `src/main-loop.ts`
 
-Add new prompt templates in `prompts/` directory and load them using `load_prompt()`.
+### 14.3 Custom Prompt Templates
+
+Add new prompt templates in `prompts/` directory. Templates are loaded using the `loadPrompt()` function in `src/design-spec.ts`.
+
+### 14.4 TypeScript Module Structure
+
+Key extension modules:
+- `src/ai-provider.ts`: AI provider abstraction layer
+- `src/state-machine.ts`: State transition logic
+- `src/main-loop.ts`: Phase-specific handlers
+- `src/journey.ts`: Journey file operations
+- `src/checkpoint.ts`: Git checkpoint operations
+- `src/config.ts`: Configuration management
+
+### 14.5 CLI Commands
+
+The TypeScript CLI is implemented in `src/index.ts` using commander.js. Commands are registered as subcommands:
+
+```typescript
+program
+  .command('status')
+  .description('Show status of all journeys')
+  .action(statusCommand);
+```
+
+Add new commands by:
+1. Creating command handler functions
+2. Registering in `src/index.ts`
+3. Adding help text and examples
 
 ---
 

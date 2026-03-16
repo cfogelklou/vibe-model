@@ -14,8 +14,9 @@
 - [Journey Files](#journey-files)
 - [Design Specs](#design-specs)
 - [Memory System](#memory-system)
-- [Python Prototyping](#python-prototyping)
+- [Prototyping](#prototyping)
 - [Checkpoint System](#checkpoint-system)
+- [Compile & Debug](#compile--debug)
 - [Advanced Features](#advanced-features)
 - [Troubleshooting](#troubleshooting)
 
@@ -41,7 +42,7 @@ The AI follows the Spec Initiation Protocol, asks clarifying questions, creates 
 Jump straight into the loop - questions happen during REQUIREMENTS phase:
 
 ```bash
-./ai-v-model/loop_v_model.sh "your goal here"
+./ai-v-model/bin/v-model "your goal here"
 ```
 
 ---
@@ -59,6 +60,23 @@ git submodule add https://github.com/cfogelklou/ai-v-model.git ai-v-model
 git submodule update --init --recursive
 ```
 
+### Installing Bun
+
+```bash
+# Install Bun runtime (if not already installed)
+curl -fsSL https://bun.sh/install | bash
+
+# Verify installation
+bun --version
+```
+
+### Installing Dependencies
+
+```bash
+# Install npm dependencies
+cd ai-v-model && bun install
+```
+
 ### Directory Structure
 
 When integrated, the submodule creates this structure:
@@ -66,13 +84,19 @@ When integrated, the submodule creates this structure:
 ```
 your-project/                    # Parent project (git repository)
 ├── v_model/                    # V-Model outputs (created by script)
-│   ├── .venv/                  # Python virtual environment for prototyping
 │   ├── journey/                # Journey tracking files
 │   ├── prototypes/             # Experimental code (Python, etc.)
 │   └── memory.md               # Knowledge persistence
 ├── ai-v-model/                 # This submodule (separate git tracking)
-│   ├── loop_v_model.sh         # Main loop script
+│   ├── src/                    # TypeScript source code
+│   │   ├── index.ts            # Main entry point
+│   │   ├── config.ts           # Configuration
+│   │   ├── journey.ts          # Journey operations
+│   │   └── ...                 # Other modules
+│   ├── bin/
+│   │   └── v-model             # Executable CLI
 │   ├── prompts/                # AI prompt templates
+│   ├── package.json            # Dependencies
 │   ├── USER_GUIDE.md           # This file
 │   ├── v_model.md              # Protocol specification
 │   └── CLAUDE.md               # Quick reference for Claude Code
@@ -81,40 +105,40 @@ your-project/                    # Parent project (git repository)
 
 **Important**:
 - The `v_model/` directory is created in the **parent project root**, not inside the submodule.
-- Python virtual environment lives at `v_model/.venv/` - this keeps prototyping dependencies with the project.
+- Prototyping directory `v_model/prototypes/` is user-managed for experimental code.
 
 ---
 
 ## Basic Usage
 
-### Running the Script
+### Running the CLI
 
 **Recommended**: Run from the parent project root for clarity:
 
 ```bash
 # From parent project root
-./ai-v-model/loop_v_model.sh "reduce latency to under 10ms"
+./ai-v-model/bin/v-model "reduce latency to under 10ms"
 ```
 
 Alternative (also works):
 
 ```bash
 # From inside submodule
-cd ai-v-model && ./loop_v_model.sh "reduce latency to under 10ms"
+cd ai-v-model && ./bin/v-model "reduce latency to under 10ms"
 ```
 
-The script automatically resolves paths regardless of where you run it from.
+The CLI automatically resolves paths regardless of where you run it from.
 
 ### Starting a New Journey
 
 ```bash
 # Start a new journey
-./ai-v-model/loop_v_model.sh "reduce latency to under 10ms"
+./ai-v-model/bin/v-model "reduce latency to under 10ms"
 
 # With options
-./ai-v-model/loop_v_model.sh -g "implement feature X"      # Use Gemini
-./ai-v-model/loop_v_model.sh --no-consult "fix bug Y"      # Disable Gemini consultation
-./ai-v-model/loop_v_model.sh -v "add feature Z"            # Verbose logging
+./ai-v-model/bin/v-model -g "implement feature X"      # Use Gemini
+./ai-v-model/bin/v-model --no-consult "fix bug Y"      # Disable Gemini consultation
+./ai-v-model/bin/v-model -v "add feature Z"            # Verbose logging
 ```
 
 ---
@@ -123,27 +147,34 @@ The script automatically resolves paths regardless of where you run it from.
 
 | Command | Description |
 |--------|-------------|
-| `./loop_v_model.sh "goal"` | Start a new journey with the given goal |
-| `./loop_v_model.sh` | Continue the active journey |
-| `./loop_v_model.sh status` | Show status of all journeys |
-| `./loop_v_model.sh hint "message"` | Add a user hint to the journey |
-| `./loop_v_model.sh pivot` | Force pivot to next approach |
-| `./loop_v_model.sh reflect` | Force reflection phase |
-| `./loop_v_model.sh rollback [N]` | Rollback to checkpoint N (default: last) |
-| `./loop_v_model.sh list-checkpoints` | List all checkpoints for current journey |
+| `./bin/v-model "goal"` | Start a new journey with the given goal |
+| `./bin/v-model` | Continue the active journey |
+| `./bin/v-model status` | Show status of all journeys |
+| `./bin/v-model hint "message"` | Add a user hint to the journey |
+| `./bin/v-model pivot` | Force pivot to next approach |
+| `./bin/v-model reflect` | Force reflection phase |
+| `./bin/v-model archive` | Archive completed epics |
+| `./bin/v-model rollback [N]` | Rollback to checkpoint N (default: last) |
+| `./bin/v-model list-checkpoints` | List all checkpoints for current journey |
 
 ### Command Options
 
 | Option | Description |
 |--------|-------------|
+| `-v, --verbose` | Enable verbose logging |
 | `-g, --gemini` | Use Gemini as primary AI provider |
 | `--no-consult` | Disable Gemini consultation during design |
-| `-v, --verbose` | Enable verbose logging |
+| `--project-dir <path>` | Specify project directory |
+| `--config <path>` | Specify config file |
+| `--no-push` | Disable auto-push after iterations |
+| `--commit-interval <n>` | Commit every N iterations (default: 1) |
 | `-h, --help` | Show help message |
 
 ---
 
 ## Configuration
+
+### Environment Variables
 
 Use environment variables to configure behavior:
 
@@ -151,8 +182,30 @@ Use environment variables to configure behavior:
 export BUILD_COMMAND="npm run build"
 export TEST_COMMAND="npm test"
 export AI_PROVIDER="claude"
-./ai-v-model/loop_v_model.sh "add feature X"
+./ai-v-model/bin/v-model "add feature X"
 ```
+
+### Config File (.v-modelrc)
+
+Create a `.v-modelrc` file in your project directory or home directory:
+
+```json
+{
+  "aiProvider": "claude",
+  "maxIterations": 100,
+  "cpuThreshold": 80,
+  "latencyThreshold": 100,
+  "consultGemini": true,
+  "projectDir": "./my-project",
+  "verbose": false,
+  "noPush": false,
+  "commitInterval": 1,
+  "buildCommand": "npm run build",
+  "testCommand": "npm test"
+}
+```
+
+**Configuration Priority**: CLI arguments → Environment variables → Config file → Defaults
 
 ### Build and Test Commands
 
@@ -316,61 +369,41 @@ your-project/
 
 ---
 
-## Python Prototyping
+## Prototyping
 
-The V-Model agent uses Python for rapid prototyping before C++/production implementation.
+The V-Model agent can use Python or other languages for rapid prototyping before production implementation.
 
-### Virtual Environment Setup
+### Prototyping Directory
 
-**Location**: `{PROJ_ROOT}/v_model/.venv/`
+**Location**: `{PROJ_ROOT}/v_model/prototypes/`
 
 ```bash
-# Create virtual environment (one-time setup)
-cd your-project
-python3 -m venv v_model/.venv
-
-# Activate for prototyping sessions
-source v_model/.venv/bin/activate
-
-# Install common prototyping dependencies
-pip install numpy scipy matplotlib soundfile pandas
+# Create prototype in v_model/prototypes/
+# Agent will create files like: v_model/prototypes/fft_experiment.py
 ```
-
-### Why v_model/.venv/?
-
-- **Project-scoped**: Prototyping dependencies belong with the project, not the submodule
-- **Isolated**: Doesn't pollute global Python or parent project's own venv
-- **Portable**: The submodule remains generic; venv is per-project
-- **Auto-ignored**: The script automatically adds `.venv/` to `v_model/.gitignore`
 
 ### Prototype Workflow
 
 ```bash
-# 1. Activate venv
-source v_model/.venv/bin/activate
-
-# 2. Create prototype in v_model/prototypes/
+# 1. Create prototype in v_model/prototypes/
 # Agent will create files like: v_model/prototypes/fft_experiment.py
 
-# 3. Run prototype
+# 2. Run prototype
 python v_model/prototypes/fft_experiment.py
-
-# 4. Deactivate when done
-deactivate
 ```
 
 ### .gitignore
 
-The script automatically creates `v_model/.gitignore` to exclude generated artifacts:
+The CLI automatically creates `v_model/.gitignore` to exclude generated artifacts:
 
 ```
 # V-Model artifact exclusions
 # Journey files and specs should be committed
 # These entries exclude only generated/cache artifacts
 
-.venv/
 prototypes/__pycache__/
 prototypes/*.pyc
+prototypes/node_modules/
 ```
 
 **Note**: Journey files (`.journey.md`) and spec files (`.spec.md`) are **committed** as they are part of your project's documentation. Only cache files and build artifacts are ignored.
@@ -394,16 +427,77 @@ Checkpoints are automatically created at key milestones during the journey. Each
 
 ```bash
 # Rollback to last checkpoint
-./ai-v-model/loop_v_model.sh rollback
+./ai-v-model/bin/v-model rollback
 
 # Rollback to specific checkpoint ID
-./ai-v-model/loop_v_model.sh rollback 3
+./ai-v-model/bin/v-model rollback 3
 
 # List all checkpoints
-./ai-v-model/loop_v_model.sh list-checkpoints
+./ai-v-model/bin/v-model list-checkpoints
 ```
 
 **Warning**: Rollback uses `git reset --hard` and will discard uncommitted changes.
+
+---
+
+## Compile & Debug
+
+### Building Standalone Executable
+
+```bash
+# Compile standalone executable (includes Bun runtime)
+cd ai-v-model
+bun run compile
+
+# Output: dist/v-model (56MB, works on macOS arm64/x64, Linux, Windows)
+# Can be copied to any system without requiring Bun installation
+```
+
+### Development Tools
+
+```bash
+# Type checking
+bun run typecheck
+
+# Run tests
+bun test
+
+# Linting
+bun run lint
+bun run lint:fix
+
+# Build for production
+bun run build
+```
+
+### Debug Mode
+
+```bash
+# Verbose mode for debugging
+./ai-v-model/bin/v-model -v "your goal"
+
+# Enable verbose environment variable
+export VERBOSE=true
+./ai-v-model/bin/v-model "your goal"
+```
+
+### Common Issues
+
+**TypeScript errors**:
+```bash
+bun run typecheck
+```
+
+**Test failures**:
+```bash
+bun test
+```
+
+**Lint errors**:
+```bash
+bun run lint
+bun run lint:fix
+```
 
 ---
 
@@ -414,7 +508,7 @@ Checkpoints are automatically created at key milestones during the journey. Each
 Provide guidance to the agent during a journey:
 
 ```bash
-./ai-v-model/loop_v_model.sh hint "Try using FFT interpolation"
+./ai-v-model/bin/v-model hint "Try using FFT interpolation"
 ```
 
 Hints are added to the journey file and incorporated into the next iteration.
@@ -424,7 +518,7 @@ Hints are added to the journey file and incorporated into the next iteration.
 When the current approach is stuck, force a pivot to the next approach:
 
 ```bash
-./ai-v-model/loop_v_model.sh pivot
+./ai-v-model/bin/v-model pivot
 ```
 
 This sets the journey state to `PIVOTING`, causing the agent to abandon the current approach and try a new one.
@@ -434,10 +528,20 @@ This sets the journey state to `PIVOTING`, causing the agent to abandon the curr
 Trigger a reflection phase to analyze progress:
 
 ```bash
-./ai-v-model/loop_v_model.sh reflect
+./ai-v-model/bin/v-model reflect
 ```
 
 This sets the journey state to `REFLECTING`, causing the agent to analyze what has been learned and adjust strategy.
+
+### Epic Archival
+
+Archive completed epics to reduce journey file size:
+
+```bash
+./ai-v-model/bin/v-model archive
+```
+
+This moves completed epic details to separate files, keeping the main journey file focused on current work.
 
 ### Dead-End Detection
 
@@ -476,7 +580,7 @@ Guardrails are quality constraints enforced during the journey:
 Before starting a journey, the agent executes a Q&A protocol:
 
 1. **Metric-Driven Goals**: Current baseline and target values
-2. **Scope and Boundaries**: What's in scope and what must not change
+2. **Scope and Boundaries**: What's in scope and what must not be touched
 3. **Constraint Identification**: Memory, threading, standards requirements
 4. **Verification Strategy**: How to prove the goal is achieved
 5. **Anti-Pattern Mining**: Failed approaches and known gotchas
@@ -487,13 +591,16 @@ After gathering this information, the agent creates a spec file and waits for us
 
 ## Troubleshooting
 
-### Script Can't Find Parent Project
+### CLI Can't Find Parent Project
 
-Make sure you're running from within the submodule directory:
+Make sure you're running from the correct directory:
 
 ```bash
-cd your-project/ai-v-model
-./loop_v_model.sh "goal"
+# From parent project root (recommended)
+./ai-v-model/bin/v-model "goal"
+
+# Or specify project directory explicitly
+./ai-v-model/bin/v-model --project-dir /path/to/project "goal"
 ```
 
 ### Journey Files in Wrong Location
@@ -504,15 +611,22 @@ Check that `v_model/` directory exists in parent project root:
 ls ../v_model/
 ```
 
-If missing, the script will create it automatically.
+If missing, the CLI will create it automatically.
 
 ### Tests Not Running
 
-Configure `TEST_COMMAND` as an environment variable:
+Configure `TEST_COMMAND` as an environment variable or in `.v-modelrc`:
 
 ```bash
 export TEST_COMMAND="npm test"
-./loop_v_model.sh "fix tests"
+./ai-v-model/bin/v-model "fix tests"
+```
+
+Or in `.v-modelrc`:
+```json
+{
+  "testCommand": "npm test"
+}
 ```
 
 ### Gemini Consultation Issues
@@ -520,14 +634,21 @@ export TEST_COMMAND="npm test"
 To disable Gemini consultation during design phases:
 
 ```bash
-./ai-v-model/loop_v_model.sh --no-consult "your goal"
+./ai-v-model/bin/v-model --no-consult "your goal"
 ```
 
 Or set the environment variable:
 
 ```bash
 export CONSULT_GEMINI=false
-./ai-v-model/loop_v_model.sh "your goal"
+./ai-v-model/bin/v-model "your goal"
+```
+
+Or in `.v-modelrc`:
+```json
+{
+  "consultGemini": false
+}
 ```
 
 ### Verbose Logging
@@ -535,14 +656,21 @@ export CONSULT_GEMINI=false
 Enable verbose output for debugging:
 
 ```bash
-./ai-v-model/loop_v_model.sh -v "your goal"
+./ai-v-model/bin/v-model -v "your goal"
 ```
 
 Or set the environment variable:
 
 ```bash
 export VERBOSE=true
-./ai-v-model/loop_v_model.sh "your goal"
+./ai-v-model/bin/v-model "your goal"
+```
+
+Or in `.v-modelrc`:
+```json
+{
+  "verbose": true
+}
 ```
 
 ### Using Gemini as Primary AI
@@ -550,14 +678,37 @@ export VERBOSE=true
 Use Gemini instead of Claude for the main loop:
 
 ```bash
-./ai-v-model/loop_v_model.sh -g "your goal"
+./ai-v-model/bin/v-model -g "your goal"
 ```
 
 Or set the environment variable:
 
 ```bash
 export AI_PROVIDER=gemini
-./ai-v-model/loop_v_model.sh "your goal"
+./ai-v-model/bin/v-model "your goal"
+```
+
+Or in `.v-modelrc`:
+```json
+{
+  "aiProvider": "gemini"
+}
+```
+
+### Bun Installation Issues
+
+If Bun is not installed:
+
+```bash
+# Install Bun
+curl -fsSL https://bun.sh/install | bash
+
+# Verify installation
+bun --version
+
+# If still not found, add to PATH (add to ~/.zshrc or ~/.bashrc)
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
 ```
 
 ### Git Workflow
@@ -566,7 +717,7 @@ All code changes, V-Model outputs, and journey files are committed to the **pare
 
 ```bash
 # Run V-Model loop from parent project root
-./ai-v-model/loop_v_model.sh "improve performance"
+./ai-v-model/bin/v-model "improve performance"
 
 # When ready to commit (from parent project root):
 git add v_model/journey/your-journey.md
@@ -581,6 +732,7 @@ git commit -m "feat: improve performance"
 - **[Protocol Specification](v_model.md)** - Complete V-Model protocol definition
 - **[Claude Code Quick Reference](CLAUDE.md)** - Quick reference for AI agents
 - **[README](README.md)** - Project overview and links
+- **[TypeScript Implementation](README_TS.md)** - TypeScript architecture details
 
 ---
 

@@ -4,6 +4,8 @@
 
 A **generic git submodule** for autonomous R&D using the V-Model protocol. Works with any parent project (C++, JavaScript, PWA, etc.) using Claude Code or Gemini.
 
+**Now implemented in TypeScript** for better maintainability, type safety, and cross-platform compatibility.
+
 ---
 
 ## Features
@@ -16,6 +18,8 @@ A **generic git submodule** for autonomous R&D using the V-Model protocol. Works
 - **Memory persistence**: Learnings persist across sessions
 - **Dead-end detection**: Automatic pivot when approaches stagnate
 - **Quality guardrails**: Linting, static analysis, performance thresholds
+- **Type-safe implementation**: TypeScript with strict mode for reliability
+- **Cross-platform**: Works on macOS, Linux, and Windows
 
 ---
 
@@ -28,8 +32,14 @@ git submodule add https://github.com/cfogelklou/ai-v-model.git ai-v-model
 # Initialize the submodule
 git submodule update --init --recursive
 
+# Install Bun runtime (if not already installed)
+curl -fsSL https://bun.sh/install | bash
+
+# Install dependencies
+cd ai-v-model && bun install
+
 # Start a new journey
-./ai-v-model/loop_v_model.sh "your goal here"
+./ai-v-model/bin/v-model "your goal here"
 ```
 
 ---
@@ -41,6 +51,7 @@ git submodule update --init --recursive
 | **[USER_GUIDE.md](USER_GUIDE.md)** | Users | Complete user manual with commands, configuration, troubleshooting |
 | **[v_model.md](v_model.md)** | AI Agents | Formal V-Model protocol specification |
 | **[CLAUDE.md](CLAUDE.md)** | AI Agents | Quick reference for Claude Code agents |
+| **[README_TS.md](README_TS.md)** | Developers | TypeScript implementation details and architecture |
 
 ---
 
@@ -48,22 +59,34 @@ git submodule update --init --recursive
 
 ```bash
 # Start a new journey
-./ai-v-model/loop_v_model.sh "reduce latency to under 10ms"
+./ai-v-model/bin/v-model "reduce latency to under 10ms"
 
 # Continue active journey
-./ai-v-model/loop_v_model.sh
+./ai-v-model/bin/v-model
 
 # Check status of all journeys
-./ai-v-model/loop_v_model.sh status
+./ai-v-model/bin/v-model status
 
 # Add a hint to guide the agent
-./ai-v-model/loop_v_model.sh hint "try using FFT interpolation"
+./ai-v-model/bin/v-model hint "try using FFT interpolation"
 
 # Force pivot to next approach
-./ai-v-model/loop_v_model.sh pivot
+./ai-v-model/bin/v-model pivot
 
 # Rollback to last checkpoint
-./ai-v-model/loop_v_model.sh rollback
+./ai-v-model/bin/v-model rollback
+```
+
+### CLI Options
+
+```bash
+-v, --verbose             Enable verbose output
+-g, --gemini              Use Gemini AI instead of Claude
+--no-consult              Disable Gemini consultation
+--project-dir <path>      Specify project directory
+--config <path>           Specify config file
+--no-push                 Disable auto-push after iterations
+--commit-interval <n>     Commit every N iterations (default: 1)
 ```
 
 ---
@@ -92,16 +115,80 @@ MODULE_DESIGN ──────────→ UNIT_TEST
 
 ## Configuration
 
-Configure via environment variables:
+Configure via environment variables or `.v-modelrc` config file:
 
 ```bash
+# Environment variables
 export BUILD_COMMAND="npm run build"
 export TEST_COMMAND="npm test"
 export AI_PROVIDER="claude"
-./ai-v-model/loop_v_model.sh "add feature X"
+./ai-v-model/bin/v-model "add feature X"
 ```
 
+### Config File (.v-modelrc)
+
+Create a `.v-modelrc` file in your project directory or home directory:
+
+```json
+{
+  "aiProvider": "claude",
+  "maxIterations": 100,
+  "cpuThreshold": 80,
+  "latencyThreshold": 100,
+  "consultGemini": true,
+  "projectDir": "./my-project",
+  "verbose": false,
+  "noPush": false,
+  "commitInterval": 1
+}
+```
+
+**Configuration Priority**: CLI arguments → Environment variables → Config file → Defaults
+
 See [USER_GUIDE.md](USER_GUIDE.md#configuration) for all configuration options.
+
+---
+
+## Compile & Debug
+
+### Building Standalone Executable
+
+```bash
+# Compile standalone executable (includes Bun runtime)
+cd ai-v-model
+bun run compile
+
+# Output: dist/v-model (56MB, works on macOS arm64/x64, Linux, Windows)
+# Can be copied to any system without requiring Bun installation
+```
+
+### Development Tools
+
+```bash
+# Type checking
+bun run typecheck
+
+# Run tests
+bun test
+
+# Linting
+bun run lint
+bun run lint:fix
+
+# Build for production
+bun run build
+```
+
+### Debug Mode
+
+```bash
+# Verbose mode for debugging
+./ai-v-model/bin/v-model -v "your goal"
+
+# Enable verbose environment variable
+export VERBOSE=true
+./ai-v-model/bin/v-model "your goal"
+```
 
 ---
 
@@ -111,16 +198,33 @@ See [USER_GUIDE.md](USER_GUIDE.md#configuration) for all configuration options.
 your-project/
 ├── v_model/                    # V-Model outputs (created by script)
 │   ├── journey/                # Journey tracking files
-│   ├── prototypes/             # Experimental code
-│   ├── .venv/                  # Python virtual environment
+│   ├── prototypes/             # Experimental code (user-managed)
 │   └── memory.md               # Knowledge persistence
 └── ai-v-model/                 # This submodule
-    ├── loop_v_model.sh         # Main loop script
+    ├── package.json            # Bun project config
+    ├── tsconfig.json           # TypeScript config
+    ├── src/
+    │   ├── index.ts            # Main entry point (CLI)
+    │   ├── config.ts           # Configuration and environment
+    │   ├── logger.ts           # Logging utilities
+    │   ├── journey.ts          # Journey file operations
+    │   ├── design-spec.ts      # Design spec operations
+    │   ├── checkpoint.ts       # Git checkpoint operations
+    │   ├── ai-provider.ts      # AI provider abstraction
+    │   ├── state-machine.ts    # V-Model state transitions
+    │   ├── main-loop.ts        # Main iteration loop
+    │   ├── epic-archival.ts    # Epic archival logic
+    │   ├── file-utils.ts       # Portable file operations
+    │   ├── types.ts            # TypeScript types/interfaces
+    │   └── __tests__/unit/     # Unit tests
+    ├── bin/
+    │   └── v-model             # Executable script
     ├── prompts/                # AI prompt templates
     ├── USER_GUIDE.md           # Complete user manual
     ├── v_model.md              # Protocol specification
     ├── CLAUDE.md               # Quick reference
-    └── README.md               # This file
+    ├── README.md               # This file
+    └── README_TS.md            # TypeScript implementation details
 ```
 
 ---
@@ -143,10 +247,54 @@ your-project/
 
 ## Requirements
 
-- Bash shell
-- Git
-- Claude Code CLI or Gemini CLI
+- **Bun runtime** (https://bun.sh)
+- **Git**
+- **Claude Code CLI** or **Gemini CLI**
 - (Optional) Python for prototyping
+
+### Installing Bun
+
+```bash
+# macOS/Linux
+curl -fsSL https://bun.sh/install | bash
+
+# Verify installation
+bun --version
+```
+
+---
+
+## TypeScript Implementation
+
+The V-Model is now implemented in TypeScript, providing:
+
+- **Type Safety**: Catch errors at compile time with strict mode
+- **Better Maintainability**: Modular architecture with clear interfaces
+- **Cross-platform**: Works consistently on macOS, Linux, and Windows
+- **Modern Tooling**: Access to npm ecosystem, better testing, IDE support
+- **Flexible Path Resolution**: Works as submodule OR sibling to project directory
+
+For detailed architecture information, see [README_TS.md](README_TS.md).
+
+---
+
+## Migration from Bash Version
+
+The TypeScript implementation maintains **complete compatibility** with the bash version:
+
+- **Journey file format**: Identical structure
+- **Checkpoint tags**: Same format
+- **CLI commands**: Same commands and flags
+- **Environment variables**: Same variable names
+- **Prompt templates**: Unchanged, work as-is
+
+### Migration Steps
+
+1. Install Bun: `curl -fsSL https://bun.sh/install | bash`
+2. Install dependencies: `cd ai-v-model && bun install`
+3. Test CLI: `./ai-v-model/bin/v-model status`
+4. Continue using existing journeys
+5. Optional: Remove `loop_v_model.sh` after verification
 
 ---
 
@@ -171,4 +319,5 @@ This ensures the submodule remains portable and reusable across all projects tha
 - **Documentation**: [USER_GUIDE.md](USER_GUIDE.md)
 - **Protocol Specification**: [v_model.md](v_model.md)
 - **Quick Reference**: [CLAUDE.md](CLAUDE.md)
+- **TypeScript Details**: [README_TS.md](README_TS.md)
 - **GitHub Repository**: https://github.com/cfogelklou/ai-v-model
