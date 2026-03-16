@@ -45,6 +45,43 @@ After creating the Spec, set the journey state to `WAITING_FOR_USER` and present
 
 **Do not proceed to SYSTEM_DESIGN until the user provides confirmation.**
 
+### 1.4 Optional: Project Guardrails
+
+Before design begins, consider defining guardrails in the journey file. These are optional constraints that help maintain quality and prevent scope creep:
+
+#### Performance Constraints
+- **Performance Budgets**: Max CPU%, Latency (ms), Memory (KB)
+- **Constraints**: Platform limits (ARM clock speed, iOS background tasks, threading model)
+
+#### Quality Assurance Tooling
+- **Linters**: `clang-tidy`, `eslint`, `shellcheck` (must pass with zero errors)
+- **Static Type Checkers**: `mypy`, `flow`, C++ strict type checking
+- **Dynamic Checkers**: AddressSanitizer (ASan), UndefinedBehaviorSanitizer (UBSan), Valgrind
+- **Code Coverage**: Target coverage % for new modules (e.g., >80% line coverage)
+- **Unit Tests**: All existing tests must pass; new code requires new tests
+- **Integration Tests**: End-to-end validation of component interactions
+
+#### Dependency Guidelines
+- What libraries can/cannot be added
+- Version constraints for dependencies
+- License compatibility requirements
+
+Example guardrails section in a journey file:
+
+```markdown
+## Guardrails
+- CPU Budget: < 5% on ARM Cortex-A53
+- Latency: < 20ms end-to-end processing
+- Memory: < 100KB heap allocation
+- Linters: clang-tidy (zero errors), shellcheck (zero errors)
+- Static Analysis: clang-tidy, cppcheck
+- Dynamic Analysis: ASan, UBSan must pass
+- Code Coverage: >80% line coverage for new modules
+- No new external dependencies
+```
+
+These guardrails are referenced during ACCEPTANCE_TEST to validate the final implementation.
+
 ---
 
 ## 2. V-Model Stages
@@ -92,6 +129,49 @@ The loop cycles through these formal stages, moving down the "V" for design and 
 
 **Note**: `[DESIGN_REVIEW]` is an automatic Gemini consultation phase that evaluates both design quality and research thoroughness. Use `--no-consult` flag to disable.
 
+### DESIGN_REVIEW: Persona-Based Checklist
+
+During DESIGN_REVIEW, consider reviewing the design from multiple perspectives. This is optional but helps catch issues early:
+
+#### Security Review
+- [ ] Buffer overflows / array bounds
+- [ ] Integer overflow/underflow
+- [ ] Credential/secret handling
+- [ ] Input validation at system boundaries
+- [ ] Thread safety and race conditions
+
+#### UX/Accessibility Review (for App/PWA)
+- [ ] Platform guidelines (Apple HIG, Material Design)
+- [ ] Accessibility (screen readers, color contrast, touch targets)
+- [ ] Responsive layout considerations
+- [ ] Error messages user-friendly
+
+#### Systems Architecture Review
+- [ ] No circular dependencies
+- [ ] Clear module boundaries
+- [ ] Appropriate abstraction levels
+- [ ] Memory ownership is clear
+- [ ] Error propagation is handled
+
+#### Code Quality Review
+- [ ] Code follows project style guide (clang-format, linting rules)
+- [ ] No magic numbers - constants are named and documented
+- [ ] Functions are single-purpose and testable
+- [ ] No dead code or commented-out code blocks
+- [ ] Logging/tracing at appropriate levels
+
+#### Performance Review
+- [ ] No unnecessary allocations in hot paths
+- [ ] Algorithm complexity is appropriate (O(n) vs O(n²))
+- [ ] Caching strategy is sound (if applicable)
+- [ ] No blocking operations in real-time contexts
+
+#### Maintainability Review
+- [ ] Code is self-documenting or has adequate comments
+- [ ] Error messages are actionable and informative
+- [ ] TODOs/FIXMEs are tracked or resolved
+- [ ] No premature optimization
+
 ---
 
 ## 4. Operational Instructions for the Agent
@@ -116,6 +196,27 @@ The loop cycles through these formal stages, moving down the "V" for design and 
 *   Analyze the logs, performance metrics, and edge cases.
 *   If a test fails, move **backwards** to the corresponding Design stage, not just back to coding.
 
+#### Verification Best Practices
+
+1. **Test-Driven Design (TDD)**:
+   - Draft UNIT_TEST and INTEGRATION_TEST signatures *before* IMPLEMENTATION
+   - Define expected inputs/outputs and edge cases upfront
+   - This clarifies the contract before coding begins
+
+2. **Negative Testing**:
+   - Include tests for failure modes (empty buffers, timeouts, null pointers)
+   - Test boundary conditions (max values, zero, negative)
+   - Verify graceful degradation under stress
+
+3. **Performance Benchmarking**:
+   - Run benchmarks and compare against baseline metrics
+   - If guardrails were defined, validate against them
+   - Document any performance regressions with root cause analysis
+
+4. **Regression Verification**:
+   - Ensure existing tests still pass after changes
+   - Run full test suite, not just new tests
+
 ### Research During Design Phases
 
 Each design phase includes an implicit research step. Before finalizing any design:
@@ -135,7 +236,22 @@ Each design phase includes an implicit research step. Before finalizing any desi
    - Check memory.md for project-specific learnings
    - Review test data and examples
 
-4. **Document Findings**:
+4. **Literature Review** (for specialized domains):
+   - Whitepapers, RFCs, technical standards (DSP, embedded, audio)
+   - Academic papers for algorithmic approaches
+   - Platform-specific documentation (Apple HIG, Android NDK guides)
+
+5. **Prior Art Search**:
+   - Grep codebase for similar implementations: `grep -r "similar_pattern" --include="*.cpp"`
+   - Check commit history for related changes
+   - Review closed issues/PRs for context
+
+6. **Constraint Discovery**:
+   - Physical limits (sample rates, buffer sizes)
+   - Platform constraints (real-time requirements, memory tiers)
+   - Backward compatibility requirements
+
+7. **Document Findings**:
    - Add findings to journey file under "## Research Notes"
    - Include sources (URLs, file paths)
    - Note rejected alternatives with reasons
