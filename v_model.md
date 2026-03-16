@@ -889,7 +889,98 @@ Format: `**[{timestamp}] State Transition: {from_state} → {to_state}**`
 
 ---
 
-## 13. Extension Points
+## 13. Epic Archival
+
+### 13.1 Purpose
+
+Reduce context bloat in the main journey.md file by archiving completed epic details to separate files.
+
+As V-Model journeys progress through multiple epics, the journey.md file accumulates large amounts of detailed content:
+- Research notes for each design phase (REQUIREMENTS, SYSTEM_DESIGN, ARCH_DESIGN, MODULE_DESIGN)
+- Epic Decomposition sections with detailed story designs
+- Learnings Log with timestamped entries
+- Dead Ends and Anti-Patterns
+
+This creates two problems:
+1. **Context bloat**: The main journey file becomes very large (1,200+ lines), injecting unnecessary context into each AI iteration
+2. **Difficult navigation**: Hard to find current/relevant information amidst completed epic details
+
+### 13.2 Automatic Archival
+
+Archival happens automatically during state transitions - no manual intervention required.
+
+After each state transition, the loop checks for completed epics without archival files and runs the archival agent.
+
+**Detection Logic**:
+1. Check Epic Progress table for epics marked "COMPLETE"
+2. Verify archival file doesn't already exist
+3. Skip the current epic (still in progress)
+4. Archive all other completed epics
+
+### 13.3 Epic File Format
+
+**File**: `{PROJ_ROOT}/v_model/journey/{name}.journey.E{id}.md`
+
+**Contents**:
+- Epic summary
+- Epic decomposition (full story designs)
+- Research notes for that epic's phases (SYSTEM_DESIGN, ARCH_DESIGN, MODULE_DESIGN)
+- Learnings related to that epic
+- Any dead ends specific to that epic
+
+**Example Structure**:
+```markdown
+# Epic E1: Synthetic Test Harness - Archive
+
+> **Journey**: create-a-test-tone-generation-pwa
+> **Archived**: 2026-03-16
+> **Reason**: Epic completed - reducing main journey file size
+
+## Epic Summary
+Implemented synthetic test harness for offline audio context testing...
+
+## Epic Decomposition
+{Full epic decomposition with all story designs}
+
+## Research Notes
+### SYSTEM_DESIGN Phase Research (Epic E1)
+{Relevant research}
+...
+```
+
+### 13.4 What Stays in Main Journey
+
+The following sections remain in the main journey.md file (runtime-critical):
+
+- **Meta** - State tracking (Goal, State, Previous Phase, Current Epic, Progress)
+- **User Hints** - User feedback (must stay accessible)
+- **Pending Questions** - Questions for user
+- **Epic Progress** - Epic completion status table
+- **Checkpoints** - Git checkpoint tracking
+- **Design Spec** - Link to .spec.md file
+- **Guardrails & Baseline Metrics** - Active constraints
+- **Current Epic Summary** - Brief summary of the epic in progress
+- **REQUIREMENTS Phase Research** - Needed throughout the journey
+- **Approaches / Current Approach Detail** - Journey-level context
+- **Anti-Patterns** - Journey-wide patterns
+
+### 13.5 Backwards Compatibility
+
+When this feature is added to an existing journey, archival automatically detects and archives completed epics on the next state transition.
+
+**Example**: An existing journey with E1 and E2 complete will automatically archive both epics on the next iteration, significantly reducing the main journey file size.
+
+### 13.6 Agent Access to Archived Content
+
+Archived epics are not lost - the AI agent can still read them when needed:
+
+1. **Explicit reading**: Agent can use Read tool to open epic files when referencing past work
+2. **Not auto-injected**: Epic files are not included in the main journey content, reducing context
+3. **Searchable**: Agent can use Grep to search across all journey files including archives
+
+---
+
+## 14. Extension Points
 
 ### 13.1 Custom AI Providers
 

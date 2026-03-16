@@ -1337,6 +1337,117 @@ generate_iteration_prompt() {
         "{{JOURNEY_CONTENT}}" "${journey_content}"
 }
 
+# ============================================================================
+# EPIC ARCHIVAL FUNCTIONS
+# ============================================================================
+
+# Extract the epic progress table from journey file
+extract_epic_progress_table() {
+    local journey_file="$1"
+    awk '/^## Epic Progress/,/^## [Epic]/ {print}' "${journey_file}" | grep '^| E[0-9]'
+}
+
+# Get list of completed epics that haven't been archived yet
+get_completed_unarchived_epics() {
+    local journey_file="$1"
+    local journey_dir="$(dirname "${journey_file}")"
+    local journey_name="$(basename "${journey_file}" .journey.md)"
+
+    # Get current epic ID
+    local current_epic=$(get_current_epic "${journey_file}" | grep -oP 'E\K[0-9]+' || echo "0")
+
+    # Find completed epics without archival files
+    while IFS='|' read -r _ epic_id _ status _; do
+        # Skip non-matching lines
+        [[ ! "$epic_id" =~ ^[[:space:]]*E[0-9]+[[:space:]]*$ ]] && continue
+
+        # Extract epic number
+        local epic_num=$(echo "$epic_id" | tr -d '[:space:]' | grep -oP 'E\K[0-9]+')
+
+        # Skip if not complete
+        [[ ! "$status" =~ COMPLETE ]] && continue
+
+        # Skip if this is the current epic
+        [[ "$epic_num" == "$current_epic" ]] && continue
+
+        # Skip if already archived
+        [[ -f "${journey_dir}/${journey_name}.journey.E${epic_num}.md" ]] && continue
+
+        echo "$epic_num"
+    done < <(extract_epic_progress_table "${journey_file}")
+}
+
+# Archive a single epic's details to separate file
+archive_epic_details() {
+    local journey_file="$1"
+    local epic_num="$2"
+    local journey_dir="$(dirname "${journey_file}")"
+    local journey_name="$(basename "${journey_file}" .journey.md)"
+    local epic_file="${journey_dir}/${journey_name}.journey.E${epic_num}.md"
+
+    log_info "Archiving Epic E${epic_num} to ${epic_file}..."
+
+    # Create archival prompt
+    local archival_prompt=$(load_prompt "${SCRIPT_DIR}/prompts/epic-archival.md" \
+        "{{JOURNEY_FILE}}" "${journey_file}" \
+        "{{EPIC_NUM}}" "${epic_num}" \
+        "{{EPIC_FILE}}" "${epic_file}" \
+        "{{JOURNEY_NAME}}" "${journey_name}")
+
+    # Create temp file with prompt
+    local temp_prompt=$(mktemp)
+    {
+        echo "$archival_prompt"
+        echo ""
+        echo "Current working directory: $(pwd)"
+        echo ""
+    } > "$temp_prompt"
+
+    # Run AI with the prompt
+    local exit_code=0
+    if cat "$temp_prompt" | $AI_CMD $AI_FLAG 2>&1; then
+        exit_code=0
+    else
+        exit_code=$?
+    fi
+
+    rm -f "$temp_prompt"
+
+    if [ $exit_code -ne 0 ]; then
+        log_error "Archival failed with exit code $exit_code"
+        return 1
+    fi
+
+    # Verify the epic file was created
+    if [[ -f "${epic_file}" ]]; then
+        log_success "✅ Epic E${epic_num} archived to ${epic_file}"
+        return 0
+    else
+        log_warning "Epic file not created, archival may have failed"
+        return 1
+    fi
+}
+
+# Archive completed epics that haven't been archived yet
+archive_completed_epics_if_needed() {
+    local journey_file="$1"
+
+    # Get list of completed but unarchived epics
+    local epics_to_archive=($(get_completed_unarchived_epics "${journey_file}"))
+
+    # If no epics to archive, return early
+    if [[ ${#epics_to_archive[@]} -eq 0 ]]; then
+        return 0
+    fi
+
+    log_info "📦 Found ${#epics_to_archive[@]} completed epic(s) to archive..."
+
+    # Archive each epic
+    for epic_num in "${epics_to_archive[@]}"; do
+        archive_epic_details "${journey_file}" "${epic_num}"
+    done
+}
+
 run_iteration() {
     local journey_file="$1"
     local journey_name
@@ -1440,6 +1551,9 @@ main_loop() {
                     if [[ "${current_epic}" != "TBD" ]] && should_continue_to_next_epic "${journey_file}" "${current_epic}"; then
                         log_info "Epic ${current_epic} complete - auto-transitioning to next epic..."
                         transition_to_next_epic "${journey_file}" "${current_epic}"
+
+                        # Archive the completed epic
+                        archive_completed_epics_if_needed "${journey_file}"
                         continue
                     fi
                 fi
@@ -1520,6 +1634,9 @@ main_loop() {
                     log_info "Pushing to origin/${current_branch}..."
                     git push origin "${current_branch}" || log_warning "Git push failed (may be no changes)"
                 fi
+
+                # Archive completed epics after state transition
+                archive_completed_epics_if_needed "${journey_file}"
                 ;;
             *)
                 run_iteration "${journey_file}"
@@ -1536,6 +1653,9 @@ main_loop() {
                     log_info "Pushing to origin/${current_branch}..."
                     git push origin "${current_branch}" || log_warning "Git push failed (may be no changes)"
                 fi
+
+                # Archive completed epics after state transition
+                archive_completed_epics_if_needed "${journey_file}"
                 ;;
         esac
 
