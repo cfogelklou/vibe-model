@@ -5,7 +5,7 @@
  * including research, design, implementation, and verification.
  */
 
-import { MainIterationVars } from './types.js';
+import { MainIterationVars } from './types';
 
 /**
  * Static sections of the main iteration prompt.

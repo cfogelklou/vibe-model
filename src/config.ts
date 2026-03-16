@@ -6,7 +6,7 @@
 import { existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import type { Config, AIProvider } from "./types.js";
+import type { Config, AIProvider } from "./types";
 
 // Get the directory where this script is located
 const __filename = fileURLToPath(import.meta.url);

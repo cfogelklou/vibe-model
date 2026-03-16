@@ -1,4 +1,4 @@
-import { GeminiReviewVars } from './types.js';
+import { GeminiReviewVars } from './types';
 
 const GEMINI_REVIEW_WITH_RESEARCH = `You are a design consultant reviewing a V-Model {{PHASE}} phase.
 

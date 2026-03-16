@@ -1,4 +1,4 @@
-import { EpicArchivalVars } from './types.js';
+import { EpicArchivalVars } from './types';
 
 // Static sections
 const EPIC_ARCHIVAL_TASK = `## Task

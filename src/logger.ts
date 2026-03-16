@@ -3,7 +3,7 @@
  * Preserves existing color scheme from bash version.
  */
 
-import { config } from "./config.js";
+import { config } from "./config";
 
 // ANSI color codes
 const COLORS = {

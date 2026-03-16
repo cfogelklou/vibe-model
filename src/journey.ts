@@ -5,10 +5,11 @@
 
 import { promises as fs } from "fs";
 import path from "path";
-import { VModelState, Journey, isValidState } from "./types.js";
-import { config } from "./config.js";
-import { appendToFile, sedInplace, insertAfterLine, findLineNumber, stripAnsi } from "./file-utils.js";
-import { logWarning } from "./logger.js";
+import { VModelState, Journey, isValidState } from "./types";
+import { config } from "./config";
+import { appendToFile, sedInplace, insertAfterLine, findLineNumber, stripAnsi } from "./file-utils";
+import { logWarning } from "./logger";
+import { readJourneyFile, getJourneyField } from "./journey-reader";
 
 /**
  * Get journey file path from journey name
@@ -169,7 +170,7 @@ export async function createJourneyFile(goal: string): Promise<string> {
  */
 export async function getJourneyState(journeyFile: string): Promise<VModelState> {
   try {
-    const content = await fs.readFile(journeyFile, "utf-8");
+    const content = await readJourneyFile(journeyFile);
     const match = content.match(/^- State:\s*(\w+)$/m);
 
     if (match) {
@@ -202,17 +203,16 @@ export async function setJourneyState(
  * Parse journey goal from journey file
  */
 export async function getJourneyGoal(journeyFile: string): Promise<string> {
-  const content = await fs.readFile(journeyFile, "utf-8");
-  const match = content.match(/^- Goal:\s*(.+)$/m);
-  return match ? match[1].trim() : "";
+  const goal = await getJourneyField(journeyFile, "Goal");
+  return goal || "";
 }
 
 /**
  * Parse journey progress from journey file
  */
 export async function getJourneyProgress(journeyFile: string): Promise<number> {
-  const content = await fs.readFile(journeyFile, "utf-8");
-  const match = content.match(/^- Progress:\s*(\d+)%$/m);
+  const progressStr = await getJourneyField(journeyFile, "Progress");
+  const match = progressStr.match(/^(\d+)%$/);
   return match ? parseInt(match[1], 10) : 0;
 }
 
@@ -230,9 +230,8 @@ export async function setJourneyProgress(
  * Get current approach from journey file
  */
 export async function getCurrentApproach(journeyFile: string): Promise<string> {
-  const content = await fs.readFile(journeyFile, "utf-8");
-  const match = content.match(/^- Current Approach:\s*(.+)$/m);
-  return match ? match[1].trim() : "TBD";
+  const approach = await getJourneyField(journeyFile, "Current Approach");
+  return approach || "TBD";
 }
 
 /**
@@ -249,9 +248,8 @@ export async function setCurrentApproach(
  * Get current epic from journey file
  */
 export async function getCurrentEpic(journeyFile: string): Promise<string> {
-  const content = await fs.readFile(journeyFile, "utf-8");
-  const match = content.match(/^- Current Epic:\s*(.+)$/m);
-  return match ? match[1].trim() : "TBD";
+  const epic = await getJourneyField(journeyFile, "Current Epic");
+  return epic || "TBD";
 }
 
 /**
@@ -268,9 +266,8 @@ export async function setCurrentEpic(
  * Get previous phase from journey file
  */
 export async function getPreviousPhase(journeyFile: string): Promise<string> {
-  const content = await fs.readFile(journeyFile, "utf-8");
-  const match = content.match(/^- Previous Phase:\s*(.+)$/m);
-  return match ? match[1].trim() : "TBD";
+  const phase = await getJourneyField(journeyFile, "Previous Phase");
+  return phase || "TBD";
 }
 
 /**
@@ -287,9 +284,8 @@ export async function setPreviousPhase(
  * Get previous state from journey file
  */
 export async function getPreviousState(journeyFile: string): Promise<string> {
-  const content = await fs.readFile(journeyFile, "utf-8");
-  const match = content.match(/^- Previous State:\s*(.+)$/m);
-  return match ? match[1].trim() : "BLOCKED";
+  const state = await getJourneyField(journeyFile, "Previous State");
+  return state || "BLOCKED";
 }
 
 /**
@@ -299,7 +295,7 @@ export async function setPreviousState(
   journeyFile: string,
   state: string
 ): Promise<void> {
-  const content = await fs.readFile(journeyFile, "utf-8");
+  const content = await readJourneyFile(journeyFile);
 
   if (content.match(/^- Previous State:/m)) {
     await sedInplace(journeyFile, /^- Previous State: .*$/m, `- Previous State: ${state}`);
@@ -369,9 +365,7 @@ export async function listJourneys(): Promise<Journey[]> {
       const currentApproach = await getCurrentApproach(journeyPath);
 
       // Extract started date from file content
-      const content = await fs.readFile(journeyPath, "utf-8");
-      const startedMatch = content.match(/^- Started:\s*(.+)$/m);
-      const started = startedMatch ? startedMatch[1].trim() : "";
+      const started = await getJourneyField(journeyPath, "Started");
 
       journeys.push({
         goal,
@@ -445,7 +439,7 @@ export async function addUserHint(journeyFile: string, hint: string): Promise<vo
 export async function addPendingQuestion(journeyFile: string, question: string): Promise<void> {
   const timestamp = new Date().toISOString().split("T")[0];
   const cleanQuestion = stripAnsi(question);
-  const content = await fs.readFile(journeyFile, "utf-8");
+  const content = await readJourneyFile(journeyFile);
 
   // Check if there are any unchecked questions
   const hasUncheckedQuestions = /- \[ \] .+/.test(content);
@@ -470,7 +464,7 @@ export async function addPendingQuestion(journeyFile: string, question: string):
       // Find the last unchecked question and insert after it
       const lastQuestionLineNum = await findLineNumber(journeyFile, /^- \[ \] .+$/m);
       if (lastQuestionLineNum > 0) {
-        const nextLineContent = (await fs.readFile(journeyFile, "utf-8")).split("\n")[lastQuestionLineNum];
+        const nextLineContent = (await readJourneyFile(journeyFile)).split("\n")[lastQuestionLineNum];
         if (nextLineContent?.includes("*(No pending questions)*")) {
           await sedInplace(
             journeyFile,
@@ -493,7 +487,7 @@ export async function addCheckpoint(
   tag: string,
   description: string
 ): Promise<void> {
-  const content = await fs.readFile(journeyFile, "utf-8");
+  const content = await readJourneyFile(journeyFile);
   const checkpointMatch = content.match(/^## Checkpoints$/m);
 
   if (!checkpointMatch) {
@@ -530,7 +524,7 @@ export async function migrateMemoryToJourney(
     }
 
     const memoryContent = await fs.readFile(memoryPath, "utf-8");
-    const journeyContent = await fs.readFile(journeyPath, "utf-8");
+    const journeyContent = await readJourneyFile(journeyPath);
 
     // Extract learnings from both files
     const journeyLearnings = extractLearnings(journeyContent);
@@ -601,7 +595,7 @@ function mergeLearningsChronological(journey: string[], memory: string[]): strin
  * Update learnings section in journey file
  */
 async function updateLearningsSection(journeyPath: string, learnings: string[]): Promise<void> {
-  const content = await fs.readFile(journeyPath, "utf-8");
+  const content = await readJourneyFile(journeyPath);
   const learningsSection = content.match(/## Learnings Log\n([\s\S]+?)\n## /);
 
   if (!learningsSection) {

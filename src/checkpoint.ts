@@ -6,9 +6,9 @@
 import { spawn } from "child_process";
 import { promises as fs, existsSync } from "fs";
 import path from "path";
-import { VModelError } from "./types.js";
-import { config } from "./config.js";
-import { logInfo, logSuccess, logWarning, logError } from "./logger.js";
+import { VModelError } from "./types";
+import { config } from "./config";
+import { logInfo, logSuccess, logWarning, logError } from "./logger";
 
 /**
  * Execute git command from parent project directory.

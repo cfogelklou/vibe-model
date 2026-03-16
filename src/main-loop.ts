@@ -5,27 +5,28 @@
 
 import { promises as fs } from "fs";
 import path from "path";
-import { VModelState } from "./types.js";
-import { config } from "./config.js";
+import { VModelState } from "./types";
+import { config } from "./config";
 import {
   getJourneyState,
   getCurrentEpic,
   setJourneyState,
   getPreviousState,
   setPreviousState,
-} from "./journey.js";
-import { appendToFile } from "./file-utils.js";
-import { logPhase, logState, logInfo, logSuccess, logWarning, logError, logDebug } from "./logger.js";
-import { extractDesignContent, extractResearchContent } from "./design-spec.js";
-import { mainIterationPrompt, type MainIterationVars } from "./prompts/index.js";
-import { runAIWithPrompt, consultGemini } from "./ai-provider.js";
+} from "./journey";
+import { appendToFile } from "./file-utils";
+import { logPhase, logState, logInfo, logSuccess, logWarning, logError, logDebug } from "./logger";
+import { extractDesignContent, extractResearchContent } from "./design-spec";
+import { mainIterationPrompt, type MainIterationVars } from "./prompts/index";
+import { runAIWithPrompt, consultGemini } from "./ai-provider";
 import {
   transitionToNextEpic,
   checkContinueToNextEpic,
   getPreviousDesignPhase,
   autoTransitionFromReview,
-} from "./state-machine.js";
-import { commitChanges, pushChanges, hasUncommittedChanges } from "./checkpoint.js";
+} from "./state-machine";
+import { commitChanges, pushChanges, hasUncommittedChanges, getCurrentBranch } from "./checkpoint";
+import { getCompletedUnarchivedEpics, archiveEpicDetails } from "./epic-archival";
 
 /**
  * Generate iteration prompt for current state
@@ -261,11 +262,10 @@ async function handleArchiving(journeyFile: string): Promise<void> {
   const preArchiveState = await getPreviousState(journeyFile);
 
   // Archive completed epics
-  const epicArchival = await import("./epic-archival.js");
-  const completedUnarchivedEpics = await epicArchival.getCompletedUnarchivedEpics(journeyFile);
+  const completedUnarchivedEpics = await getCompletedUnarchivedEpics(journeyFile);
 
   for (const epicNum of completedUnarchivedEpics) {
-    await epicArchival.archiveEpicDetails(journeyFile, epicNum);
+    await archiveEpicDetails(journeyFile, epicNum);
   }
 
   // Restore previous state (or BLOCKED if unknown)
@@ -316,8 +316,7 @@ export async function mainLoop(journeyFile: string): Promise<void> {
         await runIteration(journeyFile);
 
         // Ensure any changes are committed and pushed
-        const currentBranch = await (await import("./checkpoint.js"))
-          .getCurrentBranch();
+        const currentBranch = await getCurrentBranch();
 
         if (currentBranch) {
           const hasChanges = await hasUncommittedChanges();
@@ -353,8 +352,7 @@ export async function mainLoop(journeyFile: string): Promise<void> {
  * Archive completed epics if needed (set state to ARCHIVING)
  */
 async function archive_completed_epics_if_needed(journeyFile: string): Promise<void> {
-  const completedUnarchivedEpics = await (await import("./epic-archival.js"))
-    .getCompletedUnarchivedEpics(journeyFile);
+  const completedUnarchivedEpics = await getCompletedUnarchivedEpics(journeyFile);
 
   if (completedUnarchivedEpics.length === 0) {
     return;

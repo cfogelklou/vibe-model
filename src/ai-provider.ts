@@ -5,10 +5,10 @@
 
 import { spawn } from "child_process";
 import { promises as fs } from "fs";
-import { config } from "./config.js";
-import { logDebug, logInfo } from "./logger.js";
-import { geminiReviewPrompt } from "./prompts/index.js";
-import type { ClaudeCapabilities, StreamEvent } from "./types.js";
+import { config } from "./config";
+import { logDebug, logInfo } from "./logger";
+import { geminiReviewPrompt } from "./prompts/index";
+import type { ClaudeCapabilities, StreamEvent } from "./types";
 
 // Track child processes for cleanup
 export const childProcesses: Array<ReturnType<typeof spawn>> = [];

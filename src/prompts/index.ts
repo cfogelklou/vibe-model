@@ -20,9 +20,9 @@
  */
 
 // Export all prompt generator functions
-export { mainIterationPrompt } from './main-iteration.js';
-export { epicArchivalPrompt } from './epic-archival.js';
-export { geminiReviewPrompt } from './gemini-review.js';
+export { mainIterationPrompt } from './main-iteration';
+export { epicArchivalPrompt } from './epic-archival';
+export { geminiReviewPrompt } from './gemini-review';
 
 // Export types for consumers who need them
 export type {
@@ -30,4 +30,4 @@ export type {
   EpicArchivalVars,
   GeminiReviewVars,
   TemplateVariable,
-} from './types.js';
+} from './types';

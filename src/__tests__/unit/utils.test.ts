@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { stripAnsi } from "../../file-utils.js";
-import { sanitizeJourneyName } from "../../journey.js";
+import { stripAnsi } from "../../file-utils";
+import { sanitizeJourneyName } from "../../journey";
 
 describe("sanitizeJourneyName", () => {
   it("should convert to lowercase and replace spaces with hyphens", () => {

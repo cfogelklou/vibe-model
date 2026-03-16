@@ -3,12 +3,14 @@
  * Handles state transitions, epic transitions, and previous phase tracking.
  */
 
-import { VModelState } from "./types.js";
-import { getNextEpicId, shouldContinueToNextEpic, getEpicNameFromTable } from "./epic-archival.js";
-import { setJourneyState, setCurrentEpic, addLearning } from "./journey.js";
-import { appendToFile } from "./file-utils.js";
-import { createCheckpoint } from "./checkpoint.js";
-import { logInfo } from "./logger.js";
+import { VModelState } from "./types";
+import { getNextEpicId, shouldContinueToNextEpic, getEpicNameFromTable, createOrUpdateEpicFile } from "./epic-archival";
+import { setJourneyState, setCurrentEpic, addLearning } from "./journey";
+import { appendToFile } from "./file-utils";
+import { createCheckpoint } from "./checkpoint";
+import { logInfo } from "./logger";
+import { readJourneyFile } from "./journey-reader";
+import { promises as fs, existsSync } from "fs";
 
 /**
  * Get the next state in the V-Model lifecycle
@@ -45,7 +47,7 @@ export function getNextState(current: VModelState): VModelState {
 export async function getPreviousDesignPhase(
   journeyFile: string
 ): Promise<string> {
-  const content = await Bun.file(journeyFile).text();
+  const content = await readJourneyFile(journeyFile);
 
   // Check journey metadata for Previous Phase marker
   const prevPhaseMatch = content.match(/^- Previous Phase:\s*(.+)$/m);
@@ -74,7 +76,7 @@ export async function ensurePreviousPhaseMarker(
   journeyFile: string,
   phase: string
 ): Promise<void> {
-  const content = await Bun.file(journeyFile).text();
+  const content = await readJourneyFile(journeyFile);
 
   if (!content.match(/^- Previous Phase:/m)) {
     // Add Previous Phase marker after Previous State line
@@ -85,7 +87,7 @@ export async function ensurePreviousPhaseMarker(
 
     if (insertIndex >= 0) {
       lines.splice(insertIndex + 1, 0, `- Previous Phase: ${phase}`);
-      await Bun.write(journeyFile, lines.join("\n"));
+      await fs.writeFile(journeyFile, lines.join("\n"));
     }
   } else {
     // Update existing Previous Phase marker
@@ -93,7 +95,7 @@ export async function ensurePreviousPhaseMarker(
       /^- Previous Phase: .*$/m,
       `- Previous Phase: ${phase}`
     );
-    await Bun.write(journeyFile, updatedContent);
+    await fs.writeFile(journeyFile, updatedContent);
   }
 }
 
@@ -104,7 +106,7 @@ export async function autoTransitionFromReview(
   journeyFile: string,
   previousPhase: string
 ): Promise<void> {
-  const content = await Bun.file(journeyFile).text();
+  const content = await readJourneyFile(journeyFile);
   const stateMatch = content.match(/^- State:\s*(\w+)$/m);
 
   if (!stateMatch) {
@@ -168,7 +170,6 @@ export async function transitionToNextEpic(
     const nextEpicNum = parseInt(nextEpic.replace(/\D/g, ""), 10);
     const nextEpicName = await getEpicNameFromTable(journeyFile, nextEpic);
 
-    const { createOrUpdateEpicFile } = await import("./epic-archival.js");
     const _journeyName = journeyFile.split("/").pop()?.replace(".journey.md", "") || "";
     const epicFile = await createOrUpdateEpicFile(
       journeyFile,
@@ -177,7 +178,6 @@ export async function transitionToNextEpic(
     );
 
     // Verify epic file was created
-    const { existsSync } = await import("fs");
     if (!existsSync(epicFile)) {
       console.error(`Failed to create epic file: ${epicFile}`);
       // Fallback: continue without epic file (journey.md only)

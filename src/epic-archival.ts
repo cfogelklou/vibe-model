@@ -5,10 +5,10 @@
 
 import { promises as fs, existsSync } from "fs";
 import path from "path";
-import { getCurrentEpic, sanitizeJourneyName } from "./journey.js";
-import { logInfo, logSuccess, logWarning } from "./logger.js";
-import { epicArchivalPrompt, type EpicArchivalVars } from "./prompts/index.js";
-import { runAIWithPrompt } from "./ai-provider.js";
+import { getCurrentEpic, sanitizeJourneyName } from "./journey";
+import { logInfo, logSuccess, logWarning } from "./logger";
+import { epicArchivalPrompt, type EpicArchivalVars } from "./prompts/index";
+import { runAIWithPrompt } from "./ai-provider";
 
 /**
  * Get epic file path for a given journey and epic number

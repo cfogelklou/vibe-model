@@ -5,8 +5,8 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { promises as fs } from "fs";
 import path from "path";
-import { initializeConfig } from "../../config.js";
-import { VModelState } from "../../types.js";
+import { initializeConfig } from "../../config";
+import { VModelState } from "../../types";
 import {
   sanitizeJourneyName,
   getJourneyPath,
@@ -17,7 +17,7 @@ import {
   getJourneyProgress,
   getCurrentEpic,
   getPreviousPhase,
-} from "../../journey.js";
+} from "../../journey";
 
 // Mock config
 const mockProjectDir = "/tmp/test-v-model";

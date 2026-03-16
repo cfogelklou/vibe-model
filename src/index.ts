@@ -7,14 +7,14 @@
 import { Command } from "commander";
 import { promises as fs } from "fs";
 import path from "path";
-import { VModelError } from "./types.js";
-import { config, initializeConfig } from "./config.js";
+import { VModelError } from "./types";
+import { config, initializeConfig } from "./config";
 import {
   logInfo,
   logSuccess,
   logWarning,
   logError,
-} from "./logger.js";
+} from "./logger";
 import {
   createJourneyFile,
   findActiveJourney,
@@ -24,13 +24,13 @@ import {
   setJourneyState,
   getCurrentApproach,
   setPreviousState,
-} from "./journey.js";
-import { mainLoop } from "./main-loop.js";
+} from "./journey";
+import { mainLoop } from "./main-loop";
 import {
   rollbackToCheckpoint,
   listCheckpoints,
-} from "./checkpoint.js";
-import { killAllChildProcesses } from "./ai-provider.js";
+} from "./checkpoint";
+import { killAllChildProcesses } from "./ai-provider";
 
 
 /**
