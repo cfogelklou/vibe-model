@@ -37,7 +37,6 @@ When integrated, the submodule creates this structure:
 
 ```
 your-project/                    # Parent project (git repository)
-├── .v_model.conf               # Configuration for V-Model (optional)
 ├── v_model/                    # V-Model outputs (created by script)
 │   ├── .venv/                  # Python virtual environment for prototyping
 │   ├── journey/                # Journey tracking files
@@ -216,53 +215,23 @@ MODULE_DESIGN ──────────→ UNIT_TEST
 
 ## Configuration
 
-### Configuration File (.v_model.conf)
-
-Create `.v_model.conf` in your **parent project root** to customize behavior:
-
-```bash
-# Build and test commands
-BUILD_COMMAND="cd build && ninja -j4"
-TEST_COMMAND="./run_tests"
-ALL_TESTS_COMMAND="cd build && ctest -j8"
-GUARDRAIL_TESTS="unit_tests integration_tests"
-
-# Performance thresholds
-CPU_THRESHOLD="+20%"
-LATENCY_THRESHOLD="+10ms"
-ACCURACY_THRESHOLD="0%"
-
-# Project metadata
-PROJECT_NAME="MyProject"
-KEY_FILES="CLAUDE.md README.md"
-
-# AI provider
-AI_PROVIDER="claude"  # or "gemini"
-CLAUDE_MODEL="claude-opus-4-6"
-```
-
-### Environment Variables
-
-All configuration options can be set as environment variables:
+Use environment variables to configure behavior:
 
 ```bash
 export BUILD_COMMAND="npm run build"
 export TEST_COMMAND="npm test"
 export AI_PROVIDER="claude"
-./loop_v_model.sh "add feature X"
+./ai-v-model/loop_v_model.sh "add feature X"
 ```
 
-### Key Configuration Options
+### Key Options
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | BUILD_COMMAND | `cd build && ninja -j4` | Command to build the project |
 | TEST_COMMAND | `./sau_src/motuner/test/motunit` | Command to run primary tests |
-| ALL_TESTS_COMMAND | `cd build && ctest -j8` | Command to run all tests |
-| GUARDRAIL_TESTS | `motunit fft_multi_tests strobe_tests` | Tests that must always pass |
 | AI_PROVIDER | `claude` | Primary AI provider (claude/gemini) |
 | CONSULT_GEMINI | `true` | Enable Gemini consultation during design |
-| MAX_ITERATIONS | `100` | Maximum loop iterations before stopping |
 
 ---
 
@@ -445,7 +414,7 @@ If missing, the script will create it automatically.
 
 ### Tests Not Running
 
-Configure `TEST_COMMAND` in `.v_model.conf` or as environment variable:
+Configure `TEST_COMMAND` as an environment variable:
 
 ```bash
 export TEST_COMMAND="npm test"
@@ -458,4 +427,4 @@ export TEST_COMMAND="npm test"
 
 - **Protocol Documentation**: See `v_model.md` for detailed V-Model protocol
 - **State Machine**: See state diagram in `v_model.md`
-- **Configuration**: See `.v_model.conf` examples above
+- **Configuration**: See environment variables above

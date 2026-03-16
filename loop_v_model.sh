@@ -38,7 +38,6 @@ V_MODEL_DIR="${PROJECT_ROOT}/v_model"
 JOURNEY_DIR="${V_MODEL_DIR}/journey"
 PROTOTYPES_DIR="${V_MODEL_DIR}/prototypes"
 VENV_DIR="${V_MODEL_DIR}/.venv"
-CONFIG_FILE="${PROJECT_ROOT}/.v_model.conf"
 
 # Memory file (markdown format, no MCP server required)
 MEMORY_MD="${V_MODEL_DIR}/memory.md"
@@ -177,24 +176,12 @@ Environment:
   JOURNEY_DIR    Directory for journey files (default: ./v_model/journey)
   PROTOTYPES_DIR Directory for prototype files (default: ./v_model/prototypes)
 
-Configuration:
-  .v_model.conf  Optional config file in project root
-
 Examples:
   $0 "Improve low-frequency detection using ML"
   $0 hint "Try harmonic product spectrum first"
   $0 rollback 3
 
 EOF
-}
-
-# Load configuration file if it exists
-load_config() {
-    if [[ -f "${CONFIG_FILE}" ]]; then
-        log_debug "Loading configuration from ${CONFIG_FILE}"
-        # Source the config file, allowing overrides
-        source "${CONFIG_FILE}"
-    fi
 }
 
 # Ensure required directories exist
@@ -1647,9 +1634,6 @@ main() {
                 ;;
         esac
     done
-
-    # Load configuration
-    load_config
 
     # Ensure directories exist
     ensure_directories
