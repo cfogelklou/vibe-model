@@ -1,79 +1,16 @@
 /**
- * Design spec operations and prompt template management.
- * Handles design spec creation, template resolution, and prompt substitution.
+ * Design spec operations.
+ * Handles design spec creation, content extraction, and updates.
+ *
+ * Note: Prompt template management has been migrated to src/prompts/
+ * for type safety. Use the functions in src/prompts/index.js instead.
  */
 
 import { promises as fs, existsSync } from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import { VModelState } from "./types.js";
 import { config } from "./config.js";
 import { getJourneyGoal } from "./journey.js";
-
-// Get the directory where this script is located
-const __filename = fileURLToPath(import.meta.url);
-const SCRIPT_DIR = path.dirname(__filename);
-
-/**
- * Resolve template path with multi-candidate search for dev/installed scenarios.
- * Templates are ALWAYS relative to script location, not project directory.
- */
-export function resolveTemplatePath(templateName: string): string {
-  // Try multiple path candidates for dev vs installed scenarios
-  const candidates = [
-    path.join(SCRIPT_DIR, "..", "prompts", templateName), // Dev: src/../prompts
-    path.join(SCRIPT_DIR, "prompts", templateName), // Installed: src/prompts
-    path.join(SCRIPT_DIR, "..", "..", "prompts", templateName), // Alt dev: src/../../prompts
-    path.join(SCRIPT_DIR, "..", "..", "..", "ai-v-model", "prompts", templateName), // Submodule case
-  ];
-
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-
-  // Fallback to first candidate (will error if not found)
-  return candidates[0];
-}
-
-/**
- * Load prompt template and substitute placeholders.
- *
- * Supported placeholders:
- * - {{AI_PROVIDER}} - "claude" or "gemini"
- * - {{JOURNEY_CONTENT}} - Full journey file content
- * - {{EPIC_CONTENT}} - Epic file content (if exists)
- * - {{EPIC_FILE_INSTRUCTIONS}} - Instructions for epic-specific work
- * - {{PHASE}} - Current V-Model phase
- * - {{DESIGN_CONTENT}} - Design spec content for review
- * - {{RESEARCH_CONTENT}} - Research notes for review
- * - {{EPIC_ARCHIVAL_MODE}} - Archival mode instructions
- * - {{JOURNEY_FILE}} - Journey file path
- * - {{EPIC_NUM}} - Epic number
- * - {{EPIC_FILE}} - Epic file path
- * - {{JOURNEY_NAME}} - Journey name
- */
-export async function loadPrompt(
-  templateName: string,
-  substitutions: Record<string, string>
-): Promise<string> {
-  const templatePath = resolveTemplatePath(templateName);
-
-  try {
-    let content = await fs.readFile(templatePath, "utf-8");
-
-    // Substitute placeholders
-    for (const [key, value] of Object.entries(substitutions)) {
-      const placeholder = `{{${key}}}`;
-      content = content.replaceAll(placeholder, value);
-    }
-
-    return content;
-  } catch (error) {
-    throw new Error(`Failed to load prompt template ${templateName}: ${error}`);
-  }
-}
 
 /**
  * Get design spec file path from journey name

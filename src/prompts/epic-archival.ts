@@ -1,21 +1,7 @@
-# Epic Archival Task
+import { EpicArchivalVars } from './types.js';
 
-## Archival Mode
-{{EPIC_ARCHIVAL_MODE}}
-
-## Journey File
-{{JOURNEY_FILE}}
-
-## Epic to Archive
-Epic {{EPIC_NUM}}
-
-## Output File
-{{EPIC_FILE}}
-
-## Journey Name
-{{JOURNEY_NAME}}
-
-## Task
+// Static sections
+const EPIC_ARCHIVAL_TASK = `## Task
 
 Archive the completed Epic {{EPIC_NUM}} to a separate file to reduce context bloat in the main journey file.
 
@@ -31,21 +17,21 @@ This creates context bloat where the main journey file becomes very large, injec
 
 ### Steps
 
-1. **Read the journey file** at `{{JOURNEY_FILE}}`
+1. **Read the journey file** at \`{{JOURNEY_FILE}}\`
 2. **Identify Epic {{EPIC_NUM}}'s content**:
    - Epic Summary (from Epic Decomposition section)
    - Epic Decomposition (all story designs for this epic)
    - Research Notes for SYSTEM_DESIGN, ARCH_DESIGN, and MODULE_DESIGN phases related to this epic
    - Learnings Log entries related to this epic
    - Any Dead Ends encountered during this epic
-3. **Create the epic file** at `{{EPIC_FILE}}` with the epic's content
-4. **Update the main journey file** to replace epic details with a brief summary, then provide a link to the new `{{EPIC_FILE}}`
+3. **Create the epic file** at \`{{EPIC_FILE}}\` with the epic's content
+4. **Update the main journey file** to replace epic details with a brief summary, then provide a link to the new \`{{EPIC_FILE}}\`
 
 ### Epic File Structure
 
 Create the epic file with this structure:
 
-```markdown
+\`\`\`markdown
 # Epic E{{EPIC_NUM}}: {Epic Name} - Archive
 
 > **Journey**: {{JOURNEY_NAME}}
@@ -74,19 +60,19 @@ Create the epic file with this structure:
 
 ## Dead Ends (if any)
 {Any dead ends or anti-patterns specific to this epic}
-```
+\`\`\`
 
 ### Main Journey Update
 
 After creating the epic file, update the main journey file:
 
 1. **Replace the Epic Decomposition** for this epic with a brief summary:
-```markdown
+\`\`\`markdown
 ### Epic E{{EPIC_NUM}}: {Epic Name}
 **Status**: COMPLETE ({date})
 **Stories**: {N} stories implemented
-**Details**: See `{{JOURNEY_NAME}}.journey.E{{EPIC_NUM}}.md` for full documentation
-```
+**Details**: See \`{{JOURNEY_NAME}}.journey.E{{EPIC_NUM}}.md\` for full documentation
+\`\`\`
 
 2. **Remove or summarize** the research notes for this epic (keep only high-level findings)
 
@@ -109,7 +95,41 @@ After creating the epic file, update the main journey file:
 ### Execution
 
 Use the Edit tool to:
-1. Create the new epic file at `{{EPIC_FILE}}`
+1. Create the new epic file at \`{{EPIC_FILE}}\`
 2. Update the main journey file to replace epic details with brief summary
 
-Ensure the main journey file remains valid and functional after archival.
+Ensure the main journey file remains valid and functional after archival.`;
+
+// Dynamic sections
+function renderEpicArchivalHeader(vars: EpicArchivalVars): string {
+  return `# Epic Archival Task
+
+## Archival Mode
+${vars.EPIC_ARCHIVAL_MODE}
+
+## Journey File
+${vars.JOURNEY_FILE}
+
+## Epic to Archive
+Epic ${vars.EPIC_NUM}
+
+## Output File
+${vars.EPIC_FILE}
+
+## Journey Name
+${vars.JOURNEY_NAME}
+
+`;
+}
+
+// Main export function
+export function epicArchivalPrompt(vars: EpicArchivalVars): string {
+  const header = renderEpicArchivalHeader(vars);
+  const task = EPIC_ARCHIVAL_TASK
+    .replaceAll('{{EPIC_NUM}}', vars.EPIC_NUM)
+    .replaceAll('{{JOURNEY_FILE}}', vars.JOURNEY_FILE)
+    .replaceAll('{{EPIC_FILE}}', vars.EPIC_FILE)
+    .replaceAll('{{JOURNEY_NAME}}', vars.JOURNEY_NAME);
+
+  return header + task;
+}

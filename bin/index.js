@@ -1992,10 +1992,10 @@ function parseEnvironmentVars() {
   }
   return env;
 }
-async function initializeConfig(cliArgs = {}) {
+async function initializeConfig(cliArgs = {}, configFilePath) {
   const projectDir = await detectProjectDirectory(cliArgs.projectDir);
   cliArgs.projectDir = projectDir;
-  const configFile = await loadConfigFile(cliArgs.config);
+  const configFile = await loadConfigFile(configFilePath);
   const envVars = parseEnvironmentVars();
   config = mergeConfig(cliArgs, envVars, configFile, defaultConfig);
   return config;
@@ -2057,7 +2057,7 @@ var init_logger = __esm(() => {
 });
 
 // src/file-utils.ts
-import { promises as fs } from "fs";
+import { promises as fs, existsSync as existsSync2 } from "fs";
 function stripAnsi(text) {
   return text.replace(/\x1b\[[0-9;]*m/g, "");
 }
@@ -2103,7 +2103,7 @@ function getJourneyDir() {
   return path2.join(config.projectDir, "v_model", "journey");
 }
 function sanitizeJourneyName(goal) {
-  return goal.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").substring(0, 50);
+  return goal.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "").substring(0, 50);
 }
 async function createJourneyFile(goal) {
   const name = sanitizeJourneyName(goal);
@@ -2349,106 +2349,388 @@ var init_journey = __esm(() => {
   init_logger();
 });
 
-// src/design-spec.ts
-import { promises as fs3 } from "fs";
-import path3 from "path";
-import { fileURLToPath as fileURLToPath2 } from "url";
-import { existsSync as existsSync2 } from "fs";
-function resolveTemplatePath(templateName) {
-  const candidates = [
-    path3.join(SCRIPT_DIR2, "..", "prompts", templateName),
-    path3.join(SCRIPT_DIR2, "prompts", templateName),
-    path3.join(SCRIPT_DIR2, "..", "..", "prompts", templateName),
-    path3.join(SCRIPT_DIR2, "..", "..", "..", "ai-v-model", "prompts", templateName)
-  ];
-  for (const candidate of candidates) {
-    if (existsSync2(candidate)) {
-      return candidate;
-    }
-  }
-  return candidates[0];
+// src/prompts/main-iteration.ts
+function renderMainIterationHeader(vars) {
+  return MAIN_ITERATION_HEADER.replace("{{AI_PROVIDER}}", vars.AI_PROVIDER).replace("{{JOURNEY_CONTENT}}", vars.JOURNEY_CONTENT).replace("{{EPIC_FILE_INSTRUCTIONS}}", vars.EPIC_FILE_INSTRUCTIONS || "").replace("{{EPIC_CONTENT}}", vars.EPIC_CONTENT || "");
 }
-async function loadPrompt(templateName, substitutions) {
-  const templatePath = resolveTemplatePath(templateName);
-  try {
-    let content = await fs3.readFile(templatePath, "utf-8");
-    for (const [key, value] of Object.entries(substitutions)) {
-      const placeholder = `{{${key}}}`;
-      content = content.replaceAll(placeholder, value);
-    }
-    return content;
-  } catch (error) {
-    throw new Error(`Failed to load prompt template ${templateName}: ${error}`);
-  }
+function mainIterationPrompt(vars) {
+  return renderMainIterationHeader(vars) + REQUIREMENTS_PHASE + IMPLEMENTATION_PHASES + IMPORTANT_RULES;
 }
-function getDesignSpecPath(journeyName) {
-  const journeyDir = path3.join(config.projectDir, "v_model", "journey");
-  return path3.join(journeyDir, `${journeyName}.spec.md`);
-}
-function getDesignSpecPathFromJourney(journeyFile) {
-  const journeyName = path3.basename(journeyFile, ".journey.md");
-  return getDesignSpecPath(journeyName);
-}
-async function extractDesignContent(journeyFile, phase) {
-  const specPath = getDesignSpecPathFromJourney(journeyFile);
-  let content = "";
-  switch (phase) {
-    case "REQUIREMENTS" /* REQUIREMENTS */:
-      if (existsSync2(specPath)) {
-        const specContent = await fs3.readFile(specPath, "utf-8");
-        const userReqMatch = specContent.match(/## User Requirements\n([\s\S]+?)\n## /);
-        const sysReqMatch = specContent.match(/## System Requirements\n([\s\S]+?)\n## /);
-        content = (userReqMatch?.[1] || "") + `
+var MAIN_ITERATION_HEADER = `You are an autonomous R&D agent working toward a high-level goal using a V-Model workflow.
+Refer to v_model.md for the Master Protocol.
 
-` + (sysReqMatch?.[1] || "");
-      }
-      break;
-    case "SYSTEM_DESIGN" /* SYSTEM_DESIGN */:
-      if (existsSync2(specPath)) {
-        const specContent = await fs3.readFile(specPath, "utf-8");
-        const epicsMatch = specContent.match(/## Epics\n([\s\S]+?)\n## /);
-        const archMatch = specContent.match(/## Architecture\n([\s\S]+?)\n## /);
-        content = (epicsMatch?.[1] || "") + `
+AI Provider: {{AI_PROVIDER}}
 
-` + (archMatch?.[1] || "");
-      }
-      break;
-    case "ARCH_DESIGN" /* ARCH_DESIGN */:
-      const journeyContent = await fs3.readFile(journeyFile, "utf-8");
-      const epicMatch = journeyContent.match(/## Current Epic\n([\s\S]+?)\n## /);
-      content = epicMatch?.[1] || "";
-      break;
-    case "MODULE_DESIGN" /* MODULE_DESIGN */:
-      const journeyContent2 = await fs3.readFile(journeyFile, "utf-8");
-      const storyMatch = journeyContent2.match(/## Current Story\n([\s\S]+?)\n## /);
-      content = storyMatch?.[1] || "";
-      break;
-  }
-  if (!content.trim()) {
-    content = await fs3.readFile(journeyFile, "utf-8");
-  }
-  return content;
+## Your Journey
+
+{{JOURNEY_CONTENT}}
+
+{{EPIC_FILE_INSTRUCTIONS}}
+
+{{EPIC_CONTENT}}
+
+## Your Task: V-Model Phase Execution
+
+**IMPORTANT: When transitioning to DESIGN_REVIEW, always update the "Previous Phase:" field in the Meta section to reflect the phase you just completed.**
+
+Format: In the Meta section at the top of the journey file, update the line:
+\`- Previous Phase: REQUIREMENTS\`
+to match the phase you just completed (REQUIREMENTS, SYSTEM_DESIGN, ARCH_DESIGN, or MODULE_DESIGN).
+
+**CRITICAL: Always check the "## User Hints" section in the journey file and incorporate ALL user feedback into your design.** User hints represent explicit requirements or preferences that MUST be followed.
+
+Based on the current journey state, perform the appropriate phase:
+
+### Research Phase (Part of Each Design Phase)
+
+Before finalizing any design, conduct research:
+
+**For complex research questions, use parallel explore agents:**
+1. Identify 2-3 distinct research areas (e.g., existing implementations, external research, memory patterns)
+2. Launch Explore agents IN PARALLEL (single message, multiple tool calls)
+3. Each agent focuses on one area and reports back
+4. You consolidate findings into Research Notes
+
+**For simple research, proceed sequentially:**
+1. **Web Search** (if applicable):
+   - Search for existing libraries that solve this problem
+   - Look for best practices, design patterns, anti-patterns
+   - Use the WebSearch tool with current year (2026)
+
+2. **Gemini Rubber Duck** (optional, use for complex decisions):
+   - Use Gemini to "talk through" your design reasoning
+   - Ask: "What are the tradeoffs between X and Y?"
+   - Ask: "What edge cases might I be missing?"
+   - Command: \`echo "your question" | gemini --yolo\`
+
+3. **Codebase Research**:
+   - Search for existing implementations of similar functionality
+   - Check memory.md for anti-patterns and successful patterns
+   - Review test_data/ for relevant test cases
+
+4. **Document Findings**:
+   - Add key findings to journey file under "## Research Notes"
+   - Cite sources (URLs, file paths, memory entries)
+
+### Parallel Agent Orchestration (For Complex Tasks)
+
+When dealing with complex research or implementation, you can spawn multiple sub-agents:
+
+**During Research Phase:**
+- Launch up to 3 Explore agents IN PARALLEL with different focus areas:
+  - Agent 1: Existing implementations in codebase
+  - Agent 2: External research (web search, best practices)
+  - Agent 3: Memory patterns and anti-patterns
+- Each agent reports back findings
+- You consolidate findings into Research Notes
+
+**During Planning/Design:**
+- Structure your plan as discrete, independent tasks
+- Each task should have clear inputs and outputs
+- Include dependency information (which tasks must complete first)
+
+**At Implementation Time:**
+- If tasks are independent, note: "These can be executed in parallel by sub-agents"
+- If tasks have dependencies, note: "Execute A before B, then C and D can run in parallel"
+- The orchestrator (you or loop_v_model.sh) will handle delegation
+`, REQUIREMENTS_PHASE = `### If REQUIREMENTS:
+- **Execute Spec Initiation Protocol** (see v_model.md).
+- **RESEARCH**: Before finalizing requirements:
+  - Web search for similar systems/libraries
+  - Consult memory.md for past learnings
+  - Use Gemini rubber duck for complex tradeoffs
+- Document research in "## Research Notes > ### REQUIREMENTS Phase Research"
+- If the spec file does not exist, you MUST ask the user clarifying questions to establish goals, metrics, and constraints.
+- Create or update \`{journey_name}.spec.md\` with User Requirements, System Requirements, and Acceptance Criteria.
+- **Transition to WAITING_FOR_USER** if you need the user to sign off on requirements.
+- Once signed off, update the Meta section: change "- Previous Phase: TBD" to "- Previous Phase: REQUIREMENTS", then transition to DESIGN_REVIEW.
+
+### If DESIGN_REVIEW:
+- This is an automatic state - do NOT write any content.
+- The system will consult Gemini for design review (including research quality).
+- Wait for the system to process the review result.
+
+### If SYSTEM_DESIGN:
+- **RESEARCH**: Before finalizing architecture:
+  - Web search for architectural patterns for the domain
+  - Search codebase for similar implementations
+  - Use Gemini rubber duck: "What architectural tradeoffs exist?"
+- Document research in "## Research Notes > ### SYSTEM_DESIGN Phase Research"
+- Define the high-level architecture.
+- Decompose the goal into **Epics**.
+- Update the Design Spec with the architecture and Epics list.
+- Update the Meta section: change "- Previous Phase: REQUIREMENTS" to "- Previous Phase: SYSTEM_DESIGN", then transition to DESIGN_REVIEW.
+
+### If ARCH_DESIGN:
+- **RESEARCH**: Before finalizing component design:
+  - Search for existing interfaces/APIs in codebase
+  - Web search for component design patterns
+  - Use Gemini rubber duck for interface decisions
+- Document research in "## Research Notes > ### ARCH_DESIGN Phase Research"
+- Select the current Epic.
+- Decompose the Epic into **Stories** (Sub-systems/Interfaces).
+- Update the Design Spec and Journey file.
+- Update the Meta section: change "- Previous Phase: SYSTEM_DESIGN" to "- Previous Phase: ARCH_DESIGN", then transition to DESIGN_REVIEW for the first/next Story.
+
+### If MODULE_DESIGN:
+- **RESEARCH**: Before finalizing module design:
+  - Search codebase for similar functions/classes
+  - Web search for algorithm implementations
+  - Use Gemini rubber duck for edge cases
+- Document research in "## Research Notes > ### MODULE_DESIGN Phase Research"
+- Select the current Story.
+- Create a detailed technical design: signatures, state changes, error handling.
+- **Perform a Design Review**: Critique the design for leaks, complexity, and performance.
+- If review fails, stay in MODULE_DESIGN and fix.
+- If unsure, transition to WAITING_FOR_USER.
+- If passed, update the Meta section: change "- Previous Phase: ARCH_DESIGN" to "- Previous Phase: MODULE_DESIGN", then transition to DESIGN_REVIEW.
+`, IMPLEMENTATION_PHASES = `### If PROTOTYPING (Optional):
+- Use Python/C++ to validate complex algorithms before production implementation.
+- If successful, transition back to MODULE_DESIGN or IMPLEMENTATION.
+
+### If IMPLEMENTATION:
+- Code exactly one Story based on the approved MODULE_DESIGN.
+- **If the Story decomposes into independent sub-tasks:**
+  - Document each sub-task with clear inputs/outputs
+  - Mark which can be executed in parallel
+  - Example format:
+    \`\`\`
+    ## Implementation Plan
+    - [ ] Sub-task A (can run in parallel)
+    - [ ] Sub-task B (can run in parallel)
+    - [ ] Sub-task C (depends on A and B)
+    \`\`\`
+- **If the Story is simple/unitary:** Implement directly
+- Run basic guardrails (build).
+- Transition to UNIT_TEST.
+
+### If UNIT_TEST:
+- Run tests specific to the module/story.
+- Analyze logs and edge cases.
+- If fails, transition back to MODULE_DESIGN.
+- If passes, transition to INTEGRATION_TEST.
+
+### If INTEGRATION_TEST:
+- Run system-wide tests (all_tests).
+- Verify the new module interacts correctly with existing components.
+- If fails, transition back to ARCH_DESIGN.
+- If passes, check if this was the last story in the current epic:
+  - If yes, mark the current Epic as COMPLETE in the Learnings Log with format: "**Epic E# (Epic Name) COMPLETED**. All N stories implemented with X tests passing."
+  - Check if there are more epics defined in the epic decomposition section.
+  - If yes, transition to WAITING_FOR_USER (which will auto-transition to the next epic's ARCH_DESIGN).
+  - If no, transition to SYSTEM_TEST.
+- If this was not the last story in the current epic, transition back to MODULE_DESIGN for the next story.
+
+### If SYSTEM_TEST:
+- Verify the entire system against the **System Requirements** in the Spec.
+- Check performance metrics (CPU, latency).
+- If fails, transition back to SYSTEM_DESIGN.
+- If passes, transition to ACCEPTANCE_TEST.
+
+### If ACCEPTANCE_TEST:
+- Verify against the **User Requirements** and final **Acceptance Criteria**.
+- If everything passes, transition to CONSOLIDATING.
+- If fails, transition back to REQUIREMENTS.
+
+### If WAITING_FOR_USER:
+- Write clear questions to \`## Pending Questions\`.
+- Wait for user \`hint\` or sign-off.
+
+### If CONSOLIDATING:
+- Cleanup, document, and finalize the Design Spec.
+- Transition to COMPLETE.
+`, IMPORTANT_RULES = `## Important Rules
+- Follow the V-Model: If a verification stage fails, move back to the *corresponding* design stage.
+- One Story per IMPLEMENTATION cycle.
+- Document every state change in the Learnings Log.
+- **Checkbox Management**: When an Epic or major milestone is completed, update relevant checkboxes in the journey file:
+  - Mark completed items as \`[x]\`
+  - Mark items that won't be done as \`[-]\` with brief explanation
+  - Keep checkboxes in sync with actual progress (e.g., milestones, guardrails, acceptance criteria)
+`;
+
+// src/prompts/epic-archival.ts
+function renderEpicArchivalHeader(vars) {
+  return `# Epic Archival Task
+
+## Archival Mode
+${vars.EPIC_ARCHIVAL_MODE}
+
+## Journey File
+${vars.JOURNEY_FILE}
+
+## Epic to Archive
+Epic ${vars.EPIC_NUM}
+
+## Output File
+${vars.EPIC_FILE}
+
+## Journey Name
+${vars.JOURNEY_NAME}
+
+`;
 }
-async function extractResearchContent(journeyFile, phase) {
-  const journeyContent = await fs3.readFile(journeyFile, "utf-8");
-  const sectionPattern = `### ${phase} Phase Research`;
-  const researchMatch = journeyContent.match(new RegExp(`${sectionPattern}\\n([\\s\\S]+?)\\n### `));
-  if (!researchMatch) {
-    return "";
-  }
-  if (researchMatch[1].includes("To be populated")) {
-    return "";
-  }
-  return researchMatch[1].trim();
+function epicArchivalPrompt(vars) {
+  const header = renderEpicArchivalHeader(vars);
+  const task = EPIC_ARCHIVAL_TASK.replaceAll("{{EPIC_NUM}}", vars.EPIC_NUM).replaceAll("{{JOURNEY_FILE}}", vars.JOURNEY_FILE).replaceAll("{{EPIC_FILE}}", vars.EPIC_FILE).replaceAll("{{JOURNEY_NAME}}", vars.JOURNEY_NAME);
+  return header + task;
 }
-var __filename3, SCRIPT_DIR2;
-var init_design_spec = __esm(() => {
-  init_types();
-  init_config();
-  init_journey();
-  __filename3 = fileURLToPath2(import.meta.url);
-  SCRIPT_DIR2 = path3.dirname(__filename3);
-});
+var EPIC_ARCHIVAL_TASK = `## Task
+
+Archive the completed Epic {{EPIC_NUM}} to a separate file to reduce context bloat in the main journey file.
+
+### Context
+
+As V-Model journeys progress through multiple epics, the journey.md file accumulates large amounts of detailed content:
+- Research notes for each design phase (SYSTEM_DESIGN, ARCH_DESIGN, MODULE_DESIGN)
+- Epic Decomposition sections with detailed story designs
+- Learnings Log with timestamped entries
+- Dead Ends and Anti-Patterns
+
+This creates context bloat where the main journey file becomes very large, injecting unnecessary context into each AI iteration. The goal is to move completed epic details to separate files that the AI can still open and read when needed, but aren't auto-injected.
+
+### Steps
+
+1. **Read the journey file** at \`{{JOURNEY_FILE}}\`
+2. **Identify Epic {{EPIC_NUM}}'s content**:
+   - Epic Summary (from Epic Decomposition section)
+   - Epic Decomposition (all story designs for this epic)
+   - Research Notes for SYSTEM_DESIGN, ARCH_DESIGN, and MODULE_DESIGN phases related to this epic
+   - Learnings Log entries related to this epic
+   - Any Dead Ends encountered during this epic
+3. **Create the epic file** at \`{{EPIC_FILE}}\` with the epic's content
+4. **Update the main journey file** to replace epic details with a brief summary, then provide a link to the new \`{{EPIC_FILE}}\`
+
+### Epic File Structure
+
+Create the epic file with this structure:
+
+\`\`\`markdown
+# Epic E{{EPIC_NUM}}: {Epic Name} - Archive
+
+> **Journey**: {{JOURNEY_NAME}}
+> **Archived**: {current_date}
+> **Reason**: Epic completed - reducing main journey file size
+
+## Epic Summary
+{Brief 2-3 sentence summary of what this epic accomplished}
+
+## Epic Decomposition
+{Full epic decomposition with all story designs - copy from main journey}
+
+## Research Notes
+
+### SYSTEM_DESIGN Phase Research (Epic {{EPIC_NUM}})
+{Relevant research from SYSTEM_DESIGN phase that relates to this epic}
+
+### ARCH_DESIGN Phase Research (Epic {{EPIC_NUM}})
+{Relevant research from ARCH_DESIGN phase that relates to this epic}
+
+### MODULE_DESIGN Phase Research (Epic {{EPIC_NUM}})
+{Relevant research from MODULE_DESIGN phase that relates to this epic}
+
+## Learnings
+{Learnings Log entries for this epic - filter for entries mentioning E{{EPIC_NUM}} or this epic's name}
+
+## Dead Ends (if any)
+{Any dead ends or anti-patterns specific to this epic}
+\`\`\`
+
+### Main Journey Update
+
+After creating the epic file, update the main journey file:
+
+1. **Replace the Epic Decomposition** for this epic with a brief summary:
+\`\`\`markdown
+### Epic E{{EPIC_NUM}}: {Epic Name}
+**Status**: COMPLETE ({date})
+**Stories**: {N} stories implemented
+**Details**: See \`{{JOURNEY_NAME}}.journey.E{{EPIC_NUM}}.md\` for full documentation
+\`\`\`
+
+2. **Remove or summarize** the research notes for this epic (keep only high-level findings)
+
+3. **Update the Epic Progress table** to remain unchanged (it must stay in the main journey)
+
+4. **Remove** detailed learnings related to this epic from the Learnings Log (keep only journey-level learnings)
+
+### Important Constraints
+
+- **DO NOT archive User Hints** - these must stay in the main journey file
+- **DO NOT archive REQUIREMENTS Phase Research** - this is needed throughout the journey
+- **DO NOT archive Anti-Patterns** - these are journey-wide and must stay accessible
+- **DO preserve the Epic Progress table** in the main journey
+- **DO preserve all Meta section data**
+- **DO preserve Guardrails & Baseline Metrics**
+- **DO preserve Pending Questions**
+- **DO preserve Checkpoints**
+- **DO preserve Design Spec link**
+
+### Execution
+
+Use the Edit tool to:
+1. Create the new epic file at \`{{EPIC_FILE}}\`
+2. Update the main journey file to replace epic details with brief summary
+
+Ensure the main journey file remains valid and functional after archival.`;
+
+// src/prompts/gemini-review.ts
+function geminiReviewPrompt(vars, hasResearch) {
+  const template = hasResearch ? GEMINI_REVIEW_WITH_RESEARCH : GEMINI_REVIEW_NO_RESEARCH;
+  return template.replace(/{{PHASE}}/g, vars.PHASE).replace(/{{DESIGN_CONTENT}}/g, vars.DESIGN_CONTENT).replace(/{{RESEARCH_CONTENT}}/g, vars.RESEARCH_CONTENT || "");
+}
+var GEMINI_REVIEW_WITH_RESEARCH = `You are a design consultant reviewing a V-Model {{PHASE}} phase.
+
+Evaluate BOTH the design AND the research that supports it.
+
+Provide your review in this EXACT format:
+---
+DECISION: [APPROVED / ITERATE]
+RESEARCH_QUALITY: [THOROUGH / ADEQUATE / INSUFFICIENT]
+ISSUES:
+- [issue 1, if any]
+- [issue 2, if any]
+RECOMMENDATIONS:
+- [recommendation 1]
+- [recommendation 2]
+---
+
+Design content to review:
+{{DESIGN_CONTENT}}
+
+Research Notes:
+{{RESEARCH_CONTENT}}
+
+Rules:
+- APPROVED: Design is sound, minor suggestions only
+- ITERATE: Major issues that must be addressed before proceeding
+- THOROUGH: Good research coverage, multiple sources consulted
+- ADEQUATE: Basic research done, some gaps acceptable
+- INSUFFICIENT: Must do more research before proceeding
+`, GEMINI_REVIEW_NO_RESEARCH = `You are a design consultant reviewing a V-Model {{PHASE}} phase.
+
+Provide your review in this EXACT format:
+---
+DECISION: [APPROVED / ITERATE]
+RESEARCH_QUALITY: [NOT_APPLICABLE]
+ISSUES:
+- [issue 1, if any]
+RECOMMENDATIONS:
+- [recommendation 1]
+---
+
+Design content to review:
+{{DESIGN_CONTENT}}
+
+Rules:
+- APPROVED: Design is sound, minor suggestions only
+- ITERATE: Major issues that must be addressed before proceeding
+
+Note: No research notes were provided for this phase.
+`;
+
+// src/prompts/index.ts
+var init_prompts = () => {};
 
 // src/ai-provider.ts
 import { spawn } from "child_process";
@@ -2602,15 +2884,12 @@ async function runAIWithPrompt(promptFile) {
   });
 }
 async function consultGemini(phase, designContent, researchContent) {
-  const prompt = await fs4.readFile("/tmp/v-model-gemini-review-prompt.md", "utf-8");
-  const reviewPrompt = `${prompt}
-
-Design content to review:
-${designContent}
-
-${researchContent ? `Research Notes:
-${researchContent}
-` : ""}`;
+  const hasResearch = Boolean(researchContent?.trim());
+  const reviewPrompt = geminiReviewPrompt({
+    PHASE: phase,
+    DESIGN_CONTENT: designContent,
+    RESEARCH_CONTENT: researchContent || ""
+  }, hasResearch);
   const tempPrompt = `/tmp/v-model-gemini-review-${Date.now()}.md`;
   await fs4.writeFile(tempPrompt, reviewPrompt);
   try {
@@ -2624,7 +2903,7 @@ ${researchContent}
     proc.stdout?.on("data", (chunk) => {
       output += chunk.toString();
     });
-    proc.on("close", (code) => {
+    proc.on("close", (_code) => {
       const index = childProcesses.indexOf(proc);
       if (index > -1) {
         childProcesses.splice(index, 1);
@@ -2659,6 +2938,7 @@ var childProcesses;
 var init_ai_provider = __esm(() => {
   init_config();
   init_logger();
+  init_prompts();
   childProcesses = [];
 });
 
@@ -2675,9 +2955,8 @@ __export(exports_epic_archival, {
   createOrUpdateEpicFile: () => createOrUpdateEpicFile,
   archiveEpicDetails: () => archiveEpicDetails
 });
-import { promises as fs5 } from "fs";
+import { promises as fs5, existsSync as existsSync4 } from "fs";
 import path4 from "path";
-import { existsSync as existsSync3 } from "fs";
 function getEpicFilePath(journeyFile, epicNum) {
   const journeyDir = path4.dirname(journeyFile);
   const journeyName = path4.basename(journeyFile, ".journey.md");
@@ -2687,7 +2966,7 @@ function getEpicFilePath(journeyFile, epicNum) {
 async function createOrUpdateEpicFile(journeyFile, epicNum, epicName) {
   const epicFilePath = getEpicFilePath(journeyFile, epicNum);
   const journeyName = path4.basename(journeyFile, ".journey.md");
-  if (existsSync3(epicFilePath)) {
+  if (existsSync4(epicFilePath)) {
     logInfo(`Epic file exists, will update: ${epicFilePath}`);
     return epicFilePath;
   }
@@ -2740,39 +3019,39 @@ async function getCompletedUnarchivedEpics(journeyFile) {
     const match = line.match(/^\| E(\d+) \| (.+?) \| (\w+) /);
     if (!match)
       continue;
-    const [, epicNumStr, epicName, epicStatus] = match;
+    const [, epicNumStr, _epicName, epicStatus] = match;
     const epicNum = parseInt(epicNumStr, 10);
     if (epicStatus !== "COMPLETE")
       continue;
     if (epicNum === currentEpicNum)
       continue;
     const epicFilePath = path4.join(journeyDir, `${sanitizeJourneyName(journeyName)}.journey.E${epicNum}.md`);
-    if (existsSync3(epicFilePath))
+    if (existsSync4(epicFilePath))
       continue;
     completedUnarchivedEpics.push(epicNum);
   }
   return completedUnarchivedEpics;
 }
 async function archiveEpicDetails(journeyFile, epicNum) {
-  const journeyDir = path4.dirname(journeyFile);
   const journeyName = path4.basename(journeyFile, ".journey.md");
   const epicFilePath = getEpicFilePath(journeyFile, epicNum);
   logInfo(`Archiving Epic E${epicNum} to ${epicFilePath}...`);
   const currentDate = new Date().toISOString().split("T")[0];
-  const archivalMode = existsSync3(epicFilePath) ? `The epic file already exists at \`${epicFilePath}\`.
+  const archivalMode = existsSync4(epicFilePath) ? `The epic file already exists at \`${epicFilePath}\`.
 
 Your task is to mark this epic as COMPLETE by:
 1. Updating the **Status** field in the header to "COMPLETE (${currentDate})"
 2. Adding completion summary to Epic Summary section
 3. DO NOT recreate the file or modify existing structure
 4. Add a link to the archived epic from the main journey file` : `Create a new epic archive file at \`${epicFilePath}\` with the epic's complete content.`;
-  const archivalPrompt = await loadPrompt("epic-archival.md", {
+  const archivalVars = {
     EPIC_ARCHIVAL_MODE: archivalMode,
     JOURNEY_FILE: journeyFile,
     EPIC_NUM: epicNum.toString(),
     EPIC_FILE: epicFilePath,
     JOURNEY_NAME: journeyName
-  });
+  };
+  const archivalPrompt = epicArchivalPrompt(archivalVars);
   const tempPrompt = `/tmp/v-model-archival-${epicNum}-${Date.now()}.md`;
   await fs5.writeFile(tempPrompt, `${archivalPrompt}
 
@@ -2786,7 +3065,7 @@ Current working directory: ${process.cwd()}
     if (exitCode !== 0) {
       throw new Error(`Archival failed with exit code ${exitCode}`);
     }
-    if (existsSync3(epicFilePath)) {
+    if (existsSync4(epicFilePath)) {
       logSuccess(`\u2705 Epic E${epicNum} archived to ${epicFilePath}`);
     } else {
       logWarning("Epic file not created, archival may have failed");
@@ -2840,7 +3119,7 @@ async function shouldContinueToNextEpic(journeyFile, currentEpic) {
 var init_epic_archival = __esm(() => {
   init_journey();
   init_logger();
-  init_design_spec();
+  init_prompts();
   init_ai_provider();
 });
 
@@ -2858,9 +3137,8 @@ __export(exports_checkpoint, {
   assertInParentProject: () => assertInParentProject
 });
 import { spawn as spawn2 } from "child_process";
-import { promises as fs6 } from "fs";
+import { promises as fs6, existsSync as existsSync5 } from "fs";
 import path5 from "path";
-import { existsSync as existsSync4 } from "fs";
 async function gitCommand(args, cwd) {
   const workingDir = cwd || config.projectDir;
   return new Promise((resolve, reject) => {
@@ -2891,14 +3169,14 @@ ${stderr}`));
 }
 function assertInParentProject(cwd) {
   const modulesPath = path5.join(cwd, ".git", "modules");
-  if (existsSync4(modulesPath)) {
+  if (existsSync5(modulesPath)) {
     throw new VModelError("Git operation attempted from submodule. Must use parent project directory.", 1, false);
   }
   const dirName = path5.basename(cwd);
   if (dirName === "ai-v-model") {
     const parentDir = path5.dirname(cwd);
-    const hasParentGit = existsSync4(path5.join(parentDir, ".git"));
-    const hasVModelDir = existsSync4(path5.join(parentDir, "v_model"));
+    const hasParentGit = existsSync5(path5.join(parentDir, ".git"));
+    const hasVModelDir = existsSync5(path5.join(parentDir, "v_model"));
     if (hasParentGit || hasVModelDir) {
       throw new VModelError("Git operation attempted from ai-v-model directory. Must use parent project directory.", 1, false);
     }
@@ -3056,10 +3334,81 @@ init_config();
 init_journey();
 init_file_utils();
 init_logger();
-init_design_spec();
-init_ai_provider();
 import { promises as fs7 } from "fs";
 import path6 from "path";
+
+// src/design-spec.ts
+init_types();
+init_config();
+init_journey();
+import { promises as fs3, existsSync as existsSync3 } from "fs";
+import path3 from "path";
+function getDesignSpecPath(journeyName) {
+  const journeyDir = path3.join(config.projectDir, "v_model", "journey");
+  return path3.join(journeyDir, `${journeyName}.spec.md`);
+}
+function getDesignSpecPathFromJourney(journeyFile) {
+  const journeyName = path3.basename(journeyFile, ".journey.md");
+  return getDesignSpecPath(journeyName);
+}
+async function extractDesignContent(journeyFile, phase) {
+  const specPath = getDesignSpecPathFromJourney(journeyFile);
+  let content = "";
+  switch (phase) {
+    case "REQUIREMENTS" /* REQUIREMENTS */:
+      if (existsSync3(specPath)) {
+        const specContent = await fs3.readFile(specPath, "utf-8");
+        const userReqMatch = specContent.match(/## User Requirements\n([\s\S]+?)\n## /);
+        const sysReqMatch = specContent.match(/## System Requirements\n([\s\S]+?)\n## /);
+        content = (userReqMatch?.[1] || "") + `
+
+` + (sysReqMatch?.[1] || "");
+      }
+      break;
+    case "SYSTEM_DESIGN" /* SYSTEM_DESIGN */:
+      if (existsSync3(specPath)) {
+        const specContent = await fs3.readFile(specPath, "utf-8");
+        const epicsMatch = specContent.match(/## Epics\n([\s\S]+?)\n## /);
+        const archMatch = specContent.match(/## Architecture\n([\s\S]+?)\n## /);
+        content = (epicsMatch?.[1] || "") + `
+
+` + (archMatch?.[1] || "");
+      }
+      break;
+    case "ARCH_DESIGN" /* ARCH_DESIGN */: {
+      const journeyContent = await fs3.readFile(journeyFile, "utf-8");
+      const epicMatch = journeyContent.match(/## Current Epic\n([\s\S]+?)\n## /);
+      content = epicMatch?.[1] || "";
+      break;
+    }
+    case "MODULE_DESIGN" /* MODULE_DESIGN */: {
+      const journeyContent2 = await fs3.readFile(journeyFile, "utf-8");
+      const storyMatch = journeyContent2.match(/## Current Story\n([\s\S]+?)\n## /);
+      content = storyMatch?.[1] || "";
+      break;
+    }
+  }
+  if (!content.trim()) {
+    content = await fs3.readFile(journeyFile, "utf-8");
+  }
+  return content;
+}
+async function extractResearchContent(journeyFile, phase) {
+  const journeyContent = await fs3.readFile(journeyFile, "utf-8");
+  const sectionPattern = `### ${phase} Phase Research`;
+  const researchMatch = journeyContent.match(new RegExp(`${sectionPattern}\\n([\\s\\S]+?)\\n### `));
+  if (!researchMatch) {
+    return "";
+  }
+  if (researchMatch[1].includes("To be populated")) {
+    return "";
+  }
+  return researchMatch[1].trim();
+}
+
+// src/main-loop.ts
+init_prompts();
+init_ai_provider();
 
 // src/state-machine.ts
 init_types();
@@ -3091,7 +3440,7 @@ async function autoTransitionFromReview(journeyFile, previousPhase) {
   if (!stateMatch) {
     return;
   }
-  const currentState = stateMatch[1].toUpperCase();
+  const _currentState = stateMatch[1].toUpperCase();
   let nextState;
   switch (previousPhase) {
     case "REQUIREMENTS":
@@ -3126,8 +3475,8 @@ async function transitionToNextEpic(journeyFile, completedEpic) {
     const nextEpicNum = parseInt(nextEpic.replace(/\D/g, ""), 10);
     const nextEpicName = await getEpicNameFromTable(journeyFile, nextEpic);
     const { createOrUpdateEpicFile: createOrUpdateEpicFile2 } = await Promise.resolve().then(() => (init_epic_archival(), exports_epic_archival));
-    const journeyName = journeyFile.split("/").pop()?.replace(".journey.md", "") || "";
-    const epicFile = await createOrUpdateEpicFile2(journeyFile, nextEpicNum, nextEpicName);
+    const _journeyName = journeyFile.split("/").pop()?.replace(".journey.md", "") || "";
+    const _epicFile = await createOrUpdateEpicFile2(journeyFile, nextEpicNum, nextEpicName);
     await appendToFile(journeyFile, `
 **Epic ${nextEpic}: ${nextEpicName}** - See \`.journey.E${nextEpicNum}.md\` for detailed work.
 `);
@@ -3169,15 +3518,15 @@ ${epicContent.split(`
 `;
     } catch {}
   }
-  const prompt = await loadPrompt("main-iteration.md", {
+  const vars = {
     AI_PROVIDER: config.aiProvider,
     JOURNEY_CONTENT: journeyContent,
-    EPIC_CONTENT: epicContent,
-    EPIC_FILE_INSTRUCTIONS: epicInstructions,
-    PHASE: state,
+    EPIC_CONTENT: epicContent || undefined,
+    EPIC_FILE_INSTRUCTIONS: epicInstructions || undefined,
     JOURNEY_FILE: journeyFile,
     JOURNEY_NAME: journeyName
-  });
+  };
+  const prompt = mainIterationPrompt(vars);
   return prompt;
 }
 async function runIteration(journeyFile) {
@@ -3185,7 +3534,6 @@ async function runIteration(journeyFile) {
   const state = await getJourneyState(journeyFile);
   logState(`Current state: ${state}`);
   logPhase(`Running iteration for ${journeyName}...`);
-  const designSpecPath = path6.join(path6.dirname(journeyFile), `${journeyName}.spec.md`);
   const currentEpic = await getCurrentEpic(journeyFile);
   let epicFile = "";
   if (currentEpic && currentEpic !== "TBD" && state !== "SYSTEM_DESIGN" /* SYSTEM_DESIGN */ && state !== "REQUIREMENTS" /* REQUIREMENTS */) {
@@ -3268,7 +3616,7 @@ async function handleWaitingForUser(journeyFile) {
   const content = await fs7.readFile(journeyFile, "utf-8");
   const pendingQuestionsMatch = content.match(/## Pending Questions\n([\s\S]+?)\n## /);
   const pendingQuestions = pendingQuestionsMatch?.[1].split(`
-`).filter((line) => line.match(/^\- \[ \] /)).join(`
+`).filter((line) => line.match(/^- \[ \] /)).join(`
 `) || "";
   if (!pendingQuestions) {
     const currentEpic = await getCurrentEpic(journeyFile);
@@ -3321,7 +3669,7 @@ async function mainLoop(journeyFile) {
       case "ARCHIVING" /* ARCHIVING */:
         await handleArchiving(journeyFile);
         break;
-      default:
+      default: {
         await runIteration(journeyFile);
         const currentBranch = await (await Promise.resolve().then(() => (init_checkpoint(), exports_checkpoint))).getCurrentBranch();
         if (currentBranch) {
@@ -3337,6 +3685,7 @@ async function mainLoop(journeyFile) {
         }
         await archive_completed_epics_if_needed(journeyFile);
         break;
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
@@ -3490,7 +3839,7 @@ async function handleStatus() {
     console.log(`  ${approach}`);
     const pendingQuestionsMatch = content.match(/## Pending Questions\n([\s\S]+?)\n## /);
     const pendingQuestions = pendingQuestionsMatch?.[1].split(`
-`).filter((line) => line.match(/^\- \[ \] /)).join(`
+`).filter((line) => line.match(/^- \[ \] /)).join(`
 `);
     if (pendingQuestions) {
       console.log(`
@@ -3532,7 +3881,7 @@ async function main() {
         projectDir: options.projectDir,
         noPush: options.noPush || false,
         commitInterval: parseInt(options.commitInterval, 10)
-      });
+      }, options.config);
       setupSignalHandlers();
       await ensureDirectories();
       if (!goal) {
@@ -3541,34 +3890,36 @@ async function main() {
           logError("No active journey found");
           logInfo('Start a new journey with: v-model "your goal"');
           logInfo("Or check status with: v-model status");
-          return 1;
+          process.exitCode = 1;
+          return;
         }
         await mainLoop(activeJourney);
-        return 0;
+        return;
       }
       logInfo(`Creating new journey for goal: ${goal}`);
       const journeyFile = await createJourneyFile(goal);
       if (!journeyFile) {
         logError("Failed to create journey file");
-        return 1;
+        process.exitCode = 1;
+        return;
       }
       logSuccess("Journey created! Starting loop...");
       await mainLoop(journeyFile);
-      return 0;
+      return;
     } catch (error) {
       if (error instanceof VModelError) {
         if (error.recoverable) {
           logWarning(`Recoverable error: ${error.message}`);
-          return 0;
         } else {
           logError(error.message);
-          return error.exitCode;
+          process.exitCode = error.exitCode;
         }
       } else if (error instanceof Error) {
         logError(error.message);
-        return 1;
+        process.exitCode = 1;
+      } else {
+        process.exitCode = 1;
       }
-      return 1;
     }
   });
   program2.command("status").description("Show status of all journeys").action(async () => {

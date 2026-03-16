@@ -7,6 +7,7 @@ import { spawn } from "child_process";
 import { promises as fs } from "fs";
 import { config } from "./config.js";
 import { logDebug, logInfo } from "./logger.js";
+import { geminiReviewPrompt } from "./prompts/index.js";
 import type { ClaudeCapabilities, StreamEvent } from "./types.js";
 
 // Track child processes for cleanup
@@ -265,17 +266,13 @@ export async function consultGemini(
   designContent: string,
   researchContent?: string
 ): Promise<string> {
-  const prompt = await fs.readFile(
-    "/tmp/v-model-gemini-review-prompt.md",
-    "utf-8"
-  );
-
-  const reviewPrompt = `${prompt}
-
-Design content to review:
-${designContent}
-
-${researchContent ? `Research Notes:\n${researchContent}\n` : ""}`;
+  // Use the new type-safe prompt system
+  const hasResearch = Boolean(researchContent?.trim());
+  const reviewPrompt = geminiReviewPrompt({
+    PHASE: phase,
+    DESIGN_CONTENT: designContent,
+    RESEARCH_CONTENT: researchContent || '',
+  }, hasResearch);
 
   // Write review prompt to temp file
   const tempPrompt = `/tmp/v-model-gemini-review-${Date.now()}.md`;

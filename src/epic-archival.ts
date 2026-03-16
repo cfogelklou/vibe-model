@@ -7,7 +7,7 @@ import { promises as fs, existsSync } from "fs";
 import path from "path";
 import { getCurrentEpic, sanitizeJourneyName } from "./journey.js";
 import { logInfo, logSuccess, logWarning } from "./logger.js";
-import { loadPrompt } from "./design-spec.js";
+import { epicArchivalPrompt, type EpicArchivalVars } from "./prompts/index.js";
 import { runAIWithPrompt } from "./ai-provider.js";
 
 /**
@@ -161,13 +161,14 @@ Your task is to mark this epic as COMPLETE by:
     : `Create a new epic archive file at \`${epicFilePath}\` with the epic's complete content.`;
 
   // Create archival prompt
-  const archivalPrompt = await loadPrompt("epic-archival.md", {
+  const archivalVars: EpicArchivalVars = {
     EPIC_ARCHIVAL_MODE: archivalMode,
     JOURNEY_FILE: journeyFile,
     EPIC_NUM: epicNum.toString(),
     EPIC_FILE: epicFilePath,
     JOURNEY_NAME: journeyName,
-  });
+  };
+  const archivalPrompt = epicArchivalPrompt(archivalVars);
 
   // Create temp file with prompt
   const tempPrompt = `/tmp/v-model-archival-${epicNum}-${Date.now()}.md`;

@@ -16,7 +16,8 @@ import {
 } from "./journey.js";
 import { appendToFile } from "./file-utils.js";
 import { logPhase, logState, logInfo, logSuccess, logWarning, logError, logDebug } from "./logger.js";
-import { loadPrompt, extractDesignContent, extractResearchContent } from "./design-spec.js";
+import { extractDesignContent, extractResearchContent } from "./design-spec.js";
+import { mainIterationPrompt, type MainIterationVars } from "./prompts/index.js";
 import { runAIWithPrompt, consultGemini } from "./ai-provider.js";
 import {
   transitionToNextEpic,
@@ -61,16 +62,17 @@ ${epicContent.split("\n").slice(0, 50).join("\n")}
     }
   }
 
-  // Load main iteration prompt template
-  const prompt = await loadPrompt("main-iteration.md", {
+  // Load main iteration prompt template using type-safe system
+  const vars: MainIterationVars = {
     AI_PROVIDER: config.aiProvider,
     JOURNEY_CONTENT: journeyContent,
-    EPIC_CONTENT: epicContent,
-    EPIC_FILE_INSTRUCTIONS: epicInstructions,
-    PHASE: state,
+    EPIC_CONTENT: epicContent || undefined,
+    EPIC_FILE_INSTRUCTIONS: epicInstructions || undefined,
     JOURNEY_FILE: journeyFile,
     JOURNEY_NAME: journeyName,
-  });
+  };
+
+  const prompt = mainIterationPrompt(vars);
 
   return prompt;
 }
