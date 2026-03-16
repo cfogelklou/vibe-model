@@ -144,3 +144,7 @@ Before finalizing any design, conduct research:
 - Follow the V-Model: If a verification stage fails, move back to the *corresponding* design stage.
 - One Story per IMPLEMENTATION cycle.
 - Document every state change in the Learnings Log.
+- **Checkbox Management**: When an Epic or major milestone is completed, update relevant checkboxes in the journey file:
+  - Mark completed items as `[x]`
+  - Mark items that won't be done as `[-]` with brief explanation
+  - Keep checkboxes in sync with actual progress (e.g., milestones, guardrails, acceptance criteria)
