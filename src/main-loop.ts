@@ -26,7 +26,7 @@ import {
   autoTransitionFromReview,
 } from "./state-machine";
 import { commitChanges, pushChanges, hasUncommittedChanges, getCurrentBranch } from "./checkpoint";
-import { getCompletedUnarchivedEpics, archiveEpicDetails } from "./epic-archival";
+import { getCompletedUnarchivedEpics, markEpicComplete } from "./epic-archival";
 
 /**
  * Generate iteration prompt for current state
@@ -265,7 +265,7 @@ async function handleArchiving(journeyFile: string): Promise<void> {
   const completedUnarchivedEpics = await getCompletedUnarchivedEpics(journeyFile);
 
   for (const epicNum of completedUnarchivedEpics) {
-    await archiveEpicDetails(journeyFile, epicNum);
+    await markEpicComplete(journeyFile, epicNum);
   }
 
   // Restore previous state (or BLOCKED if unknown)

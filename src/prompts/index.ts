@@ -21,13 +21,11 @@
 
 // Export all prompt generator functions
 export { mainIterationPrompt } from './main-iteration';
-export { epicArchivalPrompt } from './epic-archival';
 export { geminiReviewPrompt } from './gemini-review';
 
 // Export types for consumers who need them
 export type {
   MainIterationVars,
-  EpicArchivalVars,
   GeminiReviewVars,
   TemplateVariable,
 } from './types';

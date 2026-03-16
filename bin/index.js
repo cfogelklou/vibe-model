@@ -2706,94 +2706,6 @@ function renderMainIterationHeader(vars) {
 function mainIterationPrompt(vars) {
   return renderMainIterationHeader(vars) + REQUIREMENTS_PHASE + IMPLEMENTATION_PHASES + IMPORTANT_RULES;
 }
-// src/prompts/epic-archival.ts
-var EPIC_ARCHIVAL_TASK = `## Task
-
-Mark the completed Epic {{EPIC_NUM}} as COMPLETE in the epic file.
-
-### Context
-
-Epic content is written directly to the epic file during work. The archival process simply marks the epic as COMPLETE and updates journey.md with a completion summary.
-
-### Prerequisites
-
-The epic file MUST exist at \`{{EPIC_FILE}}\`. If it doesn't, this is an error in the workflow.
-
-### Steps
-
-1. **Read the epic file** at \`{{EPIC_FILE}}\`
-2. **Update the epic file**:
-   - Change Status from "IN_PROGRESS" to "COMPLETE ({current_date})"
-   - Add completion summary to Epic Summary section
-   - Update Implementation Progress table: all stories should show COMPLETE with test results
-3. **Update the main journey file** at \`{{JOURNEY_FILE}}\`:
-   - In Epic Progress table: mark epic as COMPLETE
-   - Add brief completion entry in Learnings Log
-   - Ensure link to epic file is present
-
-### Epic File Update
-
-Update the epic file header:
-\`\`\`markdown
-# Epic E{{EPIC_NUM}}: {Epic Name}
-
-> **Journey**: {{JOURNEY_NAME}}
-> **Created**: {original_date}
-> **Status**: COMPLETE ({current_date})
-\`\`\`
-
-### Main Journey Update
-
-Update the Epic Progress table row with exact format (must match \`extractEpicProgressTable()\` regex in epic-archival.ts:114):
-\`\`\`markdown
-| E{{EPIC_NUM}} | {Epic Name} | COMPLETE | {N} | {N} |
-\`\`\`
-
-**Note**: The Status column should be "COMPLETE" (not "COMPLETE (date)") to match the regex \`/^\\| E(\\d+) \\| (.+?) \\| (\\w+) /\`. The date can be added in the Learnings Log entry instead.
-
-Add to Learnings Log:
-\`\`\`markdown
-**Epic E{{EPIC_NUM}} ({Epic Name}) COMPLETED**. All N stories implemented with X tests passing.
-See \`{{JOURNEY_NAME}}.journey.E{{EPIC_NUM}}.md\` for full documentation.
-\`\`\`
-
-### Important Constraints
-
-- **DO NOT extract content from journey.md** - it's already in the epic file
-- **DO preserve all epic content** - research, designs, learnings
-- **DO NOT modify User Hints** - these stay in journey.md
-- **DO preserve the Epic Progress table** in journey.md
-
-### Execution
-
-Use the Edit tool to:
-1. Update the epic file status and add completion summary
-2. Update the main journey file's Epic Progress table and Learnings Log`;
-function renderEpicArchivalHeader(vars) {
-  return `# Epic Archival Task
-
-## Archival Mode
-${vars.EPIC_ARCHIVAL_MODE}
-
-## Journey File
-${vars.JOURNEY_FILE}
-
-## Epic to Archive
-Epic ${vars.EPIC_NUM}
-
-## Output File
-${vars.EPIC_FILE}
-
-## Journey Name
-${vars.JOURNEY_NAME}
-
-`;
-}
-function epicArchivalPrompt(vars) {
-  const header = renderEpicArchivalHeader(vars);
-  const task = EPIC_ARCHIVAL_TASK.replaceAll("{{EPIC_NUM}}", vars.EPIC_NUM).replaceAll("{{JOURNEY_FILE}}", vars.JOURNEY_FILE).replaceAll("{{EPIC_FILE}}", vars.EPIC_FILE).replaceAll("{{JOURNEY_NAME}}", vars.JOURNEY_NAME);
-  return header + task;
-}
 // src/prompts/gemini-review.ts
 var GEMINI_REVIEW_WITH_RESEARCH = `You are a design consultant reviewing a V-Model {{PHASE}} phase.
 
@@ -3150,49 +3062,17 @@ async function getCompletedUnarchivedEpics(journeyFile) {
   }
   return completedUnarchivedEpics;
 }
-async function archiveEpicDetails(journeyFile, epicNum) {
-  const journeyName = path4.basename(journeyFile, ".journey.md");
+async function markEpicComplete(journeyFile, epicNum) {
   const epicFilePath = getEpicFilePath(journeyFile, epicNum);
-  logInfo(`Archiving Epic E${epicNum} to ${epicFilePath}...`);
   const currentDate = new Date().toISOString().split("T")[0];
-  const archivalMode = existsSync4(epicFilePath) ? `The epic file already exists at \`${epicFilePath}\`.
-
-Your task is to mark this epic as COMPLETE by:
-1. Updating the **Status** field in the header to "COMPLETE (${currentDate})"
-2. Adding completion summary to Epic Summary section
-3. DO NOT recreate the file or modify existing structure
-4. Add a link to the archived epic from the main journey file` : `Create a new epic archive file at \`${epicFilePath}\` with the epic's complete content.`;
-  const archivalVars = {
-    EPIC_ARCHIVAL_MODE: archivalMode,
-    JOURNEY_FILE: journeyFile,
-    EPIC_NUM: epicNum.toString(),
-    EPIC_FILE: epicFilePath,
-    JOURNEY_NAME: journeyName
-  };
-  const archivalPrompt = epicArchivalPrompt(archivalVars);
-  const tempPrompt = `/tmp/v-model-archival-${epicNum}-${Date.now()}.md`;
-  await fs6.writeFile(tempPrompt, `${archivalPrompt}
-
-Current working directory: ${process.cwd()}
-`);
-  try {
-    const exitCode = await runAIWithPrompt(tempPrompt);
-    if (exitCode === 130) {
-      process.exit(130);
-    }
-    if (exitCode !== 0) {
-      throw new Error(`Archival failed with exit code ${exitCode}`);
-    }
-    if (existsSync4(epicFilePath)) {
-      logSuccess(`\u2705 Epic E${epicNum} archived to ${epicFilePath}`);
-    } else {
-      logWarning("Epic file not created, archival may have failed");
-    }
-  } finally {
-    try {
-      await fs6.unlink(tempPrompt);
-    } catch {}
-  }
+  logInfo(`Marking Epic E${epicNum} as COMPLETE...`);
+  const epicContent = await fs6.readFile(epicFilePath, "utf-8");
+  const updatedEpicContent = epicContent.replace(/^(> \*\*Status\*\*): IN_PROGRESS$/m, `$1: COMPLETE (${currentDate})`);
+  await fs6.writeFile(epicFilePath, updatedEpicContent);
+  const journeyContent = await fs6.readFile(journeyFile, "utf-8");
+  const updatedJourneyContent = journeyContent.replace(new RegExp(`^(\\| E${epicNum} \\| .+? \\|) IN_PROGRESS `, "m"), `$1 COMPLETE `);
+  await fs6.writeFile(journeyFile, updatedJourneyContent);
+  logSuccess(`\u2705 Epic E${epicNum} marked as COMPLETE`);
 }
 async function getEpicStatus(journeyFile, epicId) {
   const epicProgressTable = await extractEpicProgressTable(journeyFile);
@@ -3628,7 +3508,7 @@ async function handleArchiving(journeyFile) {
   const preArchiveState = await getPreviousState(journeyFile);
   const completedUnarchivedEpics = await getCompletedUnarchivedEpics(journeyFile);
   for (const epicNum of completedUnarchivedEpics) {
-    await archiveEpicDetails(journeyFile, epicNum);
+    await markEpicComplete(journeyFile, epicNum);
   }
   await setJourneyState(journeyFile, preArchiveState || "BLOCKED");
 }

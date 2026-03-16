@@ -6,9 +6,7 @@
 import { promises as fs, existsSync } from "fs";
 import path from "path";
 import { getCurrentEpic, sanitizeJourneyName } from "./journey";
-import { logInfo, logSuccess, logWarning } from "./logger";
-import { epicArchivalPrompt, type EpicArchivalVars } from "./prompts/index";
-import { runAIWithPrompt } from "./ai-provider";
+import { logInfo, logSuccess } from "./logger";
 
 /**
  * Get epic file path for a given journey and epic number
@@ -157,76 +155,34 @@ export async function getCompletedUnarchivedEpics(
 }
 
 /**
- * Archive a single epic's details to separate file
+ * Mark an epic as COMPLETE via simple string replacement (no AI)
  */
-export async function archiveEpicDetails(
+export async function markEpicComplete(
   journeyFile: string,
   epicNum: number
 ): Promise<void> {
-  const journeyName = path.basename(journeyFile, ".journey.md");
   const epicFilePath = getEpicFilePath(journeyFile, epicNum);
-
-  logInfo(`Archiving Epic E${epicNum} to ${epicFilePath}...`);
-
-  // Pre-compute archival mode based on whether epic file exists
   const currentDate = new Date().toISOString().split("T")[0];
-  const archivalMode = existsSync(epicFilePath)
-    ? `The epic file already exists at \`${epicFilePath}\`.
 
-Your task is to mark this epic as COMPLETE by:
-1. Updating the **Status** field in the header to "COMPLETE (${currentDate})"
-2. Adding completion summary to Epic Summary section
-3. DO NOT recreate the file or modify existing structure
-4. Add a link to the archived epic from the main journey file`
-    : `Create a new epic archive file at \`${epicFilePath}\` with the epic's complete content.`;
+  logInfo(`Marking Epic E${epicNum} as COMPLETE...`);
 
-  // Create archival prompt
-  const archivalVars: EpicArchivalVars = {
-    EPIC_ARCHIVAL_MODE: archivalMode,
-    JOURNEY_FILE: journeyFile,
-    EPIC_NUM: epicNum.toString(),
-    EPIC_FILE: epicFilePath,
-    JOURNEY_NAME: journeyName,
-  };
-  const archivalPrompt = epicArchivalPrompt(archivalVars);
-
-  // Create temp file with prompt
-  const tempPrompt = `/tmp/v-model-archival-${epicNum}-${Date.now()}.md`;
-  await fs.writeFile(
-    tempPrompt,
-    `${archivalPrompt}
-
-Current working directory: ${process.cwd()}
-`
+  // 1. Update epic file: IN_PROGRESS -> COMPLETE (date)
+  const epicContent = await fs.readFile(epicFilePath, "utf-8");
+  const updatedEpicContent = epicContent.replace(
+    /^(> \*\*Status\*\*): IN_PROGRESS$/m,
+    `$1: COMPLETE (${currentDate})`
   );
+  await fs.writeFile(epicFilePath, updatedEpicContent);
 
-  try {
-    // Run AI with the prompt
-    const exitCode = await runAIWithPrompt(tempPrompt);
+  // 2. Update journey.md Epic Progress table
+  const journeyContent = await fs.readFile(journeyFile, "utf-8");
+  const updatedJourneyContent = journeyContent.replace(
+    new RegExp(`^(\\| E${epicNum} \\| .+? \\|) IN_PROGRESS `, "m"),
+    `$1 COMPLETE `
+  );
+  await fs.writeFile(journeyFile, updatedJourneyContent);
 
-    // Re-raise SIGINT if user interrupted (exit code 130 = 128+SIGINT)
-    if (exitCode === 130) {
-      process.exit(130);
-    }
-
-    if (exitCode !== 0) {
-      throw new Error(`Archival failed with exit code ${exitCode}`);
-    }
-
-    // Verify the epic file was created or updated
-    if (existsSync(epicFilePath)) {
-      logSuccess(`✅ Epic E${epicNum} archived to ${epicFilePath}`);
-    } else {
-      logWarning("Epic file not created, archival may have failed");
-    }
-  } finally {
-    // Clean up temp file
-    try {
-      await fs.unlink(tempPrompt);
-    } catch {
-      // Temp file cleanup failed, ignore
-    }
-  }
+  logSuccess(`✅ Epic E${epicNum} marked as COMPLETE`);
 }
 
 /**
