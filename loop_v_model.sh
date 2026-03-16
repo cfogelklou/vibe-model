@@ -1384,13 +1384,20 @@ archive_epic_details() {
 
     # Run AI with the prompt
     local exit_code=0
-    if cat "$temp_prompt" | $AI_CMD $AI_FLAG 2>&1; then
-        exit_code=0
-    else
-        exit_code=$?
+    if [[ "${VERBOSE}" == "true" ]]; then
+        log_debug "--- Archival prompt ---"
+        cat "$temp_prompt" >&2
+        log_debug "--- End of prompt ---"
     fi
+    cat "$temp_prompt" | $AI_CMD $AI_FLAG 2>&1
+    exit_code=$?
 
     rm -f "$temp_prompt"
+
+    # Re-raise SIGINT if user interrupted (exit code 130 = 128+SIGINT)
+    if [[ $exit_code -eq 130 ]]; then
+        kill -INT $$
+    fi
 
     if [ $exit_code -ne 0 ]; then
         log_error "Archival failed with exit code $exit_code"
@@ -1484,14 +1491,21 @@ run_iteration() {
     # Run AI with the prompt
     local exit_code=0
     log_info "Calling ${AI_PROVIDER} to perform iteration..."
-
-    if cat "$temp_prompt" | $AI_CMD $AI_FLAG 2>&1; then
-        exit_code=0
-    else
-        exit_code=$?
+    if [[ "${VERBOSE}" == "true" ]]; then
+        log_debug "--- Iteration prompt ---"
+        cat "$temp_prompt" >&2
+        log_debug "--- End of prompt ---"
     fi
 
+    cat "$temp_prompt" | $AI_CMD $AI_FLAG 2>&1
+    exit_code=$?
+
     rm -f "$temp_prompt"
+
+    # Re-raise SIGINT if user interrupted (exit code 130 = 128+SIGINT)
+    if [[ $exit_code -eq 130 ]]; then
+        kill -INT $$
+    fi
 
     if [ $exit_code -ne 0 ]; then
         log_error "${AI_PROVIDER} returned exit code $exit_code"

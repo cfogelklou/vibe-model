@@ -36,7 +36,7 @@ This creates context bloat where the main journey file becomes very large, injec
    - Learnings Log entries related to this epic
    - Any Dead Ends encountered during this epic
 3. **Create the epic file** at `{{EPIC_FILE}}` with the epic's content
-4. **Update the main journey file** to replace epic details with a brief summary
+4. **Update the main journey file** to replace epic details with a brief summary, then provide a link to the new `{{EPIC_FILE}}`
 
 ### Epic File Structure
 
