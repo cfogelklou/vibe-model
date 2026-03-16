@@ -105,32 +105,32 @@ VERBOSE="${VERBOSE:-false}"
 # ============================================================================
 
 log_info() {
-    echo -e "${BLUE}[INFO]${NC} $*"
+    echo -e "${BLUE}[INFO]${NC} $*" >&2
 }
 
 log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $*"
+    echo -e "${GREEN}[SUCCESS]${NC} $*" >&2
 }
 
 log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $*"
+    echo -e "${YELLOW}[WARNING]${NC} $*" >&2
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $*"
+    echo -e "${RED}[ERROR]${NC} $*" >&2
 }
 
 log_phase() {
-    echo -e "${PURPLE}[PHASE]${NC} $*"
+    echo -e "${PURPLE}[PHASE]${NC} $*" >&2
 }
 
 log_state() {
-    echo -e "${CYAN}[STATE]${NC} $*"
+    echo -e "${CYAN}[STATE]${NC} $*" >&2
 }
 
 log_debug() {
     if [[ "${VERBOSE}" == "true" ]]; then
-        echo -e "${GRAY}[DEBUG]${NC} $*"
+        echo -e "${GRAY}[DEBUG]${NC} $*" >&2
     fi
 }
 
@@ -1072,11 +1072,12 @@ extract_research_content() {
     echo "${content}"
 }
 
-# Append content to journey file
+# Append content to journey file (strips ANSI escape codes)
 append_to_journey() {
     local journey_file="$1"
     local content="$2"
-    echo -e "${content}" >> "${journey_file}"
+    # Strip ANSI escape sequences before writing
+    echo -e "${content}" | sed 's/\x1b\[[0-9;]*m//g' >> "${journey_file}"
 }
 
 # Ensure the Previous Phase marker is set in the Meta section
@@ -1223,6 +1224,8 @@ EOF
 Format: In the Meta section at the top of the journey file, update the line:
 `- Previous Phase: REQUIREMENTS`
 to match the phase you just completed (REQUIREMENTS, SYSTEM_DESIGN, ARCH_DESIGN, or MODULE_DESIGN).
+
+**CRITICAL: Always check the "## User Hints" section in the journey file and incorporate ALL user feedback into your design.** User hints represent explicit requirements or preferences that MUST be followed.
 
 Based on the current journey state, perform the appropriate phase:
 
