@@ -196,6 +196,20 @@ During DESIGN_REVIEW, consider reviewing the design from multiple perspectives. 
 *   Analyze the logs, performance metrics, and edge cases.
 *   If a test fails, move **backwards** to the corresponding Design stage, not just back to coding.
 
+#### UNIT_TEST
+*   Verify the specific module logic in isolation.
+*   Run unit tests with coverage reporting enabled.
+
+#### INTEGRATION_TEST
+*   Verify how the module interacts with the system.
+*   **Automated Audit Gate**: Run linters and static analyzers as a hard gate before proceeding.
+  - All linting errors must be resolved (zero tolerance).
+  - Static analysis warnings should be addressed or explicitly documented.
+
+#### SYSTEM_TEST
+*   Verify the entire system against the original Spec.
+*   Run full test suite, not just affected tests.
+
 #### Verification Best Practices
 
 1. **Test-Driven Design (TDD)**:
@@ -350,6 +364,44 @@ stateDiagram-v2
 
 ---
 
-## 6. State Management
+## 6. Implementation Guidelines
+
+These principles apply throughout all phases of the V-Model:
+
+### 6.1 Anchor the Endpoint
+The `Acceptance Criteria` must include specific CLI commands to verify success. Vague criteria lead to vague implementations.
+
+**Example**:
+```markdown
+## Acceptance Criteria
+- `ctest -R filter_tests` passes with 100% success
+- `npm run test -- --coverage` shows >80% line coverage
+- Latency benchmark: `./bench_latency` reports <10ms p99
+```
+
+### 6.2 No Vibe Coding
+If a design proposes a solution without citing a "Research Note" or "Existing Pattern," the `DESIGN_REVIEW` must reject it. Every implementation decision should be grounded in:
+- Prior art in the codebase
+- External research (papers, documentation, best practices)
+- Explicit trade-off analysis
+
+### 6.3 Read Before Write
+Before every `SYSTEM_DESIGN` or `ARCH_DESIGN` turn, the agent must:
+1. Search the codebase for related modules (`grep`, `glob`)
+2. List relevant directories to understand structure
+3. Review existing patterns before proposing new ones
+
+This prevents redundant implementations and ensures consistency.
+
+### 6.4 Update Guardrails from Bugs
+When a bug is found during `UNIT_TEST` or `INTEGRATION_TEST`, the agent should ask:
+
+> "How can I update my linter, static analysis, or test suite to prevent this class of bug forever?"
+
+**Example**: If a buffer overflow is found, add `-fsanitize=address` to the test build or add a static analysis rule for array bounds checking.
+
+---
+
+## 7. State Management
 
 Every state transition must be documented in the **Learnings Log**.
