@@ -87,10 +87,6 @@ CONSULT_GEMINI="${CONSULT_GEMINI:-true}"
 GEMINI_CONSULT_CMD="gemini"
 GEMINI_CONSULT_FLAGS="--yolo"
 
-# Claude model (used when AI_PROVIDER=claude)
-CLAUDE_MODEL="${CLAUDE_MODEL:-claude-opus-4-6}"
-CLAUDE_API_BASE="${CLAUDE_API_BASE:-https://api.anthropic.com}"
-
 # Git checkpointing
 CHECKPOINT_PREFIX="${CHECKPOINT_PREFIX:-journey}"
 
@@ -1087,57 +1083,13 @@ run_guardrails() {
 # Setup AI command (Claude or Gemini)
 setup_ai() {
     if [[ "${AI_PROVIDER}" == "gemini" ]]; then
-        # Gemini CLI - simpler, uses its own config
         AI_CMD="gemini"
         AI_FLAG="--yolo"
-        log_debug "Using Gemini CLI: ${AI_CMD}"
+        log_debug "Using Gemini CLI"
     else
-        # Claude CLI with z.ai config (existing logic)
-        local config="$HOME/.zai.json"
-
-        # Check if jq is available
-        if ! command -v jq >/dev/null 2>&1; then
-            log_debug "jq not found, using default claude command"
-            AI_CMD="claude"
-            AI_FLAG="--print"
-            return
-        fi
-
-        # Check if config file exists
-        if [ ! -f "$config" ]; then
-            AI_CMD="claude"
-            AI_FLAG="--print"
-            return
-        fi
-
-        # Read config from ~/.zai.json (same logic as zc() function)
-        local api_url api_key haiku_model sonnet_model opus_model
-        IFS=$'\t' read -r api_url api_key haiku_model sonnet_model opus_model < <(
-            jq -r '[.apiUrl // "", .apiKey // "", .haikuModel // "", .sonnetModel // "", .opusModel // ""] | @tsv' "$config" 2>/dev/null || echo -e "\t\t\t\t"
-        )
-
-        # Validate config
-        if [ -z "$api_url" ] || [ -z "$api_key" ]; then
-            AI_CMD="claude"
-            AI_FLAG="--print"
-            return
-        fi
-
-        # Set default models
-        [ -z "$haiku_model" ] && haiku_model="glm-4.5-air"
-        [ -z "$sonnet_model" ] && sonnet_model="glm-4.7"
-        [ -z "$opus_model" ] && opus_model="glm-4.7"
-
-        log_debug "Using ~/.zai.json: endpoint=$api_url | haiku=$haiku_model | sonnet=$sonnet_model | opus=$opus_model"
-
-        # Export Claude environment variables (safer than inline variable assignment)
-        export ANTHROPIC_BASE_URL="$api_url"
-        export ANTHROPIC_AUTH_TOKEN="$api_key"
-        export ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model"
-        export ANTHROPIC_DEFAULT_SONNET_MODEL="$sonnet_model"
-        export ANTHROPIC_DEFAULT_OPUS_MODEL="$opus_model"
         AI_CMD="claude --dangerously-skip-permissions"
         AI_FLAG="--print"
+        log_debug "Using Claude CLI"
     fi
 }
 
