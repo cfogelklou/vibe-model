@@ -240,11 +240,11 @@ EOF
             echo "" >> "${gitignore_file}"
             echo "${backup_content}" | while IFS= read -r line; do
                 case "${line}" in
-                    .venv/|prototypes/__pycache__/|prototypes/*.pyc|"# V-Model"*)
-                        # Skip - already included
+                    .venv/|prototypes/__pycache__/|prototypes/*.pyc|"# V-Model"*|"# Journey files"*|"# These entries"*)
+                        # Skip - already included in standard header
                         ;;
                     "# "*|"")
-                        # Keep comments and blank lines
+                        # Keep other comments and blank lines
                         echo "${line}" >> "${gitignore_file}"
                         ;;
                     *)
