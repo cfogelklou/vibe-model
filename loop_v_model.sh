@@ -1797,11 +1797,13 @@ main_loop() {
                 # Check if there are actual pending questions
                 local pending_questions
                 pending_questions=$(grep -A 20 "^## Pending Questions" "${journey_file}" | grep "^- \[ \]" | grep -v "^\*")
+                log_debug "BLOCKED handler: pending_questions='${pending_questions}'"
 
                 if [[ -z "${pending_questions}" ]]; then
                     # No real questions - check if we can auto-continue
                     local current_epic
                     current_epic=$(get_current_epic "${journey_file}")
+                    log_debug "BLOCKED handler: current_epic='${current_epic}'"
 
                     # Check if epic is complete and we have a next epic
                     if [[ "${current_epic}" != "TBD" ]] && should_continue_to_next_epic "${journey_file}" "${current_epic}"; then
@@ -1812,14 +1814,18 @@ main_loop() {
                         archive_completed_epics_if_needed "${journey_file}"
                         continue
                     fi
+
+                    # No real questions and epic is in-progress - run iteration to process hints/continue
+                    log_info "No pending questions found - resuming iteration (hints or in-progress epic)"
+                    set_journey_state "${journey_file}" "IMPLEMENTATION"
+                    run_iteration "${journey_file}"
+                    continue
                 fi
 
-                # Only stop if there are genuine questions or we can't auto-transition
+                # Only stop if there are genuine unchecked questions
                 log_warning "Journey is ${state}. Use '$0 hint \"message\"' to provide input."
-                if [[ -n "${pending_questions}" ]]; then
-                    log_info "Current pending questions:"
-                    echo "${pending_questions}"
-                fi
+                log_info "Current pending questions:"
+                echo "${pending_questions}"
                 break
                 ;;
             DESIGN_REVIEW)
