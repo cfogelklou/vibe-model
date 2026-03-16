@@ -56,14 +56,18 @@ export async function gitCommand(
  * This prevents accidental git operations in the wrong directory.
  */
 export function assertInParentProject(cwd: string): void {
-  // Check if we're in a submodule by looking for .git/modules
-  const modulesPath = path.join(cwd, ".git", "modules");
-  if (existsSync(modulesPath)) {
-    throw new VModelError(
-      "Git operation attempted from submodule. Must use parent project directory.",
-      1,
-      false
-    );
+  // A directory is a submodule if .git is a FILE (pointing to parent's .git/modules/...),
+  // not if .git/modules EXISTS (that's normal for a parent project with submodules)
+  const gitPath = path.join(cwd, ".git");
+  if (existsSync(gitPath)) {
+    const gitStat = fs.statSync(gitPath);
+    if (gitStat.isFile()) {
+      throw new VModelError(
+        "Git operation attempted from submodule. Must use parent project directory.",
+        1,
+        false
+      );
+    }
   }
 
   // Check if we're in ai-v-model directory by name (with false positive check)
