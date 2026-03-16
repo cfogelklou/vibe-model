@@ -295,6 +295,7 @@ create_journey_file() {
 - Goal: ${goal}
 - State: REQUIREMENTS
 - Previous Phase: TBD
+- Previous State: TBD
 - Current Epic: TBD
 - Started: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 - Current Approach: TBD
@@ -456,6 +457,30 @@ set_previous_phase() {
     local journey_file="$1"
     local phase="$2"
     sed -i '' "s/^- Previous Phase: .*/- Previous Phase: ${phase}/" "${journey_file}"
+}
+
+# Get previous state (saved before entering ARCHIVING)
+get_previous_state() {
+    local journey_file="$1"
+    if grep -q "^- Previous State:" "${journey_file}" 2>/dev/null; then
+        grep "^- Previous State:" "${journey_file}" | head -1 | sed 's/^- Previous State: //' | tr -d ' '
+    else
+        echo "BLOCKED"
+    fi
+}
+
+# Set previous state
+set_previous_state() {
+    local journey_file="$1"
+    local state="$2"
+    if grep -q "^- Previous State:" "${journey_file}" 2>/dev/null; then
+        sed -i '' "s/^- Previous State: .*/- Previous State: ${state}/" "${journey_file}"
+    else
+        # Add after Previous Phase line if marker missing
+        sed -i '' "/^- Previous Phase: /a\\
+- Previous State: ${state}
+" "${journey_file}"
+    fi
 }
 
 # Get epic status from epic table
@@ -1382,8 +1407,9 @@ archive_epic_details() {
     fi
 }
 
-# Archive completed epics that haven't been archived yet
-archive_completed_epics_if_needed() {
+# Archive completed epics that haven't been archived yet (direct/inline version)
+# Only safe to call from within main_loop (i.e. from the ARCHIVING case)
+archive_completed_epics_if_needed_now() {
     local journey_file="$1"
 
     # Get list of completed but unarchived epics
@@ -1400,6 +1426,29 @@ archive_completed_epics_if_needed() {
     for epic_num in "${epics_to_archive[@]}"; do
         archive_epic_details "${journey_file}" "${epic_num}"
     done
+}
+
+# Set state to ARCHIVING so main_loop handles archiving via run_iteration path.
+# This avoids spawning an AI process inline (which hangs inside Claude Code sessions).
+archive_completed_epics_if_needed() {
+    local journey_file="$1"
+
+    # Get list of completed but unarchived epics
+    local epics_to_archive=($(get_completed_unarchived_epics "${journey_file}"))
+
+    # Nothing to do
+    if [[ ${#epics_to_archive[@]} -eq 0 ]]; then
+        return 0
+    fi
+
+    log_info "📦 ${#epics_to_archive[@]} completed epic(s) need archiving — setting state to ARCHIVING"
+
+    # Save current state so we can restore it after archiving
+    local current_state
+    current_state=$(get_journey_state "${journey_file}")
+    set_previous_state "${journey_file}" "${current_state}"
+
+    set_journey_state "${journey_file}" "ARCHIVING"
 }
 
 run_iteration() {
@@ -1592,6 +1641,14 @@ main_loop() {
                 # Archive completed epics after state transition
                 archive_completed_epics_if_needed "${journey_file}"
                 ;;
+            ARCHIVING)
+                log_info "Archiving completed epics..."
+                local pre_archive_state
+                pre_archive_state=$(get_previous_state "${journey_file}")
+                archive_completed_epics_if_needed_now "${journey_file}"
+                # Restore previous state (or BLOCKED if unknown)
+                set_journey_state "${journey_file}" "${pre_archive_state:-BLOCKED}"
+                ;;
             *)
                 run_iteration "${journey_file}"
 
@@ -1677,7 +1734,13 @@ handle_archive() {
     fi
 
     log_info "Archiving completed epics for active journey"
-    archive_completed_epics_if_needed "${active_journey}"
+
+    local current_state
+    current_state=$(get_journey_state "${active_journey}")
+    set_previous_state "${active_journey}" "${current_state}"
+    set_journey_state "${active_journey}" "ARCHIVING"
+
+    main_loop "${active_journey}"
 }
 
 # Handle reflect command
