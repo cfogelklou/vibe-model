@@ -618,14 +618,50 @@ END IF
 
 Each design phase includes an implicit research step. Before finalizing any design:
 
-### 7.1 Web Search
+** Read `generic-best-practices.md` before starting research.**
+- This document contains 20 generic best practices applicable to ALL software projects
+- Every line of code is a liability - reuse proven solutions
+- Reference: `./ai-v-model/generic-best-practices.md`
 
+### 7.1 Standard Research Protocol (Parallel Exploration)
+
+**Launch 3 Explore agents IN PARALLEL** (single message, multiple Agent tool calls):
+
+**Agent 1: Codebase Search**
+- Search for existing implementations of similar functionality
+- Check for reusable patterns, interfaces, or modules
+- Look for anti-patterns and successful patterns in memory.md
+- Report: "Found X existing implementations: [files], patterns used: [list]"
+
+**Agent 2: External Solutions Search**
+- Web search for existing libraries/frameworks that solve this problem
+- Check platform/vendor official libraries (Google, Apple, Microsoft, etc.)
+- Look for libraries with strong community adoption (>10k stars, active maintenance)
+- Report: "Found N candidate libraries: [names, URLs, why relevant]"
+
+**Agent 3: Best Practices Check**
+- Read `generic-best-practices.md` for relevant principles
+- Search for domain-specific best practices and anti-patterns
+- Check for established design patterns for this problem type
+- Report: "Applicable best practices: [principles], recommended patterns: [list]"
+
+**After agents report back:**
+1. Consolidate findings into journey file under "## Research Notes"
+2. **CRITICAL DECISION**: Build vs Reuse
+   - If a well-maintained library exists: USE IT
+   - If codebase has a reusable pattern: ADAPT IT
+   - Only build custom if no viable solution exists
+3. Document your decision with justification
+4. Cite all sources (URLs, file paths, memory entries)
+
+### 7.2 Additional Research Tools
+
+**Web Search** (used by Agent 2, above):
 - Search for existing libraries, frameworks, solutions
 - Look for best practices and anti-patterns
 - Use current year in queries (2026)
 
-### 7.2 External AI Consultation
-
+**External AI Consultation** (optional, for complex tradeoffs):
 - Use external AI to talk through design reasoning
 - Ask about edge cases, failure modes, alternatives
 - Example: `echo "What are tradeoffs between X and Y?" | gemini --yolo`
@@ -682,15 +718,26 @@ If a design proposes a solution without citing a "Research Note" or "Existing Pa
 - Prior art in the codebase
 - External research (papers, documentation, best practices)
 - Explicit trade-off analysis
+- **Generic Best Practices**: Consult `generic-best-practices.md` before designing
+  - Prefer existing solutions (libraries, frameworks, standard APIs)
+  - Don't reinvent well-known algorithms, patterns, or infrastructure
+  - Example: Use Workbox for service workers, not custom SW code
 
 ### 8.3 Read Before Write
 
 Before every `SYSTEM_DESIGN` or `ARCH_DESIGN` turn:
-1. Search the codebase for related modules (`grep`, `glob`)
-2. List relevant directories to understand structure
-3. Review existing patterns before proposing new ones
+1. **Search for existing solutions FIRST**:
+   - Standard libraries and platform APIs
+   - Well-maintained third-party libraries
+   - Vendor-provided frameworks (Google, Apple, Microsoft)
+   - Refer to `generic-best-practices.md` for guidance
+2. Search the codebase for related modules (`grep`, `glob`)
+3. List relevant directories to understand structure
+4. Review existing patterns before proposing new ones
 
 This prevents redundant implementations and ensures consistency.
+
+**Note**: If you're writing >200 lines of infrastructure code, you probably missed an existing solution.
 
 ### 8.4 Update Guardrails from Bugs
 
