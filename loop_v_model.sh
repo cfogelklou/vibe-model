@@ -1512,7 +1512,7 @@ main_loop() {
                 local current_branch
                 current_branch=$(git branch --show-current)
                 if [[ -n "${current_branch}" ]]; then
-                    if ! git diff --quiet || ! git diff --cached --quiet; then
+                    if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
                         log_warning "Uncommitted changes detected after iteration - committing now"
                         git add -A
                         git commit -m "chore(journey): auto-commit changes from iteration ${iteration} [${journey_name}]" || true
@@ -1528,7 +1528,7 @@ main_loop() {
                 local current_branch
                 current_branch=$(git branch --show-current)
                 if [[ -n "${current_branch}" ]]; then
-                    if ! git diff --quiet || ! git diff --cached --quiet; then
+                    if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
                         log_warning "Uncommitted changes detected after iteration - committing now"
                         git add -A
                         git commit -m "chore(journey): auto-commit changes from iteration ${iteration} [${journey_name}]" || true
