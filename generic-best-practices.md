@@ -135,6 +135,9 @@
 - Avoid over-engineering and "future-proofing"
 - **Example**: Use a simple loop instead of a complex one-liner.
 
+### 21. Avoid mocks if possible
+- Dependency injection + real code is always better than writing a mock for real code.
+
 ---
 
 ## Decision Framework
