@@ -143,6 +143,23 @@ This ensures the submodule remains portable and reusable across all projects tha
 
 ---
 
+## Pre-Completion Sanity Checks
+
+**Before marking any AI-driven development on the AI tools themselves as complete, ALWAYS run:**
+
+```bash
+./scripts/sanity_checks.sh
+```
+
+This script runs:
+1. `bun run typecheck` - TypeScript type checking
+2. `bun run build` - Build verification
+3. `bun run lint` - ESLint checking
+
+This ensures code quality and catches regressions early.
+
+---
+
 ## Documentation Links
 
 - **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user manual with all commands and configuration
