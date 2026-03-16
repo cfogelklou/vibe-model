@@ -43,24 +43,44 @@ export async function createOrUpdateEpicFile(
 
   const timestamp = new Date().toISOString().replace("T", " ").substring(0, 19) + " UTC";
 
-  const epicTemplate = `# Epic E${epicNum}: ${epicName} - Active Work
+  const epicTemplate = `# Epic E${epicNum}: ${epicName}
 
 > **Journey**: ${journeyName}
 > **Created**: ${timestamp}
 > **Status**: IN_PROGRESS
 
 ## Epic Summary
-{To be filled during ARCH_DESIGN}
+{Brief description of what this epic accomplishes}
 
 ## Epic Decomposition
-{Story designs will be added during ARCH_DESIGN}
+
+### Story S1: {Story Name}
+**Status**: PENDING
+**Description**: {What this story does}
+**Dependencies**: {None or other stories}
+
+### Story S2: {Story Name}
+...
 
 ## Research Notes
-{Research will be added during design phases}
+
+### ARCH_DESIGN Phase Research
+{Component-level research, API/interface designs}
+
+### MODULE_DESIGN Phase Research
+{Algorithm research, edge cases, implementation details}
 
 ## Implementation Progress
-| Story | Phase | Status | Tests |
-|-------|-------|--------|-------|
+| Story | Phase | Status | Tests | Notes |
+|-------|-------|--------|-------|-------|
+| S1 | MODULE_DESIGN | IN_PROGRESS | - | Working on detailed design |
+| S2 | PENDING | PENDING | - | Not started |
+
+## Learnings
+{Epic-specific learnings added during work}
+
+## Dead Ends (if any)
+{Anti-patterns or approaches that didn't work}
 `;
 
   await fs.writeFile(epicFilePath, epicTemplate);

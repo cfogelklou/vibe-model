@@ -170,11 +170,22 @@ export async function transitionToNextEpic(
 
     const { createOrUpdateEpicFile } = await import("./epic-archival.js");
     const _journeyName = journeyFile.split("/").pop()?.replace(".journey.md", "") || "";
-    const _epicFile = await createOrUpdateEpicFile(
+    const epicFile = await createOrUpdateEpicFile(
       journeyFile,
       nextEpicNum,
       nextEpicName
     );
+
+    // Verify epic file was created
+    const { existsSync } = await import("fs");
+    if (!existsSync(epicFile)) {
+      console.error(`Failed to create epic file: ${epicFile}`);
+      // Fallback: continue without epic file (journey.md only)
+      await setJourneyState(journeyFile, VModelState.ARCH_DESIGN);
+      return;
+    }
+
+    logInfo(`Epic file created: ${epicFile}`);
 
     // Update main journey with epic summary only
     await appendToFile(

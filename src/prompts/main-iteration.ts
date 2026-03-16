@@ -67,6 +67,14 @@ Before finalizing any design, conduct research:
    - Add key findings to journey file under "## Research Notes"
    - Cite sources (URLs, file paths, memory entries)
 
+**IMPORTANT**: When working on an epic, write research notes to the epic file, not journey.md:
+- ARCH_DESIGN research → epic file's "### ARCH_DESIGN Phase Research" section
+- MODULE_DESIGN research → epic file's "### MODULE_DESIGN Phase Research" section
+
+**Journey-level research** (affects entire journey) still goes to journey.md:
+- REQUIREMENTS phase research
+- SYSTEM_DESIGN phase research
+
 ### Parallel Agent Orchestration (For Complex Tasks)
 
 When dealing with complex research or implementation, you can spawn multiple sub-agents:
@@ -123,24 +131,38 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
   - Search for existing interfaces/APIs in codebase
   - Web search for component design patterns
   - Use Gemini rubber duck for interface decisions
-- Document research in "## Research Notes > ### ARCH_DESIGN Phase Research"
-- Select the current Epic.
-- Decompose the Epic into **Stories** (Sub-systems/Interfaces).
-- Update the Design Spec and Journey file.
-- Update the Meta section: change "- Previous Phase: SYSTEM_DESIGN" to "- Previous Phase: ARCH_DESIGN", then transition to DESIGN_REVIEW for the first/next Story.
+- **Write all story designs to the epic file** (not journey.md):
+  - Epic Decomposition section with story names, descriptions, dependencies
+  - Initial Implementation Progress table
+- **Write epic-specific research to epic file's Research Notes section**
+- Update journey.md with brief summary:
+  \`\`\`markdown
+  ### Epic E{N}: {Epic Name}
+  **Status**: IN_PROGRESS
+  **Stories**: {N} stories planned
+  **Details**: See \`{journey}.journey.E{N}.md\`
+  \`\`\`
+- Update the Meta section: change "- Previous Phase: SYSTEM_DESIGN" to "- Previous Phase: ARCH_DESIGN", then transition to DESIGN_REVIEW for the first Story.
 
 ### If MODULE_DESIGN:
 - **RESEARCH**: Before finalizing module design:
   - Search codebase for similar functions/classes
   - Web search for algorithm implementations
   - Use Gemini rubber duck for edge cases
-- Document research in "## Research Notes > ### MODULE_DESIGN Phase Research"
-- Select the current Story.
-- Create a detailed technical design: signatures, state changes, error handling.
-- **Perform a Design Review**: Critique the design for leaks, complexity, and performance.
-- If review fails, stay in MODULE_DESIGN and fix.
-- If unsure, transition to WAITING_FOR_USER.
-- If passed, update the Meta section: change "- Previous Phase: ARCH_DESIGN" to "- Previous Phase: MODULE_DESIGN", then transition to DESIGN_REVIEW.
+- **Write detailed story design to the epic file** (add to story's section):
+  - Technical details: signatures, state changes, error handling
+- **Write story-specific research to epic file's Research Notes > MODULE_DESIGN section**
+- **Update epic file's Implementation Progress table**:
+  - Set Story phase to current V-Model phase (e.g., "MODULE_DESIGN")
+  - Set Status to IN_PROGRESS when working, COMPLETE when done
+  - Add test results after UNIT_TEST/INTEGRATION_TEST
+- Perform a Design Review. If passed, update the Meta section: change "- Previous Phase: ARCH_DESIGN" to "- Previous Phase: MODULE_DESIGN", then transition to DESIGN_REVIEW.
+
+**Implementation Progress Table Updates** - Update at these trigger points:
+- After completing each story design: Set Phase to "MODULE_DESIGN", Status to "IN_PROGRESS"
+- After passing DESIGN_REVIEW: Set Phase to "IMPLEMENTATION"
+- After passing UNIT_TEST: Set Tests to "PASS" with count
+- After passing INTEGRATION_TEST: Set Status to "COMPLETE", move to next story
 `;
 
 const IMPLEMENTATION_PHASES = `### If PROTOTYPING (Optional):
@@ -208,6 +230,22 @@ const IMPORTANT_RULES = `## Important Rules
   - Mark completed items as \`[x]\`
   - Mark items that won't be done as \`[-]\` with brief explanation
   - Keep checkboxes in sync with actual progress (e.g., milestones, guardrails, acceptance criteria)
+
+**Learnings** - Distinguish between epic-specific and journey-level:
+
+**Epic-specific learnings** → epic file's "## Learnings" section:
+- Mention the epic name (e.g., "E1: Authentication")
+- Mention specific story names (e.g., "S2: Login Form")
+- Contain epic-specific implementation details or patterns
+- Apply primarily to this epic's context
+
+**Journey-level learnings** → journey.md's "## Learnings Log":
+- Apply across multiple epics (e.g., "always use X pattern for Y")
+- Cross-cutting concerns (e.g., "API design philosophy")
+- Anti-patterns discovered that affect the whole journey
+- Architectural decisions that impact future epics
+
+**When unsure**: Default to journey.md Learnings Log (it's better to preserve cross-epic context)
 `;
 
 /**

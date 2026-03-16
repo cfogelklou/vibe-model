@@ -46,16 +46,18 @@ async function generateIterationPrompt(
     try {
       epicContent = await fs.readFile(epicFile, "utf-8");
       epicInstructions = `
-## Epic-Specific Work
+## Epic File Content (PRIMARY location for epic work)
 
-You are currently working on **${getCurrentEpic(journeyFile)}**.
+The following is the FULL content of the epic file. This is where epic work happens:
+---
+${epicContent}
+---
 
-The epic file contains the detailed design and progress tracking for this epic.
-Focus your work on the stories and tasks defined in the epic file.
-
-Key epic context:
-${epicContent.split("\n").slice(0, 50).join("\n")}
-...
+**CRITICAL**: When working on this epic, update the epic file directly:
+- Story designs go in the epic file
+- Epic research goes in the epic file
+- Implementation progress goes in the epic file
+- Only summaries go in journey.md
 `;
     } catch {
       // Epic file doesn't exist yet

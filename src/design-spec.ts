@@ -185,17 +185,48 @@ export async function updateDesignSpec(journeyFile: string): Promise<void> {
 
 /**
  * Extract design content for consultation
+ * NOW: Checks epic file for ARCH_DESIGN and MODULE_DESIGN content
  */
 export async function extractDesignContent(
   journeyFile: string,
   phase: VModelState
 ): Promise<string> {
+  // For epic phases, try epic file first
+  if (phase === VModelState.ARCH_DESIGN || phase === VModelState.MODULE_DESIGN) {
+    const currentEpic = await import("./journey.js").then(m => m.getCurrentEpic(journeyFile));
+    if (currentEpic && currentEpic !== "TBD") {
+      const epicNum = currentEpic.replace(/\D/g, "");
+      const journeyDir = path.dirname(journeyFile);
+      const journeyName = path.basename(journeyFile, ".journey.md");
+      const epicFilePath = path.join(journeyDir, `${journeyName}.journey.E${epicNum}.md`);
+
+      if (existsSync(epicFilePath)) {
+        const epicContent = await fs.readFile(epicFilePath, "utf-8");
+
+        if (phase === VModelState.ARCH_DESIGN) {
+          // Get Epic Decomposition from epic file
+          const epicDecompMatch = epicContent.match(/## Epic Decomposition\n([\s\S]+?)\n(?=##)/);
+          if (epicDecompMatch) {
+            return epicDecompMatch[1].trim();
+          }
+        } else if (phase === VModelState.MODULE_DESIGN) {
+          // Get current Story design from epic file
+          // Stories are under "## Epic Decomposition" as "### Story S#:"
+          const storyMatch = epicContent.match(/### Story S\d+:.*?\n([\s\S]+?)(?=### Story|\n##)/);
+          if (storyMatch) {
+            return storyMatch[1].trim();
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback: Extract from spec or journey (for REQUIREMENTS, SYSTEM_DESIGN)
   const specPath = getDesignSpecPathFromJourney(journeyFile);
   let content = "";
 
   switch (phase) {
     case VModelState.REQUIREMENTS:
-      // Get User Requirements and System Requirements from spec
       if (existsSync(specPath)) {
         const specContent = await fs.readFile(specPath, "utf-8");
         const userReqMatch = specContent.match(/## User Requirements\n([\s\S]+?)\n## /);
@@ -205,7 +236,6 @@ export async function extractDesignContent(
       break;
 
     case VModelState.SYSTEM_DESIGN:
-      // Get Epics and Architecture from spec
       if (existsSync(specPath)) {
         const specContent = await fs.readFile(specPath, "utf-8");
         const epicsMatch = specContent.match(/## Epics\n([\s\S]+?)\n## /);
@@ -214,19 +244,13 @@ export async function extractDesignContent(
       }
       break;
 
-    case VModelState.ARCH_DESIGN: {
-      // Get current Epic and Stories from journey
+    case VModelState.ARCH_DESIGN:
+    case VModelState.MODULE_DESIGN: {
+      // Final fallback to journey file (legacy format)
       const journeyContent = await fs.readFile(journeyFile, "utf-8");
       const epicMatch = journeyContent.match(/## Current Epic\n([\s\S]+?)\n## /);
-      content = epicMatch?.[1] || "";
-      break;
-    }
-
-    case VModelState.MODULE_DESIGN: {
-      // Get current Story design from journey
-      const journeyContent2 = await fs.readFile(journeyFile, "utf-8");
-      const storyMatch = journeyContent2.match(/## Current Story\n([\s\S]+?)\n## /);
-      content = storyMatch?.[1] || "";
+      const storyMatch = journeyContent.match(/## Current Story\n([\s\S]+?)\n## /);
+      content = (epicMatch?.[1] || storyMatch?.[1] || "");
       break;
     }
   }
@@ -241,11 +265,37 @@ export async function extractDesignContent(
 
 /**
  * Extract research notes for a specific phase
+ * NOW: Checks epic file for ARCH_DESIGN and MODULE_DESIGN research
  */
 export async function extractResearchContent(
   journeyFile: string,
   phase: VModelState
 ): Promise<string> {
+  // For epic phases, try epic file first
+  if (phase === VModelState.ARCH_DESIGN || phase === VModelState.MODULE_DESIGN) {
+    const currentEpic = await import("./journey.js").then(m => m.getCurrentEpic(journeyFile));
+    if (currentEpic && currentEpic !== "TBD") {
+      const epicNum = currentEpic.replace(/\D/g, "");
+      const journeyDir = path.dirname(journeyFile);
+      const journeyName = path.basename(journeyFile, ".journey.md");
+      const epicFilePath = path.join(journeyDir, `${journeyName}.journey.E${epicNum}.md`);
+
+      if (existsSync(epicFilePath)) {
+        const epicContent = await fs.readFile(epicFilePath, "utf-8");
+        // Pattern matches: "### ARCH_DESIGN Phase Research" until next "##" section
+        const sectionPattern = phase === VModelState.ARCH_DESIGN
+          ? /### ARCH_DESIGN Phase Research\n([\s\S]+?)\n(?=##)/
+          : /### MODULE_DESIGN Phase Research\n([\s\S]+?)\n(?=##)/;
+
+        const researchMatch = epicContent.match(sectionPattern);
+        if (researchMatch && !researchMatch[1].includes("To be populated")) {
+          return researchMatch[1].trim();
+        }
+      }
+    }
+  }
+
+  // Fallback: Extract from journey file (for REQUIREMENTS, SYSTEM_DESIGN)
   const journeyContent = await fs.readFile(journeyFile, "utf-8");
   const sectionPattern = `### ${phase} Phase Research`;
   const researchMatch = journeyContent.match(
@@ -256,7 +306,6 @@ export async function extractResearchContent(
     return "";
   }
 
-  // Check if it's just a placeholder
   if (researchMatch[1].includes("To be populated")) {
     return "";
   }

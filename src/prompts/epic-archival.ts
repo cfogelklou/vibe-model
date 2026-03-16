@@ -3,102 +3,66 @@ import { EpicArchivalVars } from './types.js';
 // Static sections
 const EPIC_ARCHIVAL_TASK = `## Task
 
-Archive the completed Epic {{EPIC_NUM}} to a separate file to reduce context bloat in the main journey file.
+Mark the completed Epic {{EPIC_NUM}} as COMPLETE in the epic file.
 
 ### Context
 
-As V-Model journeys progress through multiple epics, the journey.md file accumulates large amounts of detailed content:
-- Research notes for each design phase (SYSTEM_DESIGN, ARCH_DESIGN, MODULE_DESIGN)
-- Epic Decomposition sections with detailed story designs
-- Learnings Log with timestamped entries
-- Dead Ends and Anti-Patterns
+Epic content is written directly to the epic file during work. The archival process simply marks the epic as COMPLETE and updates journey.md with a completion summary.
 
-This creates context bloat where the main journey file becomes very large, injecting unnecessary context into each AI iteration. The goal is to move completed epic details to separate files that the AI can still open and read when needed, but aren't auto-injected.
+### Prerequisites
+
+The epic file MUST exist at \`{{EPIC_FILE}}\`. If it doesn't, this is an error in the workflow.
 
 ### Steps
 
-1. **Read the journey file** at \`{{JOURNEY_FILE}}\`
-2. **Identify Epic {{EPIC_NUM}}'s content**:
-   - Epic Summary (from Epic Decomposition section)
-   - Epic Decomposition (all story designs for this epic)
-   - Research Notes for SYSTEM_DESIGN, ARCH_DESIGN, and MODULE_DESIGN phases related to this epic
-   - Learnings Log entries related to this epic
-   - Any Dead Ends encountered during this epic
-3. **Create the epic file** at \`{{EPIC_FILE}}\` with the epic's content
-4. **Update the main journey file** to replace epic details with a brief summary, then provide a link to the new \`{{EPIC_FILE}}\`
+1. **Read the epic file** at \`{{EPIC_FILE}}\`
+2. **Update the epic file**:
+   - Change Status from "IN_PROGRESS" to "COMPLETE ({current_date})"
+   - Add completion summary to Epic Summary section
+   - Update Implementation Progress table: all stories should show COMPLETE with test results
+3. **Update the main journey file** at \`{{JOURNEY_FILE}}\`:
+   - In Epic Progress table: mark epic as COMPLETE
+   - Add brief completion entry in Learnings Log
+   - Ensure link to epic file is present
 
-### Epic File Structure
+### Epic File Update
 
-Create the epic file with this structure:
-
+Update the epic file header:
 \`\`\`markdown
-# Epic E{{EPIC_NUM}}: {Epic Name} - Archive
+# Epic E{{EPIC_NUM}}: {Epic Name}
 
 > **Journey**: {{JOURNEY_NAME}}
-> **Archived**: {current_date}
-> **Reason**: Epic completed - reducing main journey file size
-
-## Epic Summary
-{Brief 2-3 sentence summary of what this epic accomplished}
-
-## Epic Decomposition
-{Full epic decomposition with all story designs - copy from main journey}
-
-## Research Notes
-
-### SYSTEM_DESIGN Phase Research (Epic {{EPIC_NUM}})
-{Relevant research from SYSTEM_DESIGN phase that relates to this epic}
-
-### ARCH_DESIGN Phase Research (Epic {{EPIC_NUM}})
-{Relevant research from ARCH_DESIGN phase that relates to this epic}
-
-### MODULE_DESIGN Phase Research (Epic {{EPIC_NUM}})
-{Relevant research from MODULE_DESIGN phase that relates to this epic}
-
-## Learnings
-{Learnings Log entries for this epic - filter for entries mentioning E{{EPIC_NUM}} or this epic's name}
-
-## Dead Ends (if any)
-{Any dead ends or anti-patterns specific to this epic}
+> **Created**: {original_date}
+> **Status**: COMPLETE ({current_date})
 \`\`\`
 
 ### Main Journey Update
 
-After creating the epic file, update the main journey file:
-
-1. **Replace the Epic Decomposition** for this epic with a brief summary:
+Update the Epic Progress table row with exact format (must match \`extractEpicProgressTable()\` regex in epic-archival.ts:114):
 \`\`\`markdown
-### Epic E{{EPIC_NUM}}: {Epic Name}
-**Status**: COMPLETE ({date})
-**Stories**: {N} stories implemented
-**Details**: See \`{{JOURNEY_NAME}}.journey.E{{EPIC_NUM}}.md\` for full documentation
+| E{{EPIC_NUM}} | {Epic Name} | COMPLETE | {N} | {N} |
 \`\`\`
 
-2. **Remove or summarize** the research notes for this epic (keep only high-level findings)
+**Note**: The Status column should be "COMPLETE" (not "COMPLETE (date)") to match the regex \`/^\\| E(\\d+) \\| (.+?) \\| (\\w+) /\`. The date can be added in the Learnings Log entry instead.
 
-3. **Update the Epic Progress table** to remain unchanged (it must stay in the main journey)
-
-4. **Remove** detailed learnings related to this epic from the Learnings Log (keep only journey-level learnings)
+Add to Learnings Log:
+\`\`\`markdown
+**Epic E{{EPIC_NUM}} ({Epic Name}) COMPLETED**. All N stories implemented with X tests passing.
+See \`{{JOURNEY_NAME}}.journey.E{{EPIC_NUM}}.md\` for full documentation.
+\`\`\`
 
 ### Important Constraints
 
-- **DO NOT archive User Hints** - these must stay in the main journey file
-- **DO NOT archive REQUIREMENTS Phase Research** - this is needed throughout the journey
-- **DO NOT archive Anti-Patterns** - these are journey-wide and must stay accessible
-- **DO preserve the Epic Progress table** in the main journey
-- **DO preserve all Meta section data**
-- **DO preserve Guardrails & Baseline Metrics**
-- **DO preserve Pending Questions**
-- **DO preserve Checkpoints**
-- **DO preserve Design Spec link**
+- **DO NOT extract content from journey.md** - it's already in the epic file
+- **DO preserve all epic content** - research, designs, learnings
+- **DO NOT modify User Hints** - these stay in journey.md
+- **DO preserve the Epic Progress table** in journey.md
 
 ### Execution
 
 Use the Edit tool to:
-1. Create the new epic file at \`{{EPIC_FILE}}\`
-2. Update the main journey file to replace epic details with brief summary
-
-Ensure the main journey file remains valid and functional after archival.`;
+1. Update the epic file status and add completion summary
+2. Update the main journey file's Epic Progress table and Learnings Log`;
 
 // Dynamic sections
 function renderEpicArchivalHeader(vars: EpicArchivalVars): string {
