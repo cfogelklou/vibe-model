@@ -7,6 +7,10 @@ AI Provider: {{AI_PROVIDER}}
 
 {{JOURNEY_CONTENT}}
 
+{{EPIC_FILE_INSTRUCTIONS}}
+
+{{EPIC_CONTENT}}
+
 ## Your Task: V-Model Phase Execution
 
 **IMPORTANT: When transitioning to DESIGN_REVIEW, always update the "Previous Phase:" field in the Meta section to reflect the phase you just completed.**

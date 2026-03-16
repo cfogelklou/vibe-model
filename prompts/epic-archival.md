@@ -1,5 +1,8 @@
 # Epic Archival Task
 
+## Archival Mode
+{{EPIC_ARCHIVAL_MODE}}
+
 ## Journey File
 {{JOURNEY_FILE}}
 

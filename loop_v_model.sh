@@ -436,6 +436,46 @@ EOF
     echo "${journey_path}"
 }
 
+# Create epic file for tracking epic-specific work
+create_epic_file() {
+    local epic_num="$1"
+    local epic_name="$2"
+    local journey_file="$3"
+    local journey_dir="$(dirname "${journey_file}")"
+    local journey_name="$(basename "${journey_file}" .journey.md)"
+    local epic_file="${journey_dir}/${journey_name}.journey.E${epic_num}.md"
+
+    if [[ -f "${epic_file}" ]]; then
+        log_info "Epic file already exists: ${epic_file}"
+        echo "${epic_file}"
+        return 0
+    fi
+
+    cat > "${epic_file}" << EOF
+# Epic E${epic_num}: ${epic_name} - Active Work
+
+> **Journey**: ${journey_name}
+> **Created**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+> **Status**: IN_PROGRESS
+
+## Epic Summary
+{To be filled during ARCH_DESIGN}
+
+## Epic Decomposition
+{Story designs will be added during ARCH_DESIGN}
+
+## Research Notes
+{Research will be added during design phases}
+
+## Implementation Progress
+| Story | Phase | Status | Tests |
+|-------|-------|--------|-------|
+EOF
+
+    log_success "Created epic file: ${epic_file}" >&2
+    echo "${epic_file}"
+}
+
 # Parse journey state
 get_journey_state() {
     local journey_file="$1"
@@ -528,6 +568,14 @@ get_epic_status() {
     awk "/^| ${epic_id} / {print \$4}" "${journey_file}"
 }
 
+# Get epic name from epic progress table
+get_epic_name_from_table() {
+    local journey_file="$1"
+    local epic_id="$2"
+    # Extract epic name from Epic Progress table (column 3, after status)
+    awk -F'|' "/^| ${epic_id} / {gsub(/^[[:space:]]+|[[:space:]]+$/, \"\", \$3); print \$3}" "${journey_file}"
+}
+
 # Get the next epic ID from epic progress table
 get_next_epic_id() {
     local journey_file="$1"
@@ -576,6 +624,17 @@ transition_to_next_epic() {
         add_checkpoint "${journey_file}" "all-epics-complete" "All epics completed, transitioning to SYSTEM_TEST"
     else
         log_info "Transitioning to ${next_epic} ARCH_DESIGN phase"
+
+        # PROACTIVE: Create epic file immediately for the next epic
+        local next_epic_num
+        next_epic_num=$(echo "${next_epic}" | grep -oE '[0-9]+')
+        local next_epic_name
+        next_epic_name=$(get_epic_name_from_table "${journey_file}" "${next_epic}")
+        create_epic_file "${next_epic_num}" "${next_epic_name}" "${journey_file}"
+
+        # Update main journey with epic summary only
+        append_to_journey "${journey_file}" "\n**Epic ${next_epic}: ${next_epic_name}** - See \`.journey.E${next_epic_num}.md\` for detailed work.\n"
+
         set_current_epic "${journey_file}" "${next_epic}"
         set_journey_state "${journey_file}" "ARCH_DESIGN"
         add_learning "${journey_file}" "Auto-transition: Epic ${completed_epic} → ${next_epic}"
@@ -1408,13 +1467,40 @@ consult_gemini() {
 # Generate the prompt for the current iteration
 generate_iteration_prompt() {
     local journey_file="$1"
+    local phase="$2"
+    local epic_file="$3"
+
     local journey_content
     journey_content=$(cat "${journey_file}")
+
+    # Read epic file content if provided
+    local epic_content=""
+    if [[ -n "${epic_file}" ]] && [[ -f "${epic_file}" ]]; then
+        epic_content=$(cat "${epic_file}")
+    fi
+
+    # Pre-compute epic instructions section based on whether epic file exists
+    local epic_instructions=""
+    if [[ -n "${epic_file}" ]] && [[ -f "${epic_file}" ]]; then
+        epic_instructions="**IMPORTANT**: You are working on epic-specific content. Write all detailed designs, research, and implementation notes to:
+\`\`
+${epic_file}
+\`\`
+
+The main journey file should only receive:
+- Epic Progress table updates
+- High-level epic status changes
+- Cross-epic coordination
+
+Write story decompositions, research notes, and implementation details to the epic file."
+    fi
 
     # Load and substitute placeholders in main iteration prompt
     load_prompt "${SCRIPT_DIR}/prompts/main-iteration.md" \
         "{{AI_PROVIDER}}" "${AI_PROVIDER}" \
-        "{{JOURNEY_CONTENT}}" "${journey_content}"
+        "{{JOURNEY_CONTENT}}" "${journey_content}" \
+        "{{EPIC_CONTENT}}" "${epic_content}" \
+        "{{EPIC_FILE_INSTRUCTIONS}}" "${epic_instructions}"
 }
 
 # ============================================================================
@@ -1467,8 +1553,25 @@ archive_epic_details() {
 
     log_info "Archiving Epic E${epic_num} to ${epic_file}..."
 
+    # Pre-compute archival mode based on whether epic file exists
+    local current_date
+    current_date=$(date -u +"%Y-%m-%d")
+    local archival_mode=""
+    if [[ -f "${epic_file}" ]]; then
+        archival_mode="The epic file already exists at \`${epic_file}\`.
+
+Your task is to mark this epic as COMPLETE by:
+1. Updating the **Status** field in the header to \"COMPLETE (${current_date})\"
+2. Adding completion summary to Epic Summary section
+3. DO NOT recreate the file or modify existing structure
+4. Add a link to the archived epic from the main journey file"
+    else
+        archival_mode="Create a new epic archive file at \`${epic_file}\` with the epic's complete content."
+    fi
+
     # Create archival prompt
     local archival_prompt=$(load_prompt "${SCRIPT_DIR}/prompts/epic-archival.md" \
+        "{{EPIC_ARCHIVAL_MODE}}" "${archival_mode}" \
         "{{JOURNEY_FILE}}" "${journey_file}" \
         "{{EPIC_NUM}}" "${epic_num}" \
         "{{EPIC_FILE}}" "${epic_file}" \
@@ -1575,15 +1678,36 @@ run_iteration() {
     local design_spec_path
     design_spec_path=$(get_design_spec_path_from_journey "${journey_file}")
 
+    # Dynamic epic file path for template injection (empty when not in epic phase)
+    local EPIC_FILE=""
+    local CURRENT_EPIC
+    CURRENT_EPIC=$(get_current_epic "${journey_file}")
+
+    if [[ -n "${CURRENT_EPIC}" ]] && [[ "${CURRENT_EPIC}" != "TBD" ]] && [[ "${state}" != "SYSTEM_DESIGN" ]] && [[ "${state}" != "REQUIREMENTS" ]]; then
+        local journey_dir="$(dirname "${journey_file}")"
+        local epic_num
+        epic_num=$(echo "${CURRENT_EPIC}" | grep -oE '[0-9]+')
+        EPIC_FILE="${journey_dir}/${journey_name}.journey.E${epic_num}.md"
+
+        # Only set EPIC_FILE if the epic file actually exists
+        if [[ ! -f "${EPIC_FILE}" ]]; then
+            log_warning "Epic file not found: ${EPIC_FILE} - using main journey only"
+            EPIC_FILE=""
+        fi
+    fi
+
     # Create temp file with prompt + journey context
     local temp_prompt=$(mktemp)
     {
-        generate_iteration_prompt "${journey_file}"
+        generate_iteration_prompt "${journey_file}" "${state}" "${EPIC_FILE}"
         echo ""
         echo "---"
         echo ""
         echo "JOURNEY_FILE=${journey_file}"
         echo "DESIGN_SPEC_PATH=${design_spec_path}"
+        if [[ -n "${EPIC_FILE}" ]]; then
+            echo "EPIC_FILE=${EPIC_FILE}"
+        fi
         echo ""
         echo "Current working directory: $(pwd)"
         echo ""
@@ -1649,6 +1773,20 @@ main_loop() {
         local progress
         progress=$(get_journey_progress "${journey_file}")
         log_info "Progress: ${progress} | State: ${state}"
+
+        # PROACTIVE: Create first epic file when entering ARCH_DESIGN for the first time
+        if [[ "${state}" == "ARCH_DESIGN" ]]; then
+            local journey_dir="$(dirname "${journey_file}")"
+            local journey_name="$(basename "${journey_file}" .journey.md)"
+            local epic_count
+            epic_count=$(find "${journey_dir}" -name "${journey_name}.journey.E[0-9]*.md" 2>/dev/null | wc -l | tr -d ' || echo "0")
+
+            if [[ "${epic_count}" -eq 0 ]]; then
+                # First epic - create E1 file proactively with default name
+                log_info "First epic detected - creating E1 epic file proactively"
+                create_epic_file "1" "Epic 1 (To be named)" "${journey_file}"
+            fi
+        fi
 
         case "${state}" in
             COMPLETE)
