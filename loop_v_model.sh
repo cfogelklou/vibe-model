@@ -1275,7 +1275,7 @@ consult_gemini() {
             "{{DESIGN_CONTENT}}" "${design_content}")
     fi
 
-    echo "$consult_prompt" | $GEMINI_CONSULT_CMD $GEMINI_CONSULT_FLAGS 2>&1
+    echo "$consult_prompt" | $GEMINI_CONSULT_CMD $GEMINI_CONSULT_FLAGS 2>/dev/null
 }
 
 # Generate the prompt for the current iteration
