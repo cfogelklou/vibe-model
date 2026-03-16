@@ -380,6 +380,16 @@ add_learning() {
     fi
 }
 
+# Log state transition for debugging
+log_state_transition() {
+    local journey_file="$1"
+    local from_state="$2"
+    local to_state="$3"
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+    append_to_journey "${journey_file}" "\n**[${timestamp}] State Transition: ${from_state} → ${to_state}**\n"
+}
+
 # Add dead end to journey
 add_dead_end() {
     local journey_file="$1"
@@ -977,17 +987,22 @@ setup_ai() {
 # Get the previous design phase for review
 get_previous_design_phase() {
     local journey_file="$1"
-    # Check journey metadata for Previous Phase marker
-    if grep -q "Previous Phase:" "${journey_file}" 2>/dev/null; then
-        grep "Previous Phase:" "${journey_file}" | tail -1 | cut -d: -f2- | tr -d ' '
+    # Check journey metadata for Previous Phase marker (Meta section format)
+    if grep -q "^- Previous Phase:" "${journey_file}" 2>/dev/null; then
+        grep "^- Previous Phase:" "${journey_file}" | head -1 | sed 's/^- Previous Phase: //' | tr -d ' '
     else
-        # Fallback: infer from current state
-        local current_state
-        current_state=$(get_journey_state "${journey_file}")
-        case "$current_state" in
-            DESIGN_REVIEW) echo "UNKNOWN" ;;
-            *) echo "UNKNOWN" ;;
-        esac
+        # Fallback: try to infer from recent learnings log (transition history)
+        if grep -q "Transitioned to.*SYSTEM_DESIGN" "${journey_file}" 2>/dev/null; then
+            echo "REQUIREMENTS"
+        elif grep -q "Transitioned to.*ARCH_DESIGN" "${journey_file}" 2>/dev/null; then
+            echo "SYSTEM_DESIGN"
+        elif grep -q "Transitioned to.*MODULE_DESIGN" "${journey_file}" 2>/dev/null; then
+            echo "ARCH_DESIGN"
+        elif grep -q "Transitioned to.*IMPLEMENTATION" "${journey_file}" 2>/dev/null; then
+            echo "MODULE_DESIGN"
+        else
+            echo "UNKNOWN"
+        fi
     fi
 }
 
@@ -1057,21 +1072,56 @@ extract_research_content() {
     echo "${content}"
 }
 
+# Append content to journey file
+append_to_journey() {
+    local journey_file="$1"
+    local content="$2"
+    echo -e "${content}" >> "${journey_file}"
+}
+
+# Ensure the Previous Phase marker is set in the Meta section
+ensure_previous_phase_marker() {
+    local journey_file="$1"
+    local phase="$2"
+
+    # Check if marker exists in Meta section
+    if ! grep -q "^- Previous Phase:" "${journey_file}" 2>/dev/null; then
+        # Add it to Meta section (after the State line)
+        sed -i '' "/^- State: /a\\
+- Previous Phase: ${phase}
+" "${journey_file}"
+    else
+        # Update existing marker
+        sed -i '' "s/^- Previous Phase: .*/- Previous Phase: ${phase}/" "${journey_file}"
+    fi
+}
+
 # Transition to the next phase after successful design review
 auto_transition_from_review() {
     local journey_file="$1"
     local prev_phase="$2"
+    local next_state=""
 
     # Store that we just completed review to prevent infinite loop
     append_to_journey "${journey_file}" "\n**Design Review: PASSED** (${prev_phase})\n"
 
+    # Determine next state
     case "$prev_phase" in
-        REQUIREMENTS)   set_journey_state "${journey_file}" "SYSTEM_DESIGN" ;;
-        SYSTEM_DESIGN)  set_journey_state "${journey_file}" "ARCH_DESIGN" ;;
-        ARCH_DESIGN)    set_journey_state "${journey_file}" "MODULE_DESIGN" ;;
-        MODULE_DESIGN)  set_journey_state "${journey_file}" "IMPLEMENTATION" ;;
-        *)              set_journey_state "${journey_file}" "SYSTEM_DESIGN" ;; # Safe fallback
+        REQUIREMENTS)   next_state="SYSTEM_DESIGN" ;;
+        SYSTEM_DESIGN)  next_state="ARCH_DESIGN" ;;
+        ARCH_DESIGN)    next_state="MODULE_DESIGN" ;;
+        MODULE_DESIGN)  next_state="IMPLEMENTATION" ;;
+        *)              next_state="SYSTEM_DESIGN" ;; # Safe fallback
     esac
+
+    # Set the Previous Phase marker BEFORE transitioning
+    ensure_previous_phase_marker "${journey_file}" "${prev_phase}"
+
+    # Log the transition for debugging
+    append_to_journey "${journey_file}" "\n**State Transition: DESIGN_REVIEW → ${next_state}**\n"
+
+    # Perform the transition
+    set_journey_state "${journey_file}" "${next_state}"
 }
 
 # Consult Gemini for design review
@@ -1168,6 +1218,12 @@ EOF
 
 ## Your Task: V-Model Phase Execution
 
+**IMPORTANT: When transitioning to DESIGN_REVIEW, always update the "Previous Phase:" field in the Meta section to reflect the phase you just completed.**
+
+Format: In the Meta section at the top of the journey file, update the line:
+`- Previous Phase: REQUIREMENTS`
+to match the phase you just completed (REQUIREMENTS, SYSTEM_DESIGN, ARCH_DESIGN, or MODULE_DESIGN).
+
 Based on the current journey state, perform the appropriate phase:
 
 ### Research Phase (Part of Each Design Phase)
@@ -1204,7 +1260,7 @@ Before finalizing any design, conduct research:
 - If the spec file does not exist, you MUST ask the user clarifying questions to establish goals, metrics, and constraints.
 - Create or update `{journey_name}.spec.md` with User Requirements, System Requirements, and Acceptance Criteria.
 - **Transition to WAITING_FOR_USER** if you need the user to sign off on requirements.
-- Once signed off, add "Previous Phase: REQUIREMENTS" to the journey and transition to DESIGN_REVIEW.
+- Once signed off, update the Meta section: change "- Previous Phase: TBD" to "- Previous Phase: REQUIREMENTS", then transition to DESIGN_REVIEW.
 
 ### If DESIGN_REVIEW:
 - This is an automatic state - do NOT write any content.
@@ -1220,7 +1276,7 @@ Before finalizing any design, conduct research:
 - Define the high-level architecture.
 - Decompose the goal into **Epics**.
 - Update the Design Spec with the architecture and Epics list.
-- Add "Previous Phase: SYSTEM_DESIGN" to the journey and transition to DESIGN_REVIEW.
+- Update the Meta section: change "- Previous Phase: REQUIREMENTS" to "- Previous Phase: SYSTEM_DESIGN", then transition to DESIGN_REVIEW.
 
 ### If ARCH_DESIGN:
 - **RESEARCH**: Before finalizing component design:
@@ -1231,7 +1287,7 @@ Before finalizing any design, conduct research:
 - Select the current Epic.
 - Decompose the Epic into **Stories** (Sub-systems/Interfaces).
 - Update the Design Spec and Journey file.
-- Add "Previous Phase: ARCH_DESIGN" to the journey and transition to DESIGN_REVIEW for the first/next Story.
+- Update the Meta section: change "- Previous Phase: SYSTEM_DESIGN" to "- Previous Phase: ARCH_DESIGN", then transition to DESIGN_REVIEW for the first/next Story.
 
 ### If MODULE_DESIGN:
 - **RESEARCH**: Before finalizing module design:
@@ -1244,7 +1300,7 @@ Before finalizing any design, conduct research:
 - **Perform a Design Review**: Critique the design for leaks, complexity, and performance.
 - If review fails, stay in MODULE_DESIGN and fix.
 - If unsure, transition to WAITING_FOR_USER.
-- If passed, add "Previous Phase: MODULE_DESIGN" to the journey and transition to DESIGN_REVIEW.
+- If passed, update the Meta section: change "- Previous Phase: ARCH_DESIGN" to "- Previous Phase: MODULE_DESIGN", then transition to DESIGN_REVIEW.
 
 ### If PROTOTYPING (Optional):
 - Use Python/C++ to validate complex algorithms before production implementation.
