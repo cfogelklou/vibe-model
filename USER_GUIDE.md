@@ -49,61 +49,44 @@ Jump straight into the loop - questions happen during REQUIREMENTS phase:
 
 ## Installation
 
-### Option 1: Install as npm Package (Recommended)
+### Prerequisites
+
+Install Bun from https://bun.sh/install
+
+### Building the Executable
 
 ```bash
-# Install globally via npm
-bun install -g @vibe-model/cli
-# or
-npm install -g @vibe-model/cli
+# Clone or download the vibe-model repository
+cd vibe-model
+
+# Install dependencies
+bun install
+
+# Build the standalone executable for your platform
+bun run compile
+
+# The binary will be created at: dist/vibe-model
+```
+
+### Adding to Your PATH
+
+After building, add the compiled binary to your PATH:
+
+```bash
+# Copy the binary to a directory in your PATH
+# Example:
+sudo cp dist/vibe-model /usr/local/bin/
+
+# Or create a symlink
+ln -s $(pwd)/dist/vibe-model /usr/local/bin/vibe-model
 
 # Verify installation
 vibe-model --version
 ```
 
-### Option 2: Use as Git Submodule
-
-```bash
-# Add the submodule to your project
-cd your-project
-git submodule add https://github.com/cfogelklou/vibe-model.git vibe-model
-
-# Initialize the submodule
-git submodule update --init --recursive
-```
-
-### Installing Bun
-
-#### macOS and Linux
-
-```bash
-# Install Bun runtime (if not already installed)
-curl -fsSL https://bun.sh/install | bash
-
-# Verify installation
-bun --version
-```
-
-#### Windows
-
-```powershell
-# Install Bun using PowerShell
-irm bun.sh/install.ps1 | iex
-
-# Verify installation
-bun --version
-```
-
-### Installing Dependencies
-
-```bash
-# Install npm dependencies
-cd vibe-model && bun install
-```
-
 ### Directory Structure
 
-When integrated, the submodule creates this structure:
+When integrated, the tool creates this structure:
 
 ```
 your-project/                    # Parent project (git repository)
@@ -111,25 +94,21 @@ your-project/                    # Parent project (git repository)
 │   ├── journey/                # Journey tracking files
 │   ├── prototypes/             # Experimental code (Python, etc.)
 │   └── memory.md               # Knowledge persistence
-├── vibe-model/                 # This submodule (separate git tracking)
-│   ├── src/                    # TypeScript source code
-│   │   ├── index.ts            # Main entry point
-│   │   ├── config.ts           # Configuration
-│   │   ├── journey.ts          # Journey operations
-│   │   └── ...                 # Other modules
-│   ├── bin/
-│   │   └── vibe-model             # Executable CLI
-│   ├── prompts/                # AI prompt templates
-│   ├── package.json            # Dependencies
-│   ├── USER_GUIDE.md           # This file
-│   ├── vibe-model.md              # Protocol specification
-│   └── CLAUDE.md               # Quick reference for Claude Code
-└── ... (your project files)
+└── vibe-model/                 # Vibe-model source code
+    ├── src/                    # TypeScript source code
+    ├── bin/                    # Development CLI scripts
+    ├── dist/                   # Compiled binaries (after bun run compile)
+    ├── prompts/                # AI prompt templates
+    ├── package.json            # Dependencies
+    ├── USER_GUIDE.md           # This file
+    ├── vibe-model.md           # Protocol specification
+    └── CLAUDE.md               # Quick reference for Claude Code
 ```
 
 **Important**:
-- The `vibe-model/` directory is created in the **parent project root**, not inside the submodule.
-- Prototyping directory `vibe-model/prototypes/` is user-managed for experimental code.
+- The `vibe-model/` directory (for outputs) is created in the **parent project root**
+- Prototyping directory `vibe-model/prototypes/` is user-managed for experimental code
+- The standalone binary in `dist/vibe-model` can be run from any directory
 
 ---
 
@@ -721,18 +700,25 @@ Or in `.vibe-modelrc`:
 
 ### Bun Installation Issues
 
-If Bun is not installed:
+If Bun is not installed, visit https://bun.sh/install for installation instructions.
+
+### Binary Not Found
+
+If the vibe-model binary is not found after building:
 
 ```bash
-# Install Bun
-curl -fsSL https://bun.sh/install | bash
+# Rebuild the executable
+cd vibe-model
+bun run compile
 
-# Verify installation
-bun --version
+# Verify the binary exists
+ls -la dist/vibe-model
 
-# If still not found, add to PATH (add to ~/.zshrc or ~/.bashrc)
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
+# Add to PATH (temporary)
+export PATH="$(pwd)/dist:$PATH"
+
+# Add to PATH (permanent - add to ~/.zshrc or ~/.bashrc)
+echo 'export PATH="/path/to/vibe-model/dist:$PATH"' >> ~/.zshrc
 ```
 
 ### Git Workflow
@@ -757,8 +743,7 @@ git commit -m "feat: improve performance"
 
 **Windows (PowerShell/CMD)**
 
-- Use `vibe-model` directly if installed globally via npm
-- When using as submodule, use `node vibe-model/bin/vibe-model` instead of `./vibe-model/bin/vibe-model`
+- Use the compiled `vibe-model.exe` from the `dist` directory
 - Git Bash or WSL recommended for best compatibility
 - Some build/test commands may need Windows-specific syntax:
   ```json

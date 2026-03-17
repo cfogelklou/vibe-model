@@ -2,11 +2,10 @@
 
 > **Autonomous R&D agent using the V-Model development lifecycle with formal verification.**
 
-[![npm version](https://badge.fury.io/js/%40vibe-model%2Fcli.svg)](https://www.npmjs.com/package/@vibe-model/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/cfogelklou/vibe-model/workflows/Build/badge.svg)](https://github.com/cfogelklou/vibe-model/actions)
 
-A **generic git submodule** for autonomous R&D using the V-Model protocol. Works with any parent project (C++, JavaScript, PWA, etc.) using Claude Code or Gemini.
+An autonomous R&D agent using the V-Model protocol. Works with any project (C++, JavaScript, PWA, etc.) using Claude Code or Gemini.
 
 Implemented in TypeScript for better maintainability, type safety, and cross-platform compatibility.
 
@@ -29,35 +28,35 @@ Implemented in TypeScript for better maintainability, type safety, and cross-pla
 
 ## Quick Start
 
-### Option 1: Install as npm Package (Recommended)
+### Installation
 
 ```bash
-# Install globally via npm
-bun install -g @vibe-model/cli
-# or
-npm install -g @vibe-model/cli
+# 1. Install Bun
+curl -fsSL https://bun.sh/install | bash
 
-# Start a new journey
+# 2. Clone or download this repository
+git clone https://github.com/cfogelklou/vibe-model.git
+cd vibe-model
+
+# 3. Install dependencies
+bun install
+
+# 4. Build the binary for your platform
+bun run build
+
+# 5. Add the compiled binary to your PATH
+# For example, on macOS/Linux:
+export PATH="$PATH:$(pwd)/bin"
+# Or copy it to a directory in your PATH:
+cp bin/vibe-model /usr/local/bin/
+
+# 6. Start a new journey
 vibe-model "your goal here"
 ```
 
-### Option 2: Use as Git Submodule
-
+**Note**: You can also run the binary directly from the `bin/` directory without adding it to your PATH:
 ```bash
-# Add the submodule to your project
-git submodule add https://github.com/cfogelklou/vibe-model.git vibe-model
-
-# Initialize the submodule
-git submodule update --init --recursive
-
-# Install Bun runtime (if not already installed)
-curl -fsSL https://bun.sh/install | bash
-
-# Install dependencies
-cd vibe-model && bun install
-
-# Start a new journey
-./vibe-model/bin/vibe-model "your goal here"
+./bin/vibe-model "your goal here"
 ```
 
 ---

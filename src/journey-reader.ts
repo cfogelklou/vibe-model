@@ -1,6 +1,6 @@
 /**
  * vibe-model - V-Model autonomous R&D agent
- * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou, but mostly Claude Code)
  * Licensed under the MIT License
  */
 

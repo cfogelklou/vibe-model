@@ -20,7 +20,7 @@ The V-Model protocol defines a formal development lifecycle for autonomous R&D a
 
 ### 1.1 State Machine
 
-The protocol implements a state machine with 15 states:
+The protocol implements a state machine with 19 states:
 
 ```mermaid
 stateDiagram-v2
@@ -88,14 +88,24 @@ stateDiagram-v2
         Force pivot to next approach
         via 'pivot' command
     end note
+
+    note right of ARCHIVING
+        Triggered when epic completion detected.
+        After archival, restores previous state.
+        Can transition from any state.
+    end note
 ```
+
+**Note on State Handlers**: Most V-Model phases use a generic `runIteration()` handler. Phase-specific logic is enforced via AI prompt instructions rather than dedicated code handlers. The exceptions are:
+- **DESIGN_REVIEW**: Consults external AI (Gemini) for design quality
+- **WAITING_FOR_USER**: Handles user interaction and epic auto-transitions
+- **ARCHIVING**: Archives completed epic files and restores previous state
 
 ### 1.2 State Definitions
 
 | State | Type | Description |
 |:------|:------|:-------------|
 | `REQUIREMENTS` | Design | Formalizing User Requirements into System Requirements |
-| `DESIGN_REVIEW` | Review | Automatic consultation for design quality |
 | `SYSTEM_DESIGN` | Design | High-level architectural planning (Epics) |
 | `ARCH_DESIGN` | Design | Component-level design (Sub-systems/Interfaces) |
 | `MODULE_DESIGN` | Design | Low-level logic design for a single Story |
@@ -106,6 +116,9 @@ stateDiagram-v2
 | `SYSTEM_TEST` | Verify | Verifying against original Spec |
 | `ACCEPTANCE_TEST` | Verify | Final validation against User Requirements |
 | `CONSOLIDATING` | Verify | Cleaning up, syncing to memory.md, final verification |
+| `DESIGN_REVIEW` | Review | Automatic consultation for design quality |
+| `REVIEWING` | Review | Placeholder for future review functionality |
+| `ARCHIVING` | Control | Archives completed epic files and restores previous state |
 | `WAITING_FOR_USER` | Control | Awaiting clarification or sign-off |
 | `COMPLETE` | Terminal | Goal achieved, journey finished |
 | `BLOCKED` | Terminal | Blocked by external dependency or error |
@@ -174,6 +187,11 @@ Before design begins, define optional constraints:
 ---
 
 ## 3. V-Model Stages
+
+**Note on Phase Handler Architecture**: Most V-Model phases use a generic `runIteration()` handler. Phase-specific logic is enforced via AI prompt instructions rather than dedicated code handlers. Only three states have dedicated code handlers:
+- **DESIGN_REVIEW**: Consults Gemini for design quality
+- **WAITING_FOR_USER**: Handles user interaction and epic auto-transitions
+- **ARCHIVING**: Archives completed epic files
 
 ### 3.1 REQUIREMENTS
 
@@ -365,6 +383,7 @@ Journey files are stored as `{PROJ_ROOT}/vibe-model/journey/{name}.journey.md`
 - Goal: {goal}
 - State: {current_state}
 - Previous Phase: {last_completed_design_phase}
+- Previous State: {last_state}
 - Current Epic: {epic_id}
 - Started: {UTC_timestamp}
 - Current Approach: {approach_number}
@@ -449,47 +468,55 @@ Spec files are stored as `{PROJ_ROOT}/vibe-model/journey/{name}.spec.md`
 ## Overview
 **Goal**: {goal}
 
+This document describes the design and implementation plan for achieving the stated goal.
+
 ## Approach
 {approach_details}
-
-## User Requirements
-{requirements}
-
-## System Requirements
-{requirements}
-
-## Acceptance Criteria
-{criteria}
 
 ## Baseline Metrics
 {metrics}
 
-## Epics
-### E1: {epic_name}
-- Stories: {list}
-- Status: PENDING/IN_PROGRESS/COMPLETE
-
-## Architecture
-{architecture_description}
+## Files to Modify
+*(To be populated during implementation)*
 
 ## Implementation Plan
 ### Phase 1: Research and Planning
-### Phase 2: Prototyping
+- [ ] Research complete
+- [ ] Approach selected
+- [ ] Design spec created
+
+### Phase 2: Prototyping (if applicable)
+- [ ] Prototype implementation
+- [ ] Prototype validation
+- [ ] Results documented
+
 ### Phase 3: Implementation
+- [ ] Production code changes
+- [ ] Tests passing
+- [ ] Code review complete
+
 ### Phase 4: Consolidation
+- [ ] Documentation updated
+- [ ] Design spec finalized
+- [ ] Tests validated
 
 ## Success Criteria
-- [ ] {criterion}
+- [ ] Goal achieved
+- [ ] All tests pass (no regression)
+- [ ] Documentation complete
+- [ ] Design spec finalized
 
 ## Changes Made
-{changes}
+*(To be populated during CONSOLIDATING phase)*
 
 ## Documentation Updates
-{updates}
+*(To be populated during CONSOLIDATING phase)*
 
 ## References
-{links}
+*(Add links to relevant docs, papers, or code)*
 ```
+
+**Note**: User Requirements, System Requirements, Acceptance Criteria, and Epics sections are tracked in the journey file, not the spec file. The spec file focuses on implementation details.
 
 ---
 
@@ -525,8 +552,10 @@ END IF
 **Algorithm**:
 
 ```
-IF (journey.learnings_log contains "Epic {Epic_ID} COMPLETED") THEN
-    Mark epic complete in progress table
+# Check Epic Progress table for completion status
+epic_status = parseEpicProgressTable(journey, Epic_ID)
+
+IF (epic_status == "COMPLETE") THEN
     Check for next epic
     IF next_epic EXISTS THEN
         Transition to WAITING_FOR_USER (auto-transition to next epic)
@@ -535,6 +564,8 @@ IF (journey.learnings_log contains "Epic {Epic_ID} COMPLETED") THEN
     END IF
 END IF
 ```
+
+**Note**: The Learnings Log may contain "Epic {Epic_ID} COMPLETED" entries for human reference, but actual epic completion detection is based on the Epic Progress table status column.
 
 ### 5.3 Design Review Transition
 
@@ -898,6 +929,7 @@ Reduce context bloat in the main journey.md file by archiving completed epic det
 As V-Model journeys progress through multiple epics, the journey.md file accumulates large amounts of detailed content:
 - Research notes for each design phase (REQUIREMENTS, SYSTEM_DESIGN, ARCH_DESIGN, MODULE_DESIGN)
 - Epic Decomposition sections with detailed story designs
+- Implementation Progress tables
 - Learnings Log with timestamped entries
 - Dead Ends and Anti-Patterns
 
@@ -924,29 +956,54 @@ After each state transition, the loop checks for completed epics without archiva
 **Contents**:
 - Epic summary
 - Epic decomposition (full story designs)
-- Research notes for that epic's phases (SYSTEM_DESIGN, ARCH_DESIGN, MODULE_DESIGN)
+- Research notes for that epic's phases (ARCH_DESIGN, MODULE_DESIGN)
+- Implementation progress table
 - Learnings related to that epic
 - Any dead ends specific to that epic
 
 **Example Structure**:
 ```markdown
-# Epic E1: Synthetic Test Harness - Archive
+# Epic E1: Synthetic Test Harness
 
 > **Journey**: create-a-test-tone-generation-pwa
-> **Archived**: 2026-03-16
-> **Reason**: Epic completed - reducing main journey file size
+> **Created**: 2026-03-16 12:00:00 UTC
+> **Status**: IN_PROGRESS
 
 ## Epic Summary
-Implemented synthetic test harness for offline audio context testing...
+{Brief description of what this epic accomplishes}
 
 ## Epic Decomposition
-{Full epic decomposition with all story designs}
+
+### Story S1: {Story Name}
+**Status**: PENDING/IN_PROGRESS/COMPLETE
+**Description**: {What this story does}
+**Dependencies**: {None or other stories}
+
+### Story S2: {Story Name}
+...
 
 ## Research Notes
-### SYSTEM_DESIGN Phase Research (Epic E1)
-{Relevant research}
-...
+
+### ARCH_DESIGN Phase Research
+{Component-level research, API/interface designs}
+
+### MODULE_DESIGN Phase Research
+{Algorithm research, edge cases, implementation details}
+
+## Implementation Progress
+| Story | Phase | Status | Tests | Notes |
+|-------|-------|--------|-------|-------|
+| S1 | MODULE_DESIGN | IN_PROGRESS | - | Working on detailed design |
+| S2 | PENDING | PENDING | - | Not started |
+
+## Learnings
+{Epic-specific learnings added during work}
+
+## Dead Ends (if any)
+{Anti-patterns or approaches that didn't work}
 ```
+
+**Note**: Epic files are created in IN_PROGRESS status when epic work begins. Upon completion, the status changes to "COMPLETE (date)" but the format remains similar.
 
 ### 13.4 What Stays in Main Journey
 
