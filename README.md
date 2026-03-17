@@ -65,31 +65,31 @@ vibe-model "your goal here"
 
 ```bash
 # Start a new journey
-./vibe-model/bin/vibe-model "reduce latency to under 10ms"
+vibe-model "reduce latency to under 10ms"
 
 # Continue active journey
-./vibe-model/bin/vibe-model
+vibe-model
 
 # Check status of all journeys
-./vibe-model/bin/vibe-model status
+vibe-model status
 
 # Add a hint to guide the agent
-./vibe-model/bin/vibe-model hint "try using FFT interpolation"
+vibe-model hint "try using FFT interpolation"
 
 # Force pivot to next approach
-./vibe-model/bin/vibe-model pivot
+vibe-model pivot
 
 # Force reflection phase
-./vibe-model/bin/vibe-model reflect
+vibe-model reflect
 
 # Archive completed epics
-./vibe-model/bin/vibe-model archive
+vibe-model archive
 
 # Rollback to last checkpoint
-./vibe-model/bin/vibe-model rollback [checkpoint_id]
+vibe-model rollback [checkpoint_id]
 
 # List all checkpoints
-./vibe-model/bin/vibe-model list-checkpoints
+vibe-model list-checkpoints
 ```
 
 ### CLI Options
@@ -110,20 +110,20 @@ vibe-model "your goal here"
 
 ```
 REQUIREMENTS ───────────────→ ACCEPTANCE_TEST
-     ↓                              ↑
+     ↓                             ↑
 [DESIGN_REVIEW]                    |
-     ↓                              |
-SYSTEM_DESIGN ──────────────→ SYSTEM_TEST
-     ↓                              ↑
-[DESIGN_REVIEW]                    |
-     ↓                              |
-ARCH_DESIGN ────────────→ INTEGRATION_TEST
-     ↓                              ↑
-[DESIGN_REVIEW]                    |
-     ↓                              |
-MODULE_DESIGN ──────────→ UNIT_TEST
-     ↓                              ↑
-     └────────── IMPLEMENTATION ────┘
+     ↓                             |
+  SYSTEM_DESIGN ──────────→ SYSTEM_TEST
+       ↓                         ↑
+  [DESIGN_REVIEW]                |
+       ↓                         |
+    ARCH_DESIGN ────────→ INTEGRATION_TEST
+         ↓                       ↑
+  [DESIGN_REVIEW]                |
+         ↓                       |
+    MODULE_DESIGN ───────→ UNIT_TEST
+          ↓                    ↑
+          └── IMPLEMENTATION ──┘
 ```
 
 ---
@@ -199,7 +199,7 @@ your-project/
 │   ├── journey/                # Journey tracking files
 │   ├── prototypes/             # Experimental code (user-managed)
 │   └── memory.md               # Knowledge persistence
-└── vibe-model/                 # This submodule
+└── vibe-model/                 # This repository
     ├── package.json            # Bun project config
     ├── tsconfig.json           # TypeScript config
     ├── src/
@@ -262,8 +262,7 @@ your-project/
 - `stripAnsi()`: Remove ANSI escape sequences
 
 **Flexible Path Resolution**
-- Works as submodule: `parent-project/vibe-model/`
-- Works as sibling: `vibe-model/` alongside project directory
+- Works in same directory as project
 - Automatic detection with `--project-dir` override support
 
 **Signal Handling**
@@ -294,14 +293,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Install Bun
         run: curl -fsSL https://bun.sh/install | bash
 
       - name: Install V-Model dependencies
         run: cd vibe-model && bun install
+
+      - name: Build V-Model binary
+        run: cd vibe-model && bun run build
 
       - name: Run V-Model journey
         run: ./vibe-model/bin/vibe-model "${{ github.event.inputs.goal }}"
@@ -377,16 +377,6 @@ bun run lint:fix
 - **Git**
 - **Claude Code CLI** or **Gemini CLI**
 
-### Installing Bun
-
-```bash
-# macOS/Linux
-curl -fsSL https://bun.sh/install | bash
-
-# Verify installation
-bun --version
-```
-
 ---
 
 ## Documentation
@@ -402,7 +392,7 @@ bun --version
 
 ## Contributing
 
-Contributions are welcome! When contributing to this submodule, keep all modifications **project-agnostic** to ensure the submodule remains portable and reusable across all projects that depend on it.
+Contributions are welcome! When contributing to vibe-model, keep all modifications **project-agnostic** to ensure the tool remains portable and reusable across all projects that depend on it.
 
 ---
 

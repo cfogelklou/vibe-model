@@ -168,9 +168,9 @@ describe('ModuleName', () => {
 
 ## Project-Specific Guidelines
 
-### Keep It Project-Agnostic
+### Keep It Generic and Reusable
 
-**Critical**: vibe-model is designed as a generic git submodule. All modifications must be **project-agnostic** to ensure portability across different parent projects.
+**Critical**: When fixing bugs or adding features to vibe-model, keep all modifications generic and reusable.
 
 - Avoid hardcoding project-specific paths
 - Keep configuration flexible

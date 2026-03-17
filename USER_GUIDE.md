@@ -126,7 +126,7 @@ your-project/                    # Parent project (git repository)
 Alternative (also works):
 
 ```bash
-# From inside submodule
+# From vibe-model directory
 cd vibe-model && ./bin/vibe-model "reduce latency to under 10ms"
 ```
 
@@ -772,13 +772,13 @@ The V-Model CLI automatically handles path resolution across platforms:
 
 - Journey files use platform-native line endings
 - Git auto-conversion recommended: `git config --global core.autocrlf true`
-- `.gitattributes` in submodule ensures consistency
+- `.gitattributes` in the project ensures consistency
 
 ### Executable Permissions
 
-**macOS/Linux**: Ensure executable bit is set:
+**macOS/Linux**: The compiled binary should already be executable. If not:
 ```bash
-chmod +x vibe-model/bin/vibe-model
+chmod +x vibe-model/dist/vibe-model
 ```
 
 **Windows**: Executable permissions not required (handled by file extension)
