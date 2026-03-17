@@ -197,6 +197,19 @@ This ensures code quality and catches regressions early.
 - **[vibe-model.md](vibe-model.md)** - Formal V-Model protocol specification
 - **[README.md](README.md)** - Project overview and installation
 - **[README_TS.md](README_TS.md)** - TypeScript implementation details
+- **[TYPESCRIPT_GUIDELINES.md](TYPESCRIPT_GUIDELINES.md)** - TypeScript coding standards and best practices
+
+---
+
+## TypeScript Development Guidelines
+
+When contributing to the vibe-model TypeScript codebase:
+
+1. **Follow the TypeScript Guidelines** - See [TYPESCRIPT_GUIDELINES.md](TYPESCRIPT_GUIDELINES.md) for comprehensive coding standards
+2. **Strict Mode Compliance** - All code must pass `bun run typecheck` with no errors
+3. **No Magic Strings/Numbers** - Use enums and constants from `src/types.ts`
+4. **Project-Agnostic Design** - Keep all code portable and reusable across any parent project
+5. **Pre-Commit Checklist** - Run `./scripts/sanity_checks.sh` before marking work complete
 
 ---
 
