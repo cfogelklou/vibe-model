@@ -1,0 +1,168 @@
+name: Vibe-Model CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    # Only run for the repo owner's actions (pushes/PRs)
+    if: |
+      (github.event_name == 'push' && github.actor == github.repository_owner) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.author_association == 'OWNER') ||
+      github.event_name == 'workflow_dispatch'
+    timeout-minutes: 30
+    env:
+      # Z.AI Configuration for Claude Code
+      ANTHROPIC_BASE_URL: "https://api.z.ai/api/anthropic"
+      ANTHROPIC_AUTH_TOKEN: ${{ secrets.Z_AI_KEY }}
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: "glm-4.7"
+      ANTHROPIC_DEFAULT_SONNET_MODEL: "glm-4.7"
+      ANTHROPIC_DEFAULT_OPUS_MODEL: "glm-4.7"
+
+    steps:
+      - name: Checkout vibe-model
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.26.x'
+
+      - name: Install Ninja
+        run: sudo apt-get install -y ninja-build
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Verify Claude Code Installation
+        run: |
+          echo "Verifying Claude Code CLI installation..."
+          claude --version || echo "Claude CLI not found in PATH"
+          which claude || echo "Claude location not found"
+
+      - name: Configure Claude Code for Z.AI
+        run: |
+          echo "Configuring Claude Code for Z.AI..."
+          mkdir -p ~/.claude
+          cat > ~/.claude/settings.json << 'EOF'
+          {
+            "yolo": true,
+            "mcpServers": {}
+          }
+          EOF
+          echo "Claude Code configured with yolo mode enabled"
+          cat ~/.claude/settings.json
+
+      - name: Setup Git Test Structure
+        run: |
+          ./scripts/setup_example_repo.sh
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Type Check
+        run: bun run typecheck
+
+      - name: Build Vibe-Model
+        run: bun run build
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Run Vibe-Model Test Journey
+        run: |
+          echo "Starting Vibe-Model journey..."
+          cd example/src
+          echo "Current directory: $(pwd)"
+          echo "Vibe-model executable: $(ls -la ../../bin/vibe-model)"
+          ../../bin/vibe-model -v --mvp --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest. Pig Latin rules: consonant-start words move first consonant to end + ay (hello → ellohay, world → orldway), vowel-start words add way (apple → appleway). Example: hello world → ellohay orldway. IMPORTANT: Configure CMake to build to a build/ subdirectory. Name the executable pig-latinifier. Use minimal testing - just verify the basic conversion works."
+        timeout-minutes: 20
+
+      - name: Upload Journey Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vibe-model-journey
+          path: |
+            example/src/vibe-model/
+          retention-days: 7
+
+      - name: Display Journey Summary
+        if: always()
+        run: |
+          echo "=== Vibe-Model Journey Summary ==="
+          if [ -d "example/src/vibe-model/journey" ]; then
+            echo "Journey files created:"
+            ls -la example/src/vibe-model/journey/
+            echo ""
+            echo "=== Journey Status ==="
+            # Use unquoted glob to allow expansion
+            for f in example/src/vibe-model/journey/*.journey.md; do
+              if [ -f "$f" ]; then
+                head -50 "$f" || true
+              fi
+            done
+          else
+            echo "No journey files found"
+          fi
+
+      - name: List Generated Files
+        if: always()
+        run: |
+          echo "=== All files in example/src ==="
+          find example/src -type f | head -50
+
+      - name: Run CTest
+        run: |
+          cd example/src
+          ctest --test-dir build --output-on-failure
+
+      - name: Verify Pig Latinifier Output
+        run: |
+          cd example/src
+          if [ -f "./build/pig-latinifier" ]; then
+            OUTPUT=$(./build/pig-latinifier "hello world")
+            EXPECTED="ellohay orldway"
+            if [ "$OUTPUT" = "$EXPECTED" ]; then
+              echo "✅ Pig latinifier test passed!"
+            else
+              echo "❌ Test failed: expected '$EXPECTED', got '$OUTPUT'"
+              exit 1
+            fi
+          else
+            echo "❌ pig-latinifier executable not found"
+            exit 1
+          fi
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generated-app
+          path: |
+            example/src/build/
+            example/src/*.cpp
+            example/src/*.cc
+            example/src/CMakeLists.txt
+          retention-days: 7
