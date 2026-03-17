@@ -7,5 +7,5 @@ build/
 .idea/
 .vscode/
 coverage/
-bin/
+bin/*.js
 example/remote/
