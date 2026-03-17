@@ -95,7 +95,7 @@ When dealing with complex research or implementation, you can spawn multiple sub
 **At Implementation Time:**
 - If tasks are independent, note: "These can be executed in parallel by sub-agents"
 - If tasks have dependencies, note: "Execute A before B, then C and D can run in parallel"
-- The orchestrator (you or loop_v_model.sh) will handle delegation
+- The orchestrator (you or vibe-model tool) will handle delegation
 `;
 
 const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
