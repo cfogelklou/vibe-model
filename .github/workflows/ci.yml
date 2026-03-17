@@ -97,7 +97,7 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Vibe-model executable: $(ls -la ../../bin/vibe-model)"
           ../../bin/vibe-model -v --mvp --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest that converts text to pig latin. Use minimal testing - just verify the basic conversion works. IMPORTANT: Configure CMake to build to a 'build/' subdirectory. Name the executable 'pig-latinifier'. The CLI should accept command-line arguments and convert each word to pig latin."
-        timeout-minutes: 30
+        timeout-minutes: 20
 
       - name: Upload Journey Artifacts
         uses: actions/upload-artifact@v4
