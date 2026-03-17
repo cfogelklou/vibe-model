@@ -40,9 +40,7 @@ jobs:
         run: sudo apt-get install -y ninja-build
 
       - name: Install Gemini CLI
-        run: |
-          curl -sSL https://go.gemini-cli.org/install.sh | bash
-          echo "$HOME/.gemini/bin" >> $GITHUB_PATH
+        run: npm install -g @google/gemini-cli
 
       - name: Verify Gemini CLI Installation
         run: |
