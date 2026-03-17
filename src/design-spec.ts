@@ -1,4 +1,10 @@
 /**
+ * vibe-model - V-Model autonomous R&D agent
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Licensed under the MIT License
+ */
+
+/**
  * Design spec operations.
  * Handles design spec creation, content extraction, and updates.
  *

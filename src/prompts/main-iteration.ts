@@ -1,4 +1,10 @@
 /**
+ * vibe-model - V-Model autonomous R&D agent
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Licensed under the MIT License
+ */
+
+/**
  * Main iteration prompt for V-Model autonomous R&D agent.
  *
  * This prompt guides the agent through executing V-Model phases,

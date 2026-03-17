@@ -1,10 +1,18 @@
 /**
+ * vibe-model - V-Model autonomous R&D agent
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Licensed under the MIT License
+ */
+
+/**
  * AI provider integration (Claude and Gemini).
  * Handles CLI execution, stream JSON parsing, and retry logic.
  */
 
 import { spawn } from "child_process";
 import { promises as fs } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import { config } from "./config";
 import { logDebug, logInfo } from "./logger";
 import { geminiReviewPrompt } from "./prompts/index";
@@ -275,7 +283,7 @@ export async function consultGemini(
   }, hasResearch);
 
   // Write review prompt to temp file
-  const tempPrompt = `/tmp/vibe-model-gemini-review-${Date.now()}.md`;
+  const tempPrompt = join(tmpdir(), `vibe-model-gemini-review-${Date.now()}.md`);
   await fs.writeFile(tempPrompt, reviewPrompt);
 
   try {

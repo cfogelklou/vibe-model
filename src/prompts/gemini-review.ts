@@ -1,3 +1,9 @@
+/**
+ * vibe-model - V-Model autonomous R&D agent
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Licensed under the MIT License
+ */
+
 import { GeminiReviewVars } from './types';
 
 const GEMINI_REVIEW_WITH_RESEARCH = `You are a design consultant reviewing a V-Model {{PHASE}} phase.

@@ -1,4 +1,10 @@
 /**
+ * vibe-model - V-Model autonomous R&D agent
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Licensed under the MIT License
+ */
+
+/**
  * Journey file operations and state management.
  * Handles journey creation, state transitions, and metadata tracking.
  */

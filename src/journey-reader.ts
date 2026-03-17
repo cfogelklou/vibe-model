@@ -1,3 +1,9 @@
+/**
+ * vibe-model - V-Model autonomous R&D agent
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Licensed under the MIT License
+ */
+
 import { promises as fs } from "fs";
 
 // Simple cache for journey file contents

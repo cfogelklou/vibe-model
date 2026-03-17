@@ -1,9 +1,16 @@
 /**
+ * vibe-model - V-Model autonomous R&D agent
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Licensed under the MIT License
+ */
+
+/**
  * Configuration management with flexible path resolution.
  * Supports running from submodule position (parent-project/vibe-model/) or sibling position.
  */
 
 import { existsSync } from "fs";
+import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { Config, AIProvider } from "./types";
@@ -81,7 +88,7 @@ export async function loadConfigFile(configPath?: string): Promise<Partial<Confi
     ? [configPath]
     : [
         path.join(process.cwd(), ".vibe-modelrc"),
-        path.join(process.env.HOME || "", ".vibe-modelrc"),
+        path.join(os.homedir(), ".vibe-modelrc"),
       ];
 
   for (const candidate of candidates) {

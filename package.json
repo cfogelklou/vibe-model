@@ -9,7 +9,8 @@
   },
   "scripts": {
     "build": "bun build src/index.ts --outdir bin --target bun",
-    "compile": "mkdir -p dist && bun build src/index.ts --compile --outfile dist/vibe-model --target bun-darwin-$(uname -m)",
+    "compile": "bun build --compile --outfile bin/vibe-model src/index.ts --target bun",
+    "compile:all": "bash scripts/build-all.sh",
     "dev": "bun run src/index.ts",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
@@ -35,5 +36,15 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cfogelklou/vibe-model.git"
+  },
+  "homepage": "https://github.com/cfogelklou/vibe-model#readme",
+  "bugs": {
+    "url": "https://github.com/cfogelklou/vibe-model/issues"
+  },
+  "author": "Chris Fogelklou <chris@applicaudia.com>",
+  "license": "MIT"
 }

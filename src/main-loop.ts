@@ -1,10 +1,17 @@
 /**
+ * vibe-model - V-Model autonomous R&D agent
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Licensed under the MIT License
+ */
+
+/**
  * Main V-Model iteration loop and state-specific handlers.
  * Handles the core iteration logic for each V-Model state.
  */
 
 import { promises as fs } from "fs";
 import path from "path";
+import os from "os";
 import { VModelState } from "./types";
 import { config } from "./config";
 import {
@@ -115,7 +122,7 @@ export async function runIteration(journeyFile: string): Promise<number> {
 
   // Create temp file with prompt + journey context
   const prompt = await generateIterationPrompt(journeyFile, state, epicFile);
-  const tempPrompt = `/tmp/vibe-model-iteration-${Date.now()}.md`;
+  const tempPrompt = path.join(os.tmpdir(), `vibe-model-iteration-${Date.now()}.md`);
 
   await fs.writeFile(
     tempPrompt,

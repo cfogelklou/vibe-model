@@ -49,7 +49,19 @@ Jump straight into the loop - questions happen during REQUIREMENTS phase:
 
 ## Installation
 
-### Adding to Your Project
+### Option 1: Install as npm Package (Recommended)
+
+```bash
+# Install globally via npm
+bun install -g @vibe-model/cli
+# or
+npm install -g @vibe-model/cli
+
+# Verify installation
+vibe-model --version
+```
+
+### Option 2: Use as Git Submodule
 
 ```bash
 # Add the submodule to your project
@@ -62,9 +74,21 @@ git submodule update --init --recursive
 
 ### Installing Bun
 
+#### macOS and Linux
+
 ```bash
 # Install Bun runtime (if not already installed)
 curl -fsSL https://bun.sh/install | bash
+
+# Verify installation
+bun --version
+```
+
+#### Windows
+
+```powershell
+# Install Bun using PowerShell
+irm bun.sh/install.ps1 | iex
 
 # Verify installation
 bun --version
@@ -724,6 +748,55 @@ git add vibe-model/journey/your-journey.md
 git add src/changed_file.cpp
 git commit -m "feat: improve performance"
 ```
+
+---
+
+## Cross-Platform Considerations
+
+### Platform-Specific Notes
+
+**Windows (PowerShell/CMD)**
+
+- Use `vibe-model` directly if installed globally via npm
+- When using as submodule, use `node vibe-model/bin/vibe-model` instead of `./vibe-model/bin/vibe-model`
+- Git Bash or WSL recommended for best compatibility
+- Some build/test commands may need Windows-specific syntax:
+  ```json
+  {
+    "buildCommand": "npm run build",
+    "testCommand": "npm test",
+    "allTestsCommand": "npm run test:all"
+  }
+  ```
+
+**macOS and Linux**
+
+- Direct CLI execution works as documented
+- Bash/zsh shell syntax assumed in examples
+- GNU/BSD sed differences handled automatically by file-utils.ts
+
+### Path Handling
+
+The V-Model CLI automatically handles path resolution across platforms:
+
+- **Unix (macOS/Linux)**: Uses `/` path separator
+- **Windows**: Converts to `\` path separator automatically
+- **Mixed environments**: Automatic detection and conversion
+
+### Line Endings
+
+- Journey files use platform-native line endings
+- Git auto-conversion recommended: `git config --global core.autocrlf true`
+- `.gitattributes` in submodule ensures consistency
+
+### Executable Permissions
+
+**macOS/Linux**: Ensure executable bit is set:
+```bash
+chmod +x vibe-model/bin/vibe-model
+```
+
+**Windows**: Executable permissions not required (handled by file extension)
 
 ---
 

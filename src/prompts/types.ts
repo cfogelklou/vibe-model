@@ -1,4 +1,10 @@
 /**
+ * vibe-model - V-Model autonomous R&D agent
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Licensed under the MIT License
+ */
+
+/**
  * Type-safe prompt template system for V-Model.
  * Provides strongly-typed interfaces for all template variables.
  */

@@ -2,6 +2,10 @@
 
 > **Autonomous R&D agent using the V-Model development lifecycle with formal verification.**
 
+[![npm version](https://badge.fury.io/js/%40vibe-model%2Fcli.svg)](https://www.npmjs.com/package/@vibe-model/cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://github.com/cfogelklou/vibe-model/workflows/Build/badge.svg)](https://github.com/cfogelklou/vibe-model/actions)
+
 A **generic git submodule** for autonomous R&D using the V-Model protocol. Works with any parent project (C++, JavaScript, PWA, etc.) using Claude Code or Gemini.
 
 Implemented in TypeScript for better maintainability, type safety, and cross-platform compatibility.
@@ -19,11 +23,25 @@ Implemented in TypeScript for better maintainability, type safety, and cross-pla
 - **Dead-end detection**: Automatic pivot when approaches stagnate
 - **Quality guardrails**: Linting, static analysis, performance thresholds
 - **Type-safe implementation**: TypeScript with strict mode for reliability
-- **Cross-platform**: Works on macOS, Linux, and Windows
+- **Cross-platform support**: Works on macOS, Linux, and Windows
 
 ---
 
 ## Quick Start
+
+### Option 1: Install as npm Package (Recommended)
+
+```bash
+# Install globally via npm
+bun install -g @vibe-model/cli
+# or
+npm install -g @vibe-model/cli
+
+# Start a new journey
+vibe-model "your goal here"
+```
+
+### Option 2: Use as Git Submodule
 
 ```bash
 # Add the submodule to your project
@@ -255,6 +273,43 @@ your-project/
 - SIGHUP: Exit code 129
 - Child process cleanup
 - Temp file removal
+
+---
+
+## GitHub Actions Integration
+
+You can integrate V-Model into your CI/CD pipeline using GitHub Actions:
+
+```yaml
+name: V-Model Journey
+on:
+  workflow_dispatch:
+    inputs:
+      goal:
+        description: 'Development goal'
+        required: true
+        default: 'improve performance'
+
+jobs:
+  vmodel-journey:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Bun
+        run: curl -fsSL https://bun.sh/install | bash
+
+      - name: Install V-Model dependencies
+        run: cd vibe-model && bun install
+
+      - name: Run V-Model journey
+        run: ./vibe-model/bin/vibe-model "${{ github.event.inputs.goal }}"
+        env:
+          AI_PROVIDER: claude
+          MAX_ITERATIONS: 50
+```
 
 ---
 

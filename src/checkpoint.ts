@@ -1,4 +1,10 @@
 /**
+ * vibe-model - V-Model autonomous R&D agent
+ * Copyright (c) 2026 Applicaudia AB (Chris Fogelklou)
+ * Licensed under the MIT License
+ */
+
+/**
  * Checkpoint and git operations.
  * Handles git checkpoint creation, rollback, and git command execution from parent project.
  */
