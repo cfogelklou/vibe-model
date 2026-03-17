@@ -17,7 +17,7 @@ import path from "path";
 import { VModelState } from "./types";
 import { config } from "./config";
 import { getJourneyGoal, getCurrentEpic } from "./journey";
-import { readJourneyFile } from "./journey-reader";
+import { readJourneyFile, clearJourneyCache } from "./journey-reader";
 
 /**
  * Get design spec file path from journey name
@@ -161,6 +161,7 @@ ${baselineMetrics}
       `See [${journeyName}.spec.md](${journeyName}.spec.md) for detailed design specification.`
     );
     await fs.writeFile(journeyFile, journeyLines.join("\n"));
+    clearJourneyCache(journeyFile);
   }
 
   return specPath;

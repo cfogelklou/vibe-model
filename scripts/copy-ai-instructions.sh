@@ -16,6 +16,7 @@ SOURCE_FILE="$PROJECT_ROOT/CLAUDE.md"
 GEMINI_FILE="$PROJECT_ROOT/GEMINI.md"
 COPILOT_FILE="$PROJECT_ROOT/.github/copilot-instructions.md"
 COPILOT_ADDENDUM="$PROJECT_ROOT/.github/copilot-instructions-addendum.md"
+AGENTS_FILE="$PROJECT_ROOT/AGENTS.md"
 
 if [ ! -f "$SOURCE_FILE" ]; then
     echo "Error: Source file $SOURCE_FILE does not exist"

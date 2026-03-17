@@ -15,7 +15,7 @@ import { setJourneyState, setCurrentEpic, addLearning } from "./journey";
 import { appendToFile } from "./file-utils";
 import { createCheckpoint, commitChanges } from "./checkpoint";
 import { logInfo, logSuccess, logWarning } from "./logger";
-import { readJourneyFile } from "./journey-reader";
+import { readJourneyFile, clearJourneyCache } from "./journey-reader";
 import { promises as fs, existsSync } from "fs";
 import path from "path";
 
@@ -203,6 +203,7 @@ export async function ensurePreviousPhaseMarker(
     if (insertIndex >= 0) {
       lines.splice(insertIndex + 1, 0, `- Previous Phase: ${phase}`);
       await fs.writeFile(journeyFile, lines.join("\n"));
+      clearJourneyCache(journeyFile);
     }
   } else {
     // Update existing Previous Phase marker
@@ -211,6 +212,7 @@ export async function ensurePreviousPhaseMarker(
       `- Previous Phase: ${phase}`
     );
     await fs.writeFile(journeyFile, updatedContent);
+    clearJourneyCache(journeyFile);
   }
 }
 

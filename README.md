@@ -3,7 +3,7 @@
 > **Autonomous R&D agent using the V-Model development lifecycle with formal verification.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/cfogelklou/vibe-model/workflows/Build/badge.svg)](https://github.com/cfogelklou/vibe-model/actions)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/cfogelklou/vibe-model/.github%2Fworkflows%2Fci.yml?branch=bun)](https://github.com/cfogelklou/vibe-model/actions/workflows/ci.yml)
 
 An autonomous R&D agent using the V-Model protocol. Works with any project (C++, JavaScript, PWA, etc.) using Claude Code or Gemini.
 
