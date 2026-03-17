@@ -30,26 +30,58 @@ The **vibe-model** submodule provides an autonomous R&D agent that implements th
 # Install Bun (if not already installed)
 curl -fsSL https://bun.sh/install | bash
 
-# Install dependencies
-cd vibe-model && bun install
+# Install dependencies and build
+cd vibe-model && bun install && bun run build
+```
 
+### Running Vibe-Model in Your Project
+
+**IMPORTANT**: Vibe-model runs from **within** your target project directory, not from the vibe-model directory itself.
+
+```bash
+# 1. Navigate to YOUR project directory (where you want to build something)
+cd /path/to/your/project
+
+# 2. Run vibe-model (relative path to the executable)
+/path/to/vibe-model/bin/vibe-model -g -v "your goal here"
+
+# This creates a `vibe-model/` directory in your project with:
+# - journey/     - Journey tracking files
+# - prototypes/  - Experimental code
+# - memory.md    - Knowledge persistence
+```
+
+### Example: Using the Test Fixture
+
+```bash
+# From the vibe-model repository root:
+./scripts/setup_example_repo.sh  # Creates example/src/ test fixture
+bun run build                     # Build bin/vibe-model
+
+cd example/src                    # Navigate INTO the target project
+../../bin/vibe-model -g -v "Build a pig latinifier CLI in C++ using CMake and CTest"
+```
+
+### Vibe-Model Commands
+
+```bash
 # Start a new journey
-./vibe-model/bin/vibe-model "your goal here"
+../../bin/vibe-model -g -v "your goal here"
 
-# Continue active journey
-./vibe-model/bin/vibe-model
+# Continue active journey (from within your project)
+../../bin/vibe-model
 
 # Check status
-./vibe-model/bin/vibe-model status
+../../bin/vibe-model status
 
-# Add a hint
-./vibe-model/bin/vibe-model hint "try using X first"
+# Add a hint to unblock WAITING_FOR_USER
+../../bin/vibe-model hint "proceed with the approach"
 
-# Force pivot
-./vibe-model/bin/vibe-model pivot
+# Force pivot to next approach
+../../bin/vibe-model pivot
 
 # Rollback to last checkpoint
-./vibe-model/bin/vibe-model rollback
+../../bin/vibe-model rollback
 ```
 
 ---

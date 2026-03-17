@@ -46,12 +46,28 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      - name: Prepare Test Journey
+      - name: Run Vibe-Model Test Journey
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          echo "Git test structure ready at:"
-          echo "  Remote: $(pwd)/example/remote"
-          echo "  Source: $(pwd)/example/src"
-          echo ""
-          echo "To run a test journey in CI, configure API keys as secrets:"
-          echo "  - ANTHROPIC_API_KEY (for Claude)"
-          echo "  - GEMINI_API_KEY (for Gemini)"
+          cd example/src
+          ../../bin/vibe-model -g -v "Build a pig latinifier CLI in C++ using CMake and CTest that converts text to pig latin. Use minimal testing - just verify the basic conversion works."
+
+      - name: Build and Test Generated App
+        run: |
+          cd example/src
+          cmake -B build
+          cmake --build build
+          ctest --test-dir build
+
+      - name: Verify Pig Latinifier Output
+        run: |
+          cd example/src
+          OUTPUT=$(./build/pig-latin "is this pig latin")
+          EXPECTED="siay hisay igpay atinlay"
+          if [ "$OUTPUT" = "$EXPECTED" ]; then
+            echo "✅ Pig latinifier test passed!"
+          else
+            echo "❌ Test failed: expected '$EXPECTED', got '$OUTPUT'"
+            exit 1
+          fi
