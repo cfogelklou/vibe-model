@@ -96,14 +96,7 @@ jobs:
           cd example/src
           echo "Current directory: $(pwd)"
           echo "Vibe-model executable: $(ls -la ../../bin/vibe-model)"
-          ../../bin/vibe-model -v --mvp --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest. The CLI should accept command-line arguments and convert each word to pig latin.
-
-Pig Latin rules:
-- Words starting with consonants: move first consonant to end + 'ay' (e.g., 'hello' → 'ellohay', 'world' → 'orldway')
-- Words starting with vowels: add 'way' to end (e.g., 'apple' → 'appleway')
-- Example: 'hello world' → 'ellohay orldway'
-
-IMPORTANT: Configure CMake to build to a 'build/' subdirectory. Name the executable 'pig-latinifier'. Use minimal testing - just verify the basic conversion works."
+          ../../bin/vibe-model -v --mvp --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest. Pig Latin rules: consonant-start words move first consonant to end + ay (hello → ellohay, world → orldway), vowel-start words add way (apple → appleway). Example: hello world → ellohay orldway. IMPORTANT: Configure CMake to build to a build/ subdirectory. Name the executable pig-latinifier. Use minimal testing - just verify the basic conversion works."
         timeout-minutes: 20
 
       - name: Upload Journey Artifacts
