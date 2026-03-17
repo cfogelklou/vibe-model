@@ -12,7 +12,7 @@ import { MainIterationVars } from './types';
  * These sections rarely change and are defined as constants.
  */
 const MAIN_ITERATION_HEADER = `You are an autonomous R&D agent working toward a high-level goal using a V-Model workflow.
-Refer to v_model.md for the Master Protocol.
+Refer to vibe-model.md for the Master Protocol.
 
 AI Provider: {{AI_PROVIDER}}
 
@@ -99,7 +99,7 @@ When dealing with complex research or implementation, you can spawn multiple sub
 `;
 
 const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
-- **Execute Spec Initiation Protocol** (see v_model.md).
+- **Execute Spec Initiation Protocol** (see vibe-model.md).
 - **RESEARCH**: Before finalizing requirements:
   - Web search for similar systems/libraries
   - Consult memory.md for past learnings

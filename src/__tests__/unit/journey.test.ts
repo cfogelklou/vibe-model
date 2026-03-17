@@ -20,8 +20,8 @@ import {
 } from "../../journey";
 
 // Mock config
-const mockProjectDir = "/tmp/test-v-model";
-const mockJourneyDir = path.join(mockProjectDir, "v_model", "journey");
+const mockProjectDir = "/tmp/test-vibe-model";
+const mockJourneyDir = path.join(mockProjectDir, "vibe-model", "journey");
 
 describe("sanitizeJourneyName", () => {
   it("should convert to lowercase and replace spaces with hyphens", () => {

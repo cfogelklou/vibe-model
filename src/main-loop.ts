@@ -115,7 +115,7 @@ export async function runIteration(journeyFile: string): Promise<number> {
 
   // Create temp file with prompt + journey context
   const prompt = await generateIterationPrompt(journeyFile, state, epicFile);
-  const tempPrompt = `/tmp/v-model-iteration-${Date.now()}.md`;
+  const tempPrompt = `/tmp/vibe-model-iteration-${Date.now()}.md`;
 
   await fs.writeFile(
     tempPrompt,
@@ -267,7 +267,7 @@ async function handleWaitingForUser(journeyFile: string): Promise<boolean> {
   }
 
   // Only stop if there are genuine unchecked questions
-  logWarning("Journey is WAITING_FOR_USER. Use 'v-model hint \"message\"' to provide input.");
+  logWarning("Journey is WAITING_FOR_USER. Use 'vibe-model hint \"message\"' to provide input.");
   logInfo("Current pending questions:");
   console.error(pendingQuestions);
   return false; // Exit loop - waiting for user
@@ -316,7 +316,7 @@ export async function mainLoop(journeyFile: string): Promise<void> {
         return;
 
       case VModelState.BLOCKED:
-        logWarning("Journey is blocked. Use 'v-model hint \"message\"' to unblock.");
+        logWarning("Journey is blocked. Use 'vibe-model hint \"message\"' to unblock.");
         return;
 
       case VModelState.WAITING_FOR_USER: {

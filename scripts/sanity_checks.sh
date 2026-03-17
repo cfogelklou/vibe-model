@@ -1,5 +1,5 @@
 #!/bin/bash
-# Sanity checks for ai-v-model
+# Sanity checks for vibe-model
 # Runs typecheck, build, and lint in sequence
 # ALWAYS run this before marking AI-driven development as complete
 

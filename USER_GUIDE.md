@@ -32,7 +32,7 @@ Start a conversational spec-gathering session before the loop:
 
 ```bash
 claude
-> Let's determine specifications for my goal according to ./ai-v-model/v_model.md
+> Let's determine specifications for my goal according to ./vibe-model/vibe-model.md
 ```
 
 The AI follows the Spec Initiation Protocol, asks clarifying questions, creates a `.spec.md` file, and waits for your sign-off.
@@ -42,7 +42,7 @@ The AI follows the Spec Initiation Protocol, asks clarifying questions, creates 
 Jump straight into the loop - questions happen during REQUIREMENTS phase:
 
 ```bash
-./ai-v-model/bin/v-model "your goal here"
+./vibe-model/bin/vibe-model "your goal here"
 ```
 
 ---
@@ -54,7 +54,7 @@ Jump straight into the loop - questions happen during REQUIREMENTS phase:
 ```bash
 # Add the submodule to your project
 cd your-project
-git submodule add https://github.com/cfogelklou/ai-v-model.git ai-v-model
+git submodule add https://github.com/cfogelklou/vibe-model.git vibe-model
 
 # Initialize the submodule
 git submodule update --init --recursive
@@ -74,7 +74,7 @@ bun --version
 
 ```bash
 # Install npm dependencies
-cd ai-v-model && bun install
+cd vibe-model && bun install
 ```
 
 ### Directory Structure
@@ -83,29 +83,29 @@ When integrated, the submodule creates this structure:
 
 ```
 your-project/                    # Parent project (git repository)
-├── v_model/                    # V-Model outputs (created by script)
+├── vibe-model/                    # V-Model outputs (created by script)
 │   ├── journey/                # Journey tracking files
 │   ├── prototypes/             # Experimental code (Python, etc.)
 │   └── memory.md               # Knowledge persistence
-├── ai-v-model/                 # This submodule (separate git tracking)
+├── vibe-model/                 # This submodule (separate git tracking)
 │   ├── src/                    # TypeScript source code
 │   │   ├── index.ts            # Main entry point
 │   │   ├── config.ts           # Configuration
 │   │   ├── journey.ts          # Journey operations
 │   │   └── ...                 # Other modules
 │   ├── bin/
-│   │   └── v-model             # Executable CLI
+│   │   └── vibe-model             # Executable CLI
 │   ├── prompts/                # AI prompt templates
 │   ├── package.json            # Dependencies
 │   ├── USER_GUIDE.md           # This file
-│   ├── v_model.md              # Protocol specification
+│   ├── vibe-model.md              # Protocol specification
 │   └── CLAUDE.md               # Quick reference for Claude Code
 └── ... (your project files)
 ```
 
 **Important**:
-- The `v_model/` directory is created in the **parent project root**, not inside the submodule.
-- Prototyping directory `v_model/prototypes/` is user-managed for experimental code.
+- The `vibe-model/` directory is created in the **parent project root**, not inside the submodule.
+- Prototyping directory `vibe-model/prototypes/` is user-managed for experimental code.
 
 ---
 
@@ -117,14 +117,14 @@ your-project/                    # Parent project (git repository)
 
 ```bash
 # From parent project root
-./ai-v-model/bin/v-model "reduce latency to under 10ms"
+./vibe-model/bin/vibe-model "reduce latency to under 10ms"
 ```
 
 Alternative (also works):
 
 ```bash
 # From inside submodule
-cd ai-v-model && ./bin/v-model "reduce latency to under 10ms"
+cd vibe-model && ./bin/vibe-model "reduce latency to under 10ms"
 ```
 
 The CLI automatically resolves paths regardless of where you run it from.
@@ -133,12 +133,12 @@ The CLI automatically resolves paths regardless of where you run it from.
 
 ```bash
 # Start a new journey
-./ai-v-model/bin/v-model "reduce latency to under 10ms"
+./vibe-model/bin/vibe-model "reduce latency to under 10ms"
 
 # With options
-./ai-v-model/bin/v-model -g "implement feature X"      # Use Gemini
-./ai-v-model/bin/v-model --no-consult "fix bug Y"      # Disable Gemini consultation
-./ai-v-model/bin/v-model -v "add feature Z"            # Verbose logging
+./vibe-model/bin/vibe-model -g "implement feature X"      # Use Gemini
+./vibe-model/bin/vibe-model --no-consult "fix bug Y"      # Disable Gemini consultation
+./vibe-model/bin/vibe-model -v "add feature Z"            # Verbose logging
 ```
 
 ---
@@ -147,15 +147,15 @@ The CLI automatically resolves paths regardless of where you run it from.
 
 | Command | Description |
 |--------|-------------|
-| `./bin/v-model "goal"` | Start a new journey with the given goal |
-| `./bin/v-model` | Continue the active journey |
-| `./bin/v-model status` | Show status of all journeys |
-| `./bin/v-model hint "message"` | Add a user hint to the journey |
-| `./bin/v-model pivot` | Force pivot to next approach |
-| `./bin/v-model reflect` | Force reflection phase |
-| `./bin/v-model archive` | Archive completed epics |
-| `./bin/v-model rollback [N]` | Rollback to checkpoint N (default: last) |
-| `./bin/v-model list-checkpoints` | List all checkpoints for current journey |
+| `./bin/vibe-model "goal"` | Start a new journey with the given goal |
+| `./bin/vibe-model` | Continue the active journey |
+| `./bin/vibe-model status` | Show status of all journeys |
+| `./bin/vibe-model hint "message"` | Add a user hint to the journey |
+| `./bin/vibe-model pivot` | Force pivot to next approach |
+| `./bin/vibe-model reflect` | Force reflection phase |
+| `./bin/vibe-model archive` | Archive completed epics |
+| `./bin/vibe-model rollback [N]` | Rollback to checkpoint N (default: last) |
+| `./bin/vibe-model list-checkpoints` | List all checkpoints for current journey |
 
 ### Command Options
 
@@ -182,12 +182,12 @@ Use environment variables to configure behavior:
 export BUILD_COMMAND="npm run build"
 export TEST_COMMAND="npm test"
 export AI_PROVIDER="claude"
-./ai-v-model/bin/v-model "add feature X"
+./vibe-model/bin/vibe-model "add feature X"
 ```
 
-### Config File (.v-modelrc)
+### Config File (.vibe-modelrc)
 
-Create a `.v-modelrc` file in your project directory or home directory:
+Create a `.vibe-modelrc` file in your project directory or home directory:
 
 ```json
 {
@@ -264,7 +264,7 @@ Create a `.v-modelrc` file in your project directory or home directory:
 
 ## Journey Files
 
-Journey files track the progress of each R&D effort. They are stored in `{PROJ_ROOT}/v_model/journey/`.
+Journey files track the progress of each R&D effort. They are stored in `{PROJ_ROOT}/vibe-model/journey/`.
 
 ### Journey File Format
 
@@ -332,11 +332,11 @@ Each design spec contains:
 
 ## Memory System
 
-Memory is stored in **markdown format** at `{PROJ_ROOT}/v_model/memory.md`:
+Memory is stored in **markdown format** at `{PROJ_ROOT}/vibe-model/memory.md`:
 
 ```
 your-project/
-└── v_model/
+└── vibe-model/
     └── memory.md    # Persistent knowledge storage
 ```
 
@@ -375,26 +375,26 @@ The V-Model agent can use Python or other languages for rapid prototyping before
 
 ### Prototyping Directory
 
-**Location**: `{PROJ_ROOT}/v_model/prototypes/`
+**Location**: `{PROJ_ROOT}/vibe-model/prototypes/`
 
 ```bash
-# Create prototype in v_model/prototypes/
-# Agent will create files like: v_model/prototypes/fft_experiment.py
+# Create prototype in vibe-model/prototypes/
+# Agent will create files like: vibe-model/prototypes/fft_experiment.py
 ```
 
 ### Prototype Workflow
 
 ```bash
-# 1. Create prototype in v_model/prototypes/
-# Agent will create files like: v_model/prototypes/fft_experiment.py
+# 1. Create prototype in vibe-model/prototypes/
+# Agent will create files like: vibe-model/prototypes/fft_experiment.py
 
 # 2. Run prototype
-python v_model/prototypes/fft_experiment.py
+python vibe-model/prototypes/fft_experiment.py
 ```
 
 ### .gitignore
 
-The CLI automatically creates `v_model/.gitignore` to exclude generated artifacts:
+The CLI automatically creates `vibe-model/.gitignore` to exclude generated artifacts:
 
 ```
 # V-Model artifact exclusions
@@ -427,13 +427,13 @@ Checkpoints are automatically created at key milestones during the journey. Each
 
 ```bash
 # Rollback to last checkpoint
-./ai-v-model/bin/v-model rollback
+./vibe-model/bin/vibe-model rollback
 
 # Rollback to specific checkpoint ID
-./ai-v-model/bin/v-model rollback 3
+./vibe-model/bin/vibe-model rollback 3
 
 # List all checkpoints
-./ai-v-model/bin/v-model list-checkpoints
+./vibe-model/bin/vibe-model list-checkpoints
 ```
 
 **Warning**: Rollback uses `git reset --hard` and will discard uncommitted changes.
@@ -446,10 +446,10 @@ Checkpoints are automatically created at key milestones during the journey. Each
 
 ```bash
 # Compile standalone executable (includes Bun runtime)
-cd ai-v-model
+cd vibe-model
 bun run compile
 
-# Output: dist/v-model (56MB, works on macOS arm64/x64, Linux, Windows)
+# Output: dist/vibe-model (56MB, works on macOS arm64/x64, Linux, Windows)
 # Can be copied to any system without requiring Bun installation
 ```
 
@@ -474,11 +474,11 @@ bun run build
 
 ```bash
 # Verbose mode for debugging
-./ai-v-model/bin/v-model -v "your goal"
+./vibe-model/bin/vibe-model -v "your goal"
 
 # Enable verbose environment variable
 export VERBOSE=true
-./ai-v-model/bin/v-model "your goal"
+./vibe-model/bin/vibe-model "your goal"
 ```
 
 ### Common Issues
@@ -508,7 +508,7 @@ bun run lint:fix
 Provide guidance to the agent during a journey:
 
 ```bash
-./ai-v-model/bin/v-model hint "Try using FFT interpolation"
+./vibe-model/bin/vibe-model hint "Try using FFT interpolation"
 ```
 
 Hints are added to the journey file and incorporated into the next iteration.
@@ -518,7 +518,7 @@ Hints are added to the journey file and incorporated into the next iteration.
 When the current approach is stuck, force a pivot to the next approach:
 
 ```bash
-./ai-v-model/bin/v-model pivot
+./vibe-model/bin/vibe-model pivot
 ```
 
 This sets the journey state to `PIVOTING`, causing the agent to abandon the current approach and try a new one.
@@ -528,7 +528,7 @@ This sets the journey state to `PIVOTING`, causing the agent to abandon the curr
 Trigger a reflection phase to analyze progress:
 
 ```bash
-./ai-v-model/bin/v-model reflect
+./vibe-model/bin/vibe-model reflect
 ```
 
 This sets the journey state to `REFLECTING`, causing the agent to analyze what has been learned and adjust strategy.
@@ -538,7 +538,7 @@ This sets the journey state to `REFLECTING`, causing the agent to analyze what h
 Archive completed epics to reduce journey file size:
 
 ```bash
-./ai-v-model/bin/v-model archive
+./vibe-model/bin/vibe-model archive
 ```
 
 This moves completed epic details to separate files, keeping the main journey file focused on current work.
@@ -597,32 +597,32 @@ Make sure you're running from the correct directory:
 
 ```bash
 # From parent project root (recommended)
-./ai-v-model/bin/v-model "goal"
+./vibe-model/bin/vibe-model "goal"
 
 # Or specify project directory explicitly
-./ai-v-model/bin/v-model --project-dir /path/to/project "goal"
+./vibe-model/bin/vibe-model --project-dir /path/to/project "goal"
 ```
 
 ### Journey Files in Wrong Location
 
-Check that `v_model/` directory exists in parent project root:
+Check that `vibe-model/` directory exists in parent project root:
 
 ```bash
-ls ../v_model/
+ls ../vibe-model/
 ```
 
 If missing, the CLI will create it automatically.
 
 ### Tests Not Running
 
-Configure `TEST_COMMAND` as an environment variable or in `.v-modelrc`:
+Configure `TEST_COMMAND` as an environment variable or in `.vibe-modelrc`:
 
 ```bash
 export TEST_COMMAND="npm test"
-./ai-v-model/bin/v-model "fix tests"
+./vibe-model/bin/vibe-model "fix tests"
 ```
 
-Or in `.v-modelrc`:
+Or in `.vibe-modelrc`:
 ```json
 {
   "testCommand": "npm test"
@@ -634,17 +634,17 @@ Or in `.v-modelrc`:
 To disable Gemini consultation during design phases:
 
 ```bash
-./ai-v-model/bin/v-model --no-consult "your goal"
+./vibe-model/bin/vibe-model --no-consult "your goal"
 ```
 
 Or set the environment variable:
 
 ```bash
 export CONSULT_GEMINI=false
-./ai-v-model/bin/v-model "your goal"
+./vibe-model/bin/vibe-model "your goal"
 ```
 
-Or in `.v-modelrc`:
+Or in `.vibe-modelrc`:
 ```json
 {
   "consultGemini": false
@@ -656,17 +656,17 @@ Or in `.v-modelrc`:
 Enable verbose output for debugging:
 
 ```bash
-./ai-v-model/bin/v-model -v "your goal"
+./vibe-model/bin/vibe-model -v "your goal"
 ```
 
 Or set the environment variable:
 
 ```bash
 export VERBOSE=true
-./ai-v-model/bin/v-model "your goal"
+./vibe-model/bin/vibe-model "your goal"
 ```
 
-Or in `.v-modelrc`:
+Or in `.vibe-modelrc`:
 ```json
 {
   "verbose": true
@@ -678,17 +678,17 @@ Or in `.v-modelrc`:
 Use Gemini instead of Claude for the main loop:
 
 ```bash
-./ai-v-model/bin/v-model -g "your goal"
+./vibe-model/bin/vibe-model -g "your goal"
 ```
 
 Or set the environment variable:
 
 ```bash
 export AI_PROVIDER=gemini
-./ai-v-model/bin/v-model "your goal"
+./vibe-model/bin/vibe-model "your goal"
 ```
 
-Or in `.v-modelrc`:
+Or in `.vibe-modelrc`:
 ```json
 {
   "aiProvider": "gemini"
@@ -717,10 +717,10 @@ All code changes, V-Model outputs, and journey files are committed to the **pare
 
 ```bash
 # Run V-Model loop from parent project root
-./ai-v-model/bin/v-model "improve performance"
+./vibe-model/bin/vibe-model "improve performance"
 
 # When ready to commit (from parent project root):
-git add v_model/journey/your-journey.md
+git add vibe-model/journey/your-journey.md
 git add src/changed_file.cpp
 git commit -m "feat: improve performance"
 ```
@@ -729,7 +729,7 @@ git commit -m "feat: improve performance"
 
 ## Additional Resources
 
-- **[Protocol Specification](v_model.md)** - Complete V-Model protocol definition
+- **[Protocol Specification](vibe-model.md)** - Complete V-Model protocol definition
 - **[Claude Code Quick Reference](CLAUDE.md)** - Quick reference for AI agents
 - **[README](README.md)** - Project overview and links
 - **[TypeScript Implementation](README_TS.md)** - TypeScript architecture details

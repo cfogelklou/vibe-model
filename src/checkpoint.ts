@@ -12,7 +12,7 @@ import { logInfo, logSuccess, logWarning, logError } from "./logger";
 
 /**
  * Execute git command from parent project directory.
- * NEVER run git from ai-v-model directory - the parent project is where all commits/tags happen.
+ * NEVER run git from vibe-model directory - the parent project is where all commits/tags happen.
  */
 export async function gitCommand(
   args: string[],
@@ -52,7 +52,7 @@ export async function gitCommand(
 }
 
 /**
- * Assert we're not in ai-v-model submodule directory.
+ * Assert we're not in vibe-model submodule directory.
  * This prevents accidental git operations in the wrong directory.
  */
 export function assertInParentProject(cwd: string): void {
@@ -70,17 +70,17 @@ export function assertInParentProject(cwd: string): void {
     }
   }
 
-  // Check if we're in ai-v-model directory by name (with false positive check)
+  // Check if we're in vibe-model directory by name (with false positive check)
   const dirName = path.basename(cwd);
-  if (dirName === "ai-v-model") {
-    // Additional check: see if parent has .git or v_model directory
+  if (dirName === "vibe-model") {
+    // Additional check: see if parent has .git or vibe-model directory
     const parentDir = path.dirname(cwd);
     const hasParentGit = existsSync(path.join(parentDir, ".git"));
-    const hasVModelDir = existsSync(path.join(parentDir, "v_model"));
+    const hasVModelDir = existsSync(path.join(parentDir, "vibe-model"));
 
     if (hasParentGit || hasVModelDir) {
       throw new VModelError(
-        "Git operation attempted from ai-v-model directory. Must use parent project directory.",
+        "Git operation attempted from vibe-model directory. Must use parent project directory.",
         1,
         false
       );

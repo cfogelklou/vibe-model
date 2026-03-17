@@ -17,7 +17,7 @@ import { readJourneyFile } from "./journey-reader";
  * Get design spec file path from journey name
  */
 export function getDesignSpecPath(journeyName: string): string {
-  const journeyDir = path.join(config.projectDir, "v_model", "journey");
+  const journeyDir = path.join(config.projectDir, "vibe-model", "journey");
   return path.join(journeyDir, `${journeyName}.spec.md`);
 }
 

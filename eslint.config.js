@@ -60,7 +60,7 @@ export default [
       "bin/**",
       "node_modules/**",
       "*.js",
-      "v_model/**",
+      "vibe-model/**",
       "*.md",
       "src/__tests__/**",
     ],

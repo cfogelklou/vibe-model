@@ -37,7 +37,7 @@ import { killAllChildProcesses } from "./ai-provider";
  * Ensure required directories exist
  */
 async function ensureDirectories(): Promise<void> {
-  const vModelDir = path.join(config.projectDir, "v_model");
+  const vModelDir = path.join(config.projectDir, "vibe-model");
   const journeyDir = path.join(vModelDir, "journey");
   const prototypesDir = path.join(vModelDir, "prototypes");
 
@@ -53,7 +53,7 @@ async function handleHint(hint: string): Promise<void> {
 
   if (!activeJourney) {
     logError("No active journey found");
-    logInfo("Create one with: v-model \"your goal\"");
+    logInfo("Create one with: vibe-model \"your goal\"");
     throw new VModelError("No active journey found", 1);
   }
 
@@ -169,7 +169,7 @@ async function handleStatus(): Promise<void> {
 
   if (journeys.length === 0) {
     logInfo("No journeys found");
-    logInfo("Start a new journey with: v-model \"your goal\"");
+    logInfo("Start a new journey with: vibe-model \"your goal\"");
     return;
   }
 
@@ -287,7 +287,7 @@ async function main(): Promise<number> {
   const program = new Command();
 
   program
-    .name("v-model")
+    .name("vibe-model")
     .description("Autonomous R&D agent using V-Model methodology")
     .version("1.0.0");
 
@@ -324,8 +324,8 @@ async function main(): Promise<number> {
 
           if (!activeJourney) {
             logError("No active journey found");
-            logInfo("Start a new journey with: v-model \"your goal\"");
-            logInfo("Or check status with: v-model status");
+            logInfo("Start a new journey with: vibe-model \"your goal\"");
+            logInfo("Or check status with: vibe-model status");
             process.exitCode = 1;
             return;
           }

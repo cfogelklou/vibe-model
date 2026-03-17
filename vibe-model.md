@@ -354,7 +354,7 @@ Before design begins, define optional constraints:
 
 ### 4.1 Journey File Format
 
-Journey files are stored as `{PROJ_ROOT}/v_model/journey/{name}.journey.md`
+Journey files are stored as `{PROJ_ROOT}/vibe-model/journey/{name}.journey.md`
 
 **Required Sections**:
 
@@ -435,7 +435,7 @@ Journey files are stored as `{PROJ_ROOT}/v_model/journey/{name}.journey.md`
 
 ### 4.2 Spec File Format
 
-Spec files are stored as `{PROJ_ROOT}/v_model/journey/{name}.spec.md`
+Spec files are stored as `{PROJ_ROOT}/vibe-model/journey/{name}.spec.md`
 
 **Required Sections**:
 
@@ -621,7 +621,7 @@ Each design phase includes an implicit research step. Before finalizing any desi
 ** Read `generic-best-practices.md` before starting research.**
 - This document contains 20 generic best practices applicable to ALL software projects
 - Every line of code is a liability - reuse proven solutions
-- Reference: `./ai-v-model/generic-best-practices.md`
+- Reference: `./vibe-model/generic-best-practices.md`
 
 ### 7.1 Standard Research Protocol (Parallel Exploration)
 
@@ -919,7 +919,7 @@ After each state transition, the loop checks for completed epics without archiva
 
 ### 13.3 Epic File Format
 
-**File**: `{PROJ_ROOT}/v_model/journey/{name}.journey.E{id}.md`
+**File**: `{PROJ_ROOT}/vibe-model/journey/{name}.journey.E{id}.md`
 
 **Contents**:
 - Epic summary

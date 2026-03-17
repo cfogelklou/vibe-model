@@ -27,7 +27,7 @@ Implemented in TypeScript for better maintainability, type safety, and cross-pla
 
 ```bash
 # Add the submodule to your project
-git submodule add https://github.com/cfogelklou/ai-v-model.git ai-v-model
+git submodule add https://github.com/cfogelklou/vibe-model.git vibe-model
 
 # Initialize the submodule
 git submodule update --init --recursive
@@ -36,10 +36,10 @@ git submodule update --init --recursive
 curl -fsSL https://bun.sh/install | bash
 
 # Install dependencies
-cd ai-v-model && bun install
+cd vibe-model && bun install
 
 # Start a new journey
-./ai-v-model/bin/v-model "your goal here"
+./vibe-model/bin/vibe-model "your goal here"
 ```
 
 ---
@@ -48,31 +48,31 @@ cd ai-v-model && bun install
 
 ```bash
 # Start a new journey
-./ai-v-model/bin/v-model "reduce latency to under 10ms"
+./vibe-model/bin/vibe-model "reduce latency to under 10ms"
 
 # Continue active journey
-./ai-v-model/bin/v-model
+./vibe-model/bin/vibe-model
 
 # Check status of all journeys
-./ai-v-model/bin/v-model status
+./vibe-model/bin/vibe-model status
 
 # Add a hint to guide the agent
-./ai-v-model/bin/v-model hint "try using FFT interpolation"
+./vibe-model/bin/vibe-model hint "try using FFT interpolation"
 
 # Force pivot to next approach
-./ai-v-model/bin/v-model pivot
+./vibe-model/bin/vibe-model pivot
 
 # Force reflection phase
-./ai-v-model/bin/v-model reflect
+./vibe-model/bin/vibe-model reflect
 
 # Archive completed epics
-./ai-v-model/bin/v-model archive
+./vibe-model/bin/vibe-model archive
 
 # Rollback to last checkpoint
-./ai-v-model/bin/v-model rollback [checkpoint_id]
+./vibe-model/bin/vibe-model rollback [checkpoint_id]
 
 # List all checkpoints
-./ai-v-model/bin/v-model list-checkpoints
+./vibe-model/bin/vibe-model list-checkpoints
 ```
 
 ### CLI Options
@@ -139,7 +139,7 @@ MODULE_DESIGN ──────────→ UNIT_TEST
 
 ## Configuration
 
-Configure via environment variables or `.v-modelrc` config file:
+Configure via environment variables or `.vibe-modelrc` config file:
 
 ### Environment Variables
 
@@ -149,12 +149,12 @@ export TEST_COMMAND="./sau_src/motuner/test/motunit"
 export ALL_TESTS_COMMAND="cd build && ctest -j8"
 export AI_PROVIDER="claude"
 export MAX_ITERATIONS="100"
-./ai-v-model/bin/v-model "add feature X"
+./vibe-model/bin/vibe-model "add feature X"
 ```
 
-### Config File (.v-modelrc)
+### Config File (.vibe-modelrc)
 
-Create a `.v-modelrc` file in your project directory or home directory:
+Create a `.vibe-modelrc` file in your project directory or home directory:
 
 ```json
 {
@@ -178,11 +178,11 @@ Create a `.v-modelrc` file in your project directory or home directory:
 
 ```
 your-project/
-├── v_model/                    # V-Model outputs (created by script)
+├── vibe-model/                    # V-Model outputs (created by script)
 │   ├── journey/                # Journey tracking files
 │   ├── prototypes/             # Experimental code (user-managed)
 │   └── memory.md               # Knowledge persistence
-└── ai-v-model/                 # This submodule
+└── vibe-model/                 # This submodule
     ├── package.json            # Bun project config
     ├── tsconfig.json           # TypeScript config
     ├── src/
@@ -200,10 +200,10 @@ your-project/
     │   ├── types.ts            # TypeScript types/interfaces
     │   └── __tests__/unit/     # Unit tests
     ├── bin/
-    │   └── v-model             # Executable script
+    │   └── vibe-model             # Executable script
     ├── prompts/                # AI prompt templates
     ├── USER_GUIDE.md           # Complete user manual
-    ├── v_model.md              # Protocol specification
+    ├── vibe-model.md              # Protocol specification
     ├── CLAUDE.md               # Quick reference
     └── README.md               # This file
 ```
@@ -245,8 +245,8 @@ your-project/
 - `stripAnsi()`: Remove ANSI escape sequences
 
 **Flexible Path Resolution**
-- Works as submodule: `parent-project/ai-v-model/`
-- Works as sibling: `ai-v-model/` alongside project directory
+- Works as submodule: `parent-project/vibe-model/`
+- Works as sibling: `vibe-model/` alongside project directory
 - Automatic detection with `--project-dir` override support
 
 **Signal Handling**
@@ -340,7 +340,7 @@ bun --version
 | Document | Audience | Description |
 |----------|----------|-------------|
 | **[USER_GUIDE.md](USER_GUIDE.md)** | Users | Complete user manual with commands, configuration, troubleshooting |
-| **[v_model.md](v_model.md)** | AI Agents | Formal V-Model protocol specification |
+| **[vibe-model.md](vibe-model.md)** | AI Agents | Formal V-Model protocol specification |
 | **[CLAUDE.md](CLAUDE.md)** | AI Agents | Quick reference for Claude Code agents |
 | **[README.md](README.md)** | All | Project overview and architecture |
 
@@ -360,4 +360,4 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ## Links
 
-- **GitHub Repository**: https://github.com/cfogelklou/ai-v-model
+- **GitHub Repository**: https://github.com/cfogelklou/vibe-model

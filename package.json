@@ -1,15 +1,15 @@
 {
-  "name": "ai-v-model",
+  "name": "vibe-model",
   "version": "1.0.0",
   "description": "Autonomous R&D agent using V-Model methodology",
   "type": "module",
   "module": "src/index.ts",
   "bin": {
-    "v-model": "bin/v-model"
+    "vibe-model": "bin/vibe-model"
   },
   "scripts": {
     "build": "bun build src/index.ts --outdir bin --target bun",
-    "compile": "mkdir -p dist && bun build src/index.ts --compile --outfile dist/v-model --target bun-darwin-$(uname -m)",
+    "compile": "mkdir -p dist && bun build src/index.ts --compile --outfile dist/vibe-model --target bun-darwin-$(uname -m)",
     "dev": "bun run src/index.ts",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",

@@ -1,26 +1,26 @@
-# Plan: Build ASCII QR Code CLI Tool Using v-model
+# Plan: Build ASCII QR Code CLI Tool Using vibe-model
 
 ## Context
 
-**Goal**: Use the ai-v-model tool to build a simple C++ CLI application that:
+**Goal**: Use the vibe-model tool to build a simple C++ CLI application that:
 - Takes a URL as input
 - Generates a QR code
 - Displays it as ASCII art
 - Uses CMake + Ninja for building
 
-**Purpose**: This serves as a real-world test of the v-model tool itself - "AI eating its own tail"
+**Purpose**: This serves as a real-world test of the vibe-model tool itself - "AI eating its own tail"
 
-**Constraint**: The v-model tool calls `claude` and `gemini` CLIs, so we need an external AI agent to run it (to avoid recursion).
+**Constraint**: The vibe-model tool calls `claude` and `gemini` CLIs, so we need an external AI agent to run it (to avoid recursion).
 
 ---
 
 ## Recommended Solution: Open Interpreter
 
 Use **Open Interpreter** as the external AI agent that will:
-1. Read the v-model documentation
-2. Run v-model with the QR code goal
-3. Let v-model go through its V-Model lifecycle
-4. Document any bugs/issues found in v-model
+1. Read the vibe-model documentation
+2. Run vibe-model with the QR code goal
+3. Let vibe-model go through its V-Model lifecycle
+4. Document any bugs/issues found in vibe-model
 5. Create a summary report
 
 ### Setup Open Interpreter
@@ -40,11 +40,11 @@ interpreter
 ### Prompt to Give Open Interpreter
 
 ```
-You are testing the ai-v-model autonomous development tool.
+You are testing the vibe-model autonomous development tool.
 
-LOCATION: /Users/christopherfogelklou/dev/ai-v-model
+LOCATION: /Users/christopherfogelklou/dev/vibe-model
 
-YOUR TASK: Use v-model to build a C++ CLI tool with these requirements:
+YOUR TASK: Use vibe-model to build a C++ CLI tool with these requirements:
 
 **Product Requirements:**
 - A CLI tool that takes a URL as a command-line argument
@@ -55,24 +55,24 @@ YOUR TASK: Use v-model to build a C++ CLI tool with these requirements:
 - Must use Ninja as the build generator
 
 **Steps:**
-1. Read /Users/christopherfogelklou/dev/ai-v-model/USER_GUIDE.md to understand v-model
-2. Ensure v-model is built (cd ai-v-model && bun install && bun run build)
-3. From /Users/christopherfogelklou/dev, run: ./ai-v-model/bin/v-model "Build a C++ CLI tool that takes a URL and displays it as an ASCII QR code. Use CMake and Ninja."
-4. Let v-model run through its entire V-Model lifecycle autonomously
+1. Read /Users/christopherfogelklou/dev/vibe-model/USER_GUIDE.md to understand vibe-model
+2. Ensure vibe-model is built (cd vibe-model && bun install && bun run build)
+3. From /Users/christopherfogelklou/dev, run: ./vibe-model/bin/vibe-model "Build a C++ CLI tool that takes a URL and displays it as an ASCII QR code. Use CMake and Ninja."
+4. Let vibe-model run through its entire V-Model lifecycle autonomously
 5. If it gets stuck or errors, try to understand why and document it
 6. After completion, test the resulting tool if it was built successfully
 
 **Important:**
-- v-model will call the 'claude' CLI subprocess - this is expected and correct
-- You are acting as the user who invoked v-model
-- Let v-model drive the development process
-- Only intervene if v-model appears completely stuck
+- vibe-model will call the 'claude' CLI subprocess - this is expected and correct
+- You are acting as the user who invoked vibe-model
+- Let vibe-model drive the development process
+- Only intervene if vibe-model appears completely stuck
 
 WORKING DIRECTORY: /Users/christopherfogelklou/dev
 
 Create a final summary report of:
-- Did v-model successfully build the tool?
-- Any bugs or issues encountered in v-model itself
+- Did vibe-model successfully build the tool?
+- Any bugs or issues encountered in vibe-model itself
 - What worked well vs what didn't
 ```
 
@@ -80,19 +80,19 @@ Create a final summary report of:
 
 ## Alternative: Run Manually
 
-If you prefer to run v-model manually first (to test it yourself):
+If you prefer to run vibe-model manually first (to test it yourself):
 
 ```bash
 cd /Users/christopherfogelklou/dev
 
-# Run v-model with the goal
-./ai-v-model/bin/v-model "Build a C++ CLI tool that takes a URL argument and generates an ASCII QR code in the terminal. Use CMake and Ninja for building."
+# Run vibe-model with the goal
+./vibe-model/bin/vibe-model "Build a C++ CLI tool that takes a URL argument and generates an ASCII QR code in the terminal. Use CMake and Ninja for building."
 
 # Check status anytime
-./ai-v-model/bin/v-model status
+./vibe-model/bin/vibe-model status
 
 # Continue if paused
-./ai-v-model/bin/v-model
+./vibe-model/bin/vibe-model
 ```
 
 ---
@@ -107,7 +107,7 @@ cd /Users/christopherfogelklou/dev
 
 **Expected project structure:**
 ```
-v_model/prototypes/qr-code-tool/
+vibe-model/prototypes/qr-code-tool/
 ├── CMakeLists.txt
 ├── src/
 │   └── main.cpp
@@ -122,35 +122,35 @@ v_model/prototypes/qr-code-tool/
 
 ---
 
-## Verification After v-model Runs
+## Verification After vibe-model Runs
 
 1. **Check journey progress:**
    ```bash
-   cat v_model/journey/*.md
+   cat vibe-model/journey/*.md
    ```
 
 2. **Check if code was generated:**
    ```bash
-   ls -la v_model/prototypes/
+   ls -la vibe-model/prototypes/
    ```
 
 3. **Try building the result:**
    ```bash
-   cd v_model/prototypes/*/build
+   cd vibe-model/prototypes/*/build
    ninja
    ./qr-generator "test"
    ```
 
-4. **Review v-model's output for any errors**
+4. **Review vibe-model's output for any errors**
 
 ---
 
-## Potential v-model Issues to Watch For
+## Potential vibe-model Issues to Watch For
 
 Based on code analysis:
-- TypeScript not built → run `bun run build` in ai-v-model
+- TypeScript not built → run `bun run build` in vibe-model
 - Missing dependencies → run `bun install`
-- `claude` CLI not installed → v-model needs this
+- `claude` CLI not installed → vibe-model needs this
 - Journey directory permissions
 - State machine getting stuck in transitions
 
@@ -158,7 +158,7 @@ Based on code analysis:
 
 ## Files Referenced
 
-- `/Users/christopherfogelklou/dev/ai-v-model/USER_GUIDE.md` - User documentation
-- `/Users/christopherfogelklou/dev/ai-v-model/bin/v-model` - CLI executable
-- `/Users/christopherfogelklou/dev/ai-v-model/src/state-machine.ts` - V-Model states
-- `/Users/christopherfogelklou/dev/ai-v-model/src/main-loop.ts` - Main execution loop
+- `/Users/christopherfogelklou/dev/vibe-model/USER_GUIDE.md` - User documentation
+- `/Users/christopherfogelklou/dev/vibe-model/bin/vibe-model` - CLI executable
+- `/Users/christopherfogelklou/dev/vibe-model/src/state-machine.ts` - V-Model states
+- `/Users/christopherfogelklou/dev/vibe-model/src/main-loop.ts` - Main execution loop

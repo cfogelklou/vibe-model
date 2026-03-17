@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "ai-v-model",
+      "name": "vibe-model",
       "dependencies": {
         "commander": "^12.0.0",
       },

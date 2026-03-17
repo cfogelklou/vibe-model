@@ -175,9 +175,9 @@
 
 This document is referenced in:
 - `prompts/main-iteration.md` - Research phase
-- `v_model.md` - Research protocol
+- `vibe-model.md` - Research protocol
 
 ---
 
 **Last Updated**: 2026-03-16
-**Maintained by**: ai-v-model project
+**Maintained by**: vibe-model project

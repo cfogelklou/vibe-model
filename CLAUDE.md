@@ -4,13 +4,13 @@
 
 **For comprehensive user documentation**, see [USER_GUIDE.md](USER_GUIDE.md).
 
-**For complete protocol specification**, see [v_model.md](v_model.md).
+**For complete protocol specification**, see [vibe-model.md](vibe-model.md).
 
 ---
 
 ## Project Overview
 
-The **ai-v-model** submodule provides an autonomous R&D agent that implements the V-Model development lifecycle with formal verification. Now implemented in TypeScript for better maintainability and cross-platform compatibility.
+The **vibe-model** submodule provides an autonomous R&D agent that implements the V-Model development lifecycle with formal verification. Now implemented in TypeScript for better maintainability and cross-platform compatibility.
 
 **Key Features**:
 - Goal-driven development (no pre-defined plans)
@@ -31,25 +31,25 @@ The **ai-v-model** submodule provides an autonomous R&D agent that implements th
 curl -fsSL https://bun.sh/install | bash
 
 # Install dependencies
-cd ai-v-model && bun install
+cd vibe-model && bun install
 
 # Start a new journey
-./ai-v-model/bin/v-model "your goal here"
+./vibe-model/bin/vibe-model "your goal here"
 
 # Continue active journey
-./ai-v-model/bin/v-model
+./vibe-model/bin/vibe-model
 
 # Check status
-./ai-v-model/bin/v-model status
+./vibe-model/bin/vibe-model status
 
 # Add a hint
-./ai-v-model/bin/v-model hint "try using X first"
+./vibe-model/bin/vibe-model hint "try using X first"
 
 # Force pivot
-./ai-v-model/bin/v-model pivot
+./vibe-model/bin/vibe-model pivot
 
 # Rollback to last checkpoint
-./ai-v-model/bin/v-model rollback
+./vibe-model/bin/vibe-model rollback
 ```
 
 ---
@@ -89,11 +89,11 @@ cd ai-v-model && bun install
 
 ```
 your-project/
-├── v_model/                    # V-Model outputs (created by CLI)
+├── vibe-model/                    # V-Model outputs (created by CLI)
 │   ├── journey/                # Journey tracking files
 │   ├── prototypes/             # Experimental code
 │   └── memory.md               # Knowledge persistence
-└── ai-v-model/                 # This submodule
+└── vibe-model/                 # This submodule
     ├── src/                    # TypeScript source
     │   ├── index.ts            # CLI entry point
     │   ├── config.ts           # Configuration
@@ -101,11 +101,11 @@ your-project/
     │   ├── state-machine.ts    # State transitions
     │   └── ...                 # Other modules
     ├── bin/
-    │   └── v-model             # Executable CLI
+    │   └── vibe-model             # Executable CLI
     ├── prompts/                # AI prompt templates
     ├── package.json            # Dependencies
     ├── USER_GUIDE.md           # Complete user manual
-    ├── v_model.md              # Protocol specification
+    ├── vibe-model.md              # Protocol specification
     └── CLAUDE.md               # This file
 ```
 
@@ -117,10 +117,10 @@ your-project/
 
 ```bash
 # Run V-Model loop
-./ai-v-model/bin/v-model "goal"
+./vibe-model/bin/vibe-model "goal"
 
 # Commit changes (from parent project root)
-git add v_model/journey/your-journey.md
+git add vibe-model/journey/your-journey.md
 git add src/changed_file.cpp
 git commit -m "feat: description"
 ```
@@ -129,7 +129,7 @@ git commit -m "feat: description"
 
 ## Important Reminder
 
-**NEVER run `./ai-v-model/bin/v-model` directly from within a Claude Code session.**
+**NEVER run `./vibe-model/bin/vibe-model` directly from within a Claude Code session.**
 
 This CLI calls Claude Code agents and can cause dangerous recursion. Always ask the user to run the CLI manually and report the results back to you.
 
@@ -137,7 +137,7 @@ This CLI calls Claude Code agents and can cause dangerous recursion. Always ask 
 
 **Keep all modifications project-agnostic.**
 
-When fixing bugs or adding features to the ai-v-model submodule:
+When fixing bugs or adding features to the vibe-model submodule:
 
 This ensures the submodule remains portable and reusable across all projects that depend on it.
 
@@ -163,7 +163,7 @@ This ensures code quality and catches regressions early.
 ## Documentation Links
 
 - **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user manual with all commands and configuration
-- **[v_model.md](v_model.md)** - Formal V-Model protocol specification
+- **[vibe-model.md](vibe-model.md)** - Formal V-Model protocol specification
 - **[README.md](README.md)** - Project overview and installation
 - **[README_TS.md](README_TS.md)** - TypeScript implementation details
 

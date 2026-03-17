@@ -275,7 +275,7 @@ export async function consultGemini(
   }, hasResearch);
 
   // Write review prompt to temp file
-  const tempPrompt = `/tmp/v-model-gemini-review-${Date.now()}.md`;
+  const tempPrompt = `/tmp/vibe-model-gemini-review-${Date.now()}.md`;
   await fs.writeFile(tempPrompt, reviewPrompt);
 
   try {

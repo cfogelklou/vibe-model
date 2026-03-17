@@ -1,6 +1,6 @@
 /**
  * Configuration management with flexible path resolution.
- * Supports running from submodule position (parent-project/ai-v-model/) or sibling position.
+ * Supports running from submodule position (parent-project/vibe-model/) or sibling position.
  */
 
 import { existsSync } from "fs";
@@ -14,11 +14,11 @@ const SCRIPT_DIR = path.dirname(__filename);
 
 /**
  * Detect the project directory based on script location.
- * Works from both submodule position (parent-project/ai-v-model/) and sibling position.
+ * Works from both submodule position (parent-project/vibe-model/) and sibling position.
  *
  * Priority order:
  * 1. Explicit --project-dir argument (highest priority)
- * 2. Submodule detection (ai-v-model directory with parent .git)
+ * 2. Submodule detection (vibe-model directory with parent .git)
  * 3. Current directory has .git (sibling case)
  * 4. Parent directory has .git (nested case)
  * 5. Fallback to current directory
@@ -34,9 +34,9 @@ export async function detectProjectDirectory(
     return path.resolve(explicitProjectDir);
   }
 
-  // 2. Check if we're in ai-v-model directory (submodule case)
+  // 2. Check if we're in vibe-model directory (submodule case)
   const dirName = path.basename(SCRIPT_DIR);
-  if (dirName === "ai-v-model") {
+  if (dirName === "vibe-model") {
     const parentDir = path.dirname(SCRIPT_DIR);
     if (existsSync(path.join(parentDir, ".git"))) {
       return parentDir; // Parent is the project
@@ -73,15 +73,15 @@ export async function detectProjectDirectory(
 }
 
 /**
- * Load optional .v-modelrc config file
+ * Load optional .vibe-modelrc config file
  * Supports plain JSON (not JSON5 for Bun compatibility)
  */
 export async function loadConfigFile(configPath?: string): Promise<Partial<Config>> {
   const candidates = configPath
     ? [configPath]
     : [
-        path.join(process.cwd(), ".v-modelrc"),
-        path.join(process.env.HOME || "", ".v-modelrc"),
+        path.join(process.cwd(), ".vibe-modelrc"),
+        path.join(process.env.HOME || "", ".vibe-modelrc"),
       ];
 
   for (const candidate of candidates) {
@@ -103,7 +103,7 @@ export async function loadConfigFile(configPath?: string): Promise<Partial<Confi
  *
  * Priority order (lowest to highest):
  * 1. Defaults
- * 2. Config file (.v-modelrc)
+ * 2. Config file (.vibe-modelrc)
  * 3. Environment variables
  * 4. CLI arguments (highest priority)
  */

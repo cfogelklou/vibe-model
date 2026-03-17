@@ -15,7 +15,7 @@ import { readJourneyFile, getJourneyField } from "./journey-reader";
  * Get journey file path from journey name
  */
 export function getJourneyPath(name: string): string {
-  const journeyDir = path.join(config.projectDir, "v_model", "journey");
+  const journeyDir = path.join(config.projectDir, "vibe-model", "journey");
   return path.join(journeyDir, `${name}.journey.md`);
 }
 
@@ -23,7 +23,7 @@ export function getJourneyPath(name: string): string {
  * Get journey directory path
  */
 export function getJourneyDir(): string {
-  return path.join(config.projectDir, "v_model", "journey");
+  return path.join(config.projectDir, "vibe-model", "journey");
 }
 
 /**
