@@ -96,7 +96,7 @@ jobs:
           cd example/src
           echo "Current directory: $(pwd)"
           echo "Vibe-model executable: $(ls -la ../../bin/vibe-model)"
-          ../../bin/vibe-model -v --mvp --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest. Pig Latin rules: For words starting with a consonant, move that consonant to the END and add 'ay'. For words starting with a vowel, just add 'way' to the end. Step-by-step examples: hello (starts with consonant 'h') → ello + h + ay = ellohay. world (starts with consonant 'w') → orld + w + ay = orldway. apple (starts with vowel) → apple + way = appleway. Test input 'hello world' must output 'ellohay orldway'. IMPORTANT: Configure CMake to build to a build/ subdirectory. Name the executable pig-latinifier. Use minimal testing - just verify the basic conversion works."
+          ../../bin/vibe-model -v --mvp --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest. Pig Latin algorithm: For each word, if it starts with a consonant (b,c,d,f,g,h,j,k,l,m,n,p,q,r,s,t,v,w,x,y,z), move that consonant to the END then append 'ay'. If starts with a vowel (a,e,i,o,u), just append 'way'. Algorithm pseudocode: for word in words: if word[0] is vowel: result = word + 'way'; else: result = word.substr(1) + word[0] + 'ay'. Examples: hello starts with 'h' (consonant) so: ello + h + ay = ellohay. world starts with 'w' (consonant) so: orld + w + ay = orldway. CRITICAL: Test 'hello world' MUST output 'ellohay orldway'. Configure CMake to build to build/ subdirectory. Name executable pig-latinifier. Use minimal testing."
         timeout-minutes: 20
 
       - name: Upload Journey Artifacts
