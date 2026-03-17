@@ -2,9 +2,9 @@ name: Vibe-Model CI
 
 on:
   push:
-    branches: [main, develop, firstcommit]
+    branches: [main, develop]
   pull_request:
-    branches: [main, develop, firstcommit]
+    branches: [main, develop]
   workflow_dispatch:
 
 permissions:

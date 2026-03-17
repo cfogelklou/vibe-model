@@ -23,10 +23,13 @@ export const childProcesses: Array<ReturnType<typeof spawn>> = [];
 
 /**
  * Detect Claude CLI version and capabilities
+ *
+ * Uses claude --help to detect available flags since --version output
+ * doesn't include flag information.
  */
 export async function detectClaudeCapabilities(): Promise<ClaudeCapabilities> {
   return new Promise((resolve) => {
-    const proc = spawn("claude", ["--version"], {
+    const proc = spawn("claude", ["--help"], {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
@@ -42,20 +45,20 @@ export async function detectClaudeCapabilities(): Promise<ClaudeCapabilities> {
     });
 
     proc.on("close", () => {
-      // Parse version from output
-      const versionMatch = stdout.match(/version (\d+\.\d+\.\d+)/i);
+      const helpOutput = stdout + stderr;
+
+      // Parse version from help output if available
+      const versionMatch = helpOutput.match(/version (\d+\.\d+\.\d+)/i);
       const version = versionMatch ? versionMatch[1] : "unknown";
 
       // Check for --print flag (basic feature)
-      const hasPrint = stdout.includes("--print") || stderr.includes("--print");
+      const hasPrint = helpOutput.includes("--print");
 
       // Check for stream-json support (newer feature)
-      const hasStreamJson =
-        stdout.includes("stream-json") || stderr.includes("stream-json");
+      const hasStreamJson = helpOutput.includes("stream-json");
 
       // Check for --verbose flag
-      const hasVerbose =
-        stdout.includes("--verbose") || stderr.includes("--verbose");
+      const hasVerbose = helpOutput.includes("--verbose");
 
       resolve({
         hasPrint,
@@ -133,39 +136,54 @@ class StreamBuffer {
 }
 
 /**
+ * Persistent buffer for stream JSON parsing
+ * Must be reset before starting a new stream
+ */
+let streamBuffer = new StreamBuffer();
+
+/**
  * Parse stream JSON chunk and handle events
  */
 function parseStreamChunk(chunk: string): void {
-  const buffer = new StreamBuffer();
-  buffer.add(chunk);
+  streamBuffer.add(chunk);
 
-  const event = buffer.tryExtract();
-  if (!event) return;
+  // Process all complete events from this chunk
+  while (true) {
+    const event = streamBuffer.tryExtract();
+    if (!event) break;
 
-  switch (event.type) {
-    case "content_block_start":
-      if (event.content_block?.type === "tool_use") {
-        process.stderr.write(`\x1b[36m[AI] → ${event.content_block.name}\x1b[0m`);
-      }
-      break;
+    switch (event.type) {
+      case "content_block_start":
+        if (event.content_block?.type === "tool_use") {
+          process.stderr.write(`\x1b[36m[AI] → ${event.content_block.name}\x1b[0m`);
+        }
+        break;
 
-    case "text_delta":
-      if (event.delta?.type === "text_delta") {
-        // Strip ANSI escape sequences from text deltas
-        const cleanText = event.delta.text.replace(/\x1b\[[0-9;]*m/g, "");
-        process.stderr.write(cleanText);
-      }
-      break;
+      case "text_delta":
+        if (event.delta?.type === "text_delta") {
+          // Strip ANSI escape sequences from text deltas
+          const cleanText = event.delta.text.replace(/\x1b\[[0-9;]*m/g, "");
+          process.stderr.write(cleanText);
+        }
+        break;
 
-    case "result":
-      if (event.total_cost_usd !== undefined && event.num_turns !== undefined) {
-        process.stderr.write("\n");
-        logDebug(
-          `AI finished: ${event.num_turns} turn(s), $${event.total_cost_usd.toFixed(4)}`
-        );
-      }
-      break;
+      case "result":
+        if (event.total_cost_usd !== undefined && event.num_turns !== undefined) {
+          process.stderr.write("\n");
+          logDebug(
+            `AI finished: ${event.num_turns} turn(s), $${event.total_cost_usd.toFixed(4)}`
+          );
+        }
+        break;
+    }
   }
+}
+
+/**
+ * Reset the stream buffer before starting a new stream
+ */
+function resetStreamBuffer(): void {
+  streamBuffer = new StreamBuffer();
 }
 
 /**
@@ -196,6 +214,9 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
   }
 
   logDebug(`Running AI command: ${aiCmd.join(" ")}`);
+
+  // Reset stream buffer before starting a new AI call
+  resetStreamBuffer();
 
   return new Promise((resolve, reject) => {
     const proc = spawn(aiCmd[0], aiCmd.slice(1), {

@@ -147,12 +147,24 @@ export async function getCompletedUnarchivedEpics(
     // Skip if this is the current epic
     if (epicNum === currentEpicNum) continue;
 
-    // Skip if already archived
+    // Check if epic file exists and if it's already been archived
     const epicFilePath = path.join(
       journeyDir,
       `${sanitizeJourneyName(journeyName)}.journey.E${epicNum}.md`
     );
-    if (existsSync(epicFilePath)) continue;
+
+    // If epic file doesn't exist, skip (shouldn't happen in normal workflow)
+    if (!existsSync(epicFilePath)) {
+      logInfo(`Warning: Epic E${epicNum} is COMPLETE but has no epic file`);
+      continue;
+    }
+
+    // Check if already archived by looking for archival marker in the file
+    const epicContent = await fs.readFile(epicFilePath, "utf-8");
+    if (epicContent.includes("**ARCHIVED**")) {
+      // Already archived
+      continue;
+    }
 
     completedUnarchivedEpics.push(epicNum);
   }
@@ -162,6 +174,7 @@ export async function getCompletedUnarchivedEpics(
 
 /**
  * Mark an epic as COMPLETE via simple string replacement (no AI)
+ * Also adds the **ARCHIVED** marker to indicate completion has been processed.
  */
 export async function markEpicComplete(
   journeyFile: string,
@@ -170,15 +183,25 @@ export async function markEpicComplete(
   const epicFilePath = getEpicFilePath(journeyFile, epicNum);
   const currentDate = new Date().toISOString().split("T")[0];
 
-  logInfo(`Marking Epic E${epicNum} as COMPLETE...`);
+  logInfo(`Marking Epic E${epicNum} as COMPLETE and ARCHIVED...`);
 
-  // 1. Update epic file: IN_PROGRESS -> COMPLETE (date)
-  const epicContent = await fs.readFile(epicFilePath, "utf-8");
-  const updatedEpicContent = epicContent.replace(
+  // 1. Update epic file: IN_PROGRESS -> COMPLETE (date) and add ARCHIVED marker
+  let epicContent = await fs.readFile(epicFilePath, "utf-8");
+  epicContent = epicContent.replace(
     /^(> \*\*Status\*\*): IN_PROGRESS$/m,
     `$1: COMPLETE (${currentDate})`
   );
-  await fs.writeFile(epicFilePath, updatedEpicContent);
+
+  // Add ARCHIVED marker if not already present
+  if (!epicContent.includes("**ARCHIVED**")) {
+    // Insert after the Status line
+    epicContent = epicContent.replace(
+      /(> \*\*Status\*\*: COMPLETE \([^\)]+\)\n)/,
+      `$1\n> **ARCHIVED**: Epic completed and archived on ${currentDate}\n`
+    );
+  }
+
+  await fs.writeFile(epicFilePath, epicContent);
 
   // 2. Update journey.md Epic Progress table
   const journeyContent = await fs.readFile(journeyFile, "utf-8");
@@ -188,7 +211,7 @@ export async function markEpicComplete(
   );
   await fs.writeFile(journeyFile, updatedJourneyContent);
 
-  logSuccess(`✅ Epic E${epicNum} marked as COMPLETE`);
+  logSuccess(`✅ Epic E${epicNum} marked as COMPLETE and ARCHIVED`);
 }
 
 /**

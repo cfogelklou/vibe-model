@@ -18,7 +18,6 @@ The `vibe-model` project uses GitHub Actions CI to validate:
 ### CI Trigger Branches
 - `main`
 - `develop`
-- `firstcommit`
 
 ### Important: CI Only Runs for Repo Owner
 The CI workflow has a guard that only runs for:

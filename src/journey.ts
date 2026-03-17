@@ -305,7 +305,8 @@ export async function setPreviousState(
     await sedInplace(journeyFile, /^- Previous State: .*$/m, `- Previous State: ${state}`);
   } else {
     // Add after Previous Phase line if marker missing
-    const lineNum = await findLineNumber(journeyFile, /^- Previous Phase:$/m);
+    // Match any line starting with "- Previous Phase:" (with or without a value)
+    const lineNum = await findLineNumber(journeyFile, /^- Previous Phase:/m);
     if (lineNum > 0) {
       await insertAfterLine(journeyFile, lineNum, `- Previous State: ${state}`);
     }
