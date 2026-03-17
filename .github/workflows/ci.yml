@@ -34,7 +34,7 @@ jobs:
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v2
         with:
-          cmake-version: '3.23.x'
+          cmake-version: '3.26.x'
 
       - name: Install Ninja
         run: sudo apt-get install -y ninja-build
@@ -74,7 +74,7 @@ jobs:
           cd example/src
           echo "Current directory: $(pwd)"
           echo "Vibe-model executable: $(ls -la ../../bin/vibe-model)"
-          ../../bin/vibe-model -g -v --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest that converts text to pig latin. Use minimal testing - just verify the basic conversion works. IMPORTANT: Configure CMake to build to a 'build/' subdirectory. Name the executable 'pig-latin'. The CLI should accept command-line arguments and convert each word to pig latin."
+          ../../bin/vibe-model -g -v --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest that converts text to pig latin. Use minimal testing - just verify the basic conversion works. IMPORTANT: Configure CMake to build to a 'build/' subdirectory. Name the executable 'pig-latinifier'. The CLI should accept command-line arguments and convert each word to pig latin."
         timeout-minutes: 20
 
       - name: Upload Journey Artifacts
@@ -122,8 +122,8 @@ jobs:
       - name: Verify Pig Latinifier Output
         run: |
           cd example/src
-          if [ -f "./build/pig-latin" ]; then
-            OUTPUT=$(./build/pig-latin "is this pig latin")
+          if [ -f "./build/pig-latinifier" ]; then
+            OUTPUT=$(./build/pig-latinifier "is this pig latin")
             EXPECTED="siay hisay igpay atinlay"
             if [ "$OUTPUT" = "$EXPECTED" ]; then
               echo "✅ Pig latinifier test passed!"
@@ -132,7 +132,7 @@ jobs:
               exit 1
             fi
           else
-            echo "❌ pig-latin executable not found"
+            echo "❌ pig-latinifier executable not found"
             exit 1
           fi
 
