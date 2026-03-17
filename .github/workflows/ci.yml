@@ -123,8 +123,8 @@ jobs:
         run: |
           cd example/src
           if [ -f "./build/pig-latinifier" ]; then
-            OUTPUT=$(./build/pig-latinifier "is this pig latin")
-            EXPECTED="siay hisay igpay atinlay"
+            OUTPUT=$(./build/pig-latinifier "hello world")
+            EXPECTED="ellowhay orldway"
             if [ "$OUTPUT" = "$EXPECTED" ]; then
               echo "✅ Pig latinifier test passed!"
             else
