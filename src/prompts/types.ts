@@ -16,6 +16,8 @@
 export type TemplateVariable =
   | 'AI_PROVIDER'
   | 'JOURNEY_CONTENT'
+  | 'JOURNEY_FILE'
+  | 'JOURNEY_NAME'
   | 'EPIC_CONTENT'
   | 'EPIC_FILE_INSTRUCTIONS'
   | 'PHASE'

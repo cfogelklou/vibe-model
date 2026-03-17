@@ -306,8 +306,9 @@ export async function extractResearchContent(
   // Fallback: Extract from journey file (for REQUIREMENTS, SYSTEM_DESIGN)
   const journeyContent = await readJourneyFile(journeyFile);
   const sectionPattern = `### ${phase} Phase Research`;
+  // Match until next heading of either level (## or ###) or end of file
   const researchMatch = journeyContent.match(
-    new RegExp(`${sectionPattern}\\n([\\s\\S]+?)\\n### `)
+    new RegExp(`${sectionPattern}\\n([\\s\\S]+?)(?=\\n## |\\n### |$)`)
   );
 
   if (!researchMatch) {

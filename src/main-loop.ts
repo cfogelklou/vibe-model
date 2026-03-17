@@ -409,7 +409,7 @@ export async function mainLoop(journeyFile: string): Promise<void> {
 
         if (currentBranch) {
           const hasChanges = await hasUncommittedChanges();
-          if (hasChanges) {
+          if (hasChanges && iteration % config.commitInterval === 0) {
             logWarning("Uncommitted changes detected after iteration - committing now");
             await commitChanges(
               `chore(journey): auto-commit changes from iteration ${iteration} [${journeyName}]`

@@ -13,7 +13,7 @@
 import { Command } from "commander";
 import { promises as fs } from "fs";
 import path from "path";
-import { VModelError, ExecutionMode } from "./types";
+import { VModelError, ExecutionMode, VModelState } from "./types";
 import { config, initializeConfig } from "./config";
 import {
   logInfo,
@@ -68,9 +68,9 @@ async function handleHint(hint: string): Promise<void> {
 
   // If journey was waiting, unpause it
   const state = await getJourneyState(activeJourney);
-  if (state === "WAITING_FOR_USER") {
+  if (state === VModelState.WAITING_FOR_USER) {
     logInfo("Journey was waiting - resuming...");
-    await setJourneyState(activeJourney, "REQUIREMENTS");
+    await setJourneyState(activeJourney, VModelState.REQUIREMENTS);
   }
 }
 
@@ -86,7 +86,7 @@ async function handlePivot(): Promise<void> {
   }
 
   logInfo("Forcing pivot for active journey");
-  await setJourneyState(activeJourney, "PIVOTING");
+  await setJourneyState(activeJourney, VModelState.PIVOTING);
   logSuccess("Journey state set to PIVOTING");
 }
 
@@ -102,7 +102,7 @@ async function handleReflect(): Promise<void> {
   }
 
   logInfo("Forcing reflection for active journey");
-  await setJourneyState(activeJourney, "REFLECTING");
+  await setJourneyState(activeJourney, VModelState.REFLECTING);
   logSuccess("Journey state set to REFLECTING");
 }
 
@@ -121,7 +121,7 @@ async function handleArchive(): Promise<void> {
 
   const currentState = await getJourneyState(activeJourney);
   await setPreviousState(activeJourney, currentState);
-  await setJourneyState(activeJourney, "ARCHIVING");
+  await setJourneyState(activeJourney, VModelState.ARCHIVING);
 }
 
 /**
@@ -182,7 +182,7 @@ async function handleStatus(): Promise<void> {
   console.log("\n\x1b[36m=== Journeys ===\x1b[0m\n");
 
   for (const journey of journeys) {
-    const isActive = journey.state !== "COMPLETE";
+    const isActive = journey.state !== VModelState.COMPLETE;
     const statusIcon = isActive ? "🔄" : "✅";
     console.log(`${statusIcon} ${journey.goal}`);
     console.log(`   State: ${journey.state}`);

@@ -129,12 +129,17 @@ export function getNextStateForMvp(currentState: VModelState): VModelState | nul
 
 /**
  * Normal mode - Full V-Model lifecycle
+ *
+ * NOTE: DESIGN_REVIEW transitions are handled by the main loop via
+ * `autoTransitionFromReview()`, which uses the "Previous Phase" marker.
+ * This function provides fallback transitions for states not explicitly
+ * handled by the main loop's special case handling.
  */
 export function getNextStateNormal(current: VModelState): VModelState {
   const stateTransitions: Record<VModelState, VModelState> = {
     [VModelState.REQUIREMENTS]: VModelState.DESIGN_REVIEW,
-    [VModelState.DESIGN_REVIEW]: VModelState.SYSTEM_DESIGN,
-    [VModelState.SYSTEM_DESIGN]: VModelState.DESIGN_REVIEW,
+    [VModelState.DESIGN_REVIEW]: VModelState.SYSTEM_DESIGN, // Fallback; main loop uses autoTransitionFromReview()
+    [VModelState.SYSTEM_DESIGN]: VModelState.DESIGN_REVIEW, // Fallback; main loop uses autoTransitionFromReview()
     [VModelState.ARCH_DESIGN]: VModelState.MODULE_DESIGN,
     [VModelState.MODULE_DESIGN]: VModelState.IMPLEMENTATION,
     [VModelState.IMPLEMENTATION]: VModelState.UNIT_TEST,

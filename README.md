@@ -97,12 +97,16 @@ vibe-model list-checkpoints
 ```bash
 -v, --verbose             Enable verbose output
 -g, --gemini              Use Gemini AI instead of Claude
+-m, --mvp                 Enable MVP mode (skip most testing for faster CI)
+--go                      Enable GO mode (for AI agents testing vibe-model - avoids recursion)
 --no-consult              Disable Gemini consultation
 --project-dir <path>      Specify project directory
 --config <path>           Specify config file
 --no-push                 Disable auto-push after iterations
 --commit-interval <n>     Commit every N iterations (default: 1)
 ```
+
+**Note:** `--go` takes precedence over `--mvp` if both are specified.
 
 ---
 
