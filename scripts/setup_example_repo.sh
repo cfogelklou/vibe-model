@@ -1,4 +1,5 @@
 #!/bin/bash
+mkdir -p example/remote example/src
 git -C example/remote init --bare
 git -C example/src init
 git -C example/src config user.name "CI Bot"
