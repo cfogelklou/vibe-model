@@ -12,7 +12,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
-import { VModelState } from "./types";
+import { VModelState, ExecutionMode } from "./types";
 import { config } from "./config";
 import {
   getJourneyState,
@@ -31,9 +31,22 @@ import {
   checkContinueToNextEpic,
   getPreviousDesignPhase,
   autoTransitionFromReview,
+  getNextStateForMode,
 } from "./state-machine";
 import { commitChanges, pushChanges, hasUncommittedChanges, getCurrentBranch } from "./checkpoint";
 import { getCompletedUnarchivedEpics, markEpicComplete } from "./epic-archival";
+
+/**
+ * Check if a state should be skipped in MVP mode
+ */
+function shouldSkipInMvp(state: VModelState): boolean {
+  return [
+    VModelState.DESIGN_REVIEW,
+    VModelState.UNIT_TEST,
+    VModelState.INTEGRATION_TEST,
+    VModelState.ACCEPTANCE_TEST,
+  ].includes(state);
+}
 
 /**
  * Generate iteration prompt for current state
@@ -306,26 +319,62 @@ export async function mainLoop(journeyFile: string): Promise<void> {
   const journeyName = path.basename(journeyFile, ".journey.md");
 
   logInfo(`Starting main loop for journey: ${journeyName}`);
+  if (config.verbose) {
+    logDebug(`Execution mode: ${config.executionMode}`);
+  }
+
+  // Adjust max iterations based on mode
+  const maxIterations = config.executionMode === ExecutionMode.GO
+    ? 5  // GO mode: very few iterations
+    : config.executionMode === ExecutionMode.MVP
+    ? 20  // MVP mode: reduced iterations
+    : config.maxIterations;  // Normal mode: default (100)
 
   let iteration = 0;
 
-  while (iteration < config.maxIterations) {
+  while (iteration < maxIterations) {
     iteration++;
 
     const state = await getJourneyState(journeyFile);
 
     logDebug(`Iteration ${iteration}, state: ${state}`);
 
+    // Handle terminal states
+    if (state === VModelState.COMPLETE) {
+      logSuccess("Journey complete!");
+      return;
+    }
+
+    if (state === VModelState.BLOCKED) {
+      logWarning("Journey is blocked. Use 'vibe-model hint \"message\"' to unblock.");
+      return;
+    }
+
+    // GO mode: Auto-transition all states without AI calls
+    if (config.executionMode === ExecutionMode.GO) {
+      const nextState = getNextStateForMode(state, ExecutionMode.GO);
+      if (nextState) {
+        logDebug(`[GO] Auto-transitioning ${state} -> ${nextState}`);
+        await setJourneyState(journeyFile, nextState);
+      } else {
+        logSuccess("[GO] Journey complete (no next state)");
+        return;
+      }
+      continue;
+    }
+
+    // MVP mode: Skip test states without AI calls
+    if (config.executionMode === ExecutionMode.MVP && shouldSkipInMvp(state)) {
+      const nextState = getNextStateForMode(state, ExecutionMode.MVP);
+      if (nextState) {
+        logDebug(`[MVP] Skipping ${state} -> ${nextState}`);
+        await setJourneyState(journeyFile, nextState);
+        continue;
+      }
+    }
+
     // Handle special states
     switch (state) {
-      case VModelState.COMPLETE:
-        logSuccess("Journey complete!");
-        return;
-
-      case VModelState.BLOCKED:
-        logWarning("Journey is blocked. Use 'vibe-model hint \"message\"' to unblock.");
-        return;
-
       case VModelState.WAITING_FOR_USER: {
         const shouldContinue = await handleWaitingForUser(journeyFile);
         if (!shouldContinue) {
@@ -335,7 +384,16 @@ export async function mainLoop(journeyFile: string): Promise<void> {
       }
 
       case VModelState.DESIGN_REVIEW:
-        await handleDesignReview(journeyFile);
+        // Skip DESIGN_REVIEW in MVP/GO modes (GO already handled above)
+        if (config.executionMode === ExecutionMode.MVP) {
+          logDebug("[MVP] Skipping DESIGN_REVIEW");
+          const nextState = getNextStateForMode(state, ExecutionMode.MVP);
+          if (nextState) {
+            await setJourneyState(journeyFile, nextState);
+          }
+        } else {
+          await handleDesignReview(journeyFile);
+        }
         break;
 
       case VModelState.ARCHIVING:
@@ -374,8 +432,8 @@ export async function mainLoop(journeyFile: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  if (iteration >= config.maxIterations) {
-    logWarning(`Maximum iterations reached (${config.maxIterations})`);
+  if (iteration >= maxIterations) {
+    logWarning(`Maximum iterations reached (${maxIterations})`);
   }
 }
 

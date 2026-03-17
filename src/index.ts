@@ -13,7 +13,7 @@
 import { Command } from "commander";
 import { promises as fs } from "fs";
 import path from "path";
-import { VModelError } from "./types";
+import { VModelError, ExecutionMode } from "./types";
 import { config, initializeConfig } from "./config";
 import {
   logInfo,
@@ -301,6 +301,8 @@ async function main(): Promise<number> {
     .argument("[goal]", "Start a new journey with this goal")
     .option("-v, --verbose", "Enable verbose output")
     .option("-g, --gemini", "Use Gemini as primary AI")
+    .option("-m, --mvp", "Enable MVP mode (skip most testing)")
+    .option("--go", "Enable GO mode for AI agents (avoid recursion)")
     .option("--no-consult", "Disable Gemini consultation")
     .option("--project-dir <path>", "Specify project directory")
     .option("--config <path>", "Specify config file")
@@ -308,6 +310,11 @@ async function main(): Promise<number> {
     .option("--commit-interval <n>", "Commit every N iterations", "1")
     .action(async (goal, options) => {
       try {
+        // Determine execution mode (--go takes precedence over --mvp)
+        let executionMode = ExecutionMode.NORMAL;
+        if (options.go) executionMode = ExecutionMode.GO;
+        else if (options.mvp) executionMode = ExecutionMode.MVP;
+
         // Initialize configuration
         await initializeConfig({
           verbose: options.verbose,
@@ -316,6 +323,7 @@ async function main(): Promise<number> {
           projectDir: options.projectDir,
           noPush: options.noPush || false,
           commitInterval: parseInt(options.commitInterval, 10),
+          executionMode,
         }, options.config);
 
         // Setup signal handlers

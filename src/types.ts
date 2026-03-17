@@ -40,6 +40,15 @@ export enum VModelState {
 export type AIProvider = "claude" | "gemini";
 
 /**
+ * Execution mode for controlling V-Model behavior
+ */
+export enum ExecutionMode {
+  NORMAL = "normal",
+  MVP = "mvp",
+  GO = "go",
+}
+
+/**
  * Journey metadata and progress tracking
  */
 export interface Journey {
@@ -86,6 +95,7 @@ export interface Config {
   verbose: boolean;
   noPush: boolean;
   commitInterval: number;
+  executionMode: ExecutionMode;
 }
 
 /**

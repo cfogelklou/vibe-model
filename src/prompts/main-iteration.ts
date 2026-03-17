@@ -12,6 +12,8 @@
  */
 
 import { MainIterationVars } from './types';
+import { ExecutionMode } from '../types';
+import { config } from '../config';
 
 /**
  * Static sections of the main iteration prompt.
@@ -21,6 +23,13 @@ const MAIN_ITERATION_HEADER = `You are an autonomous R&D agent working toward a 
 Refer to vibe-model.md for the Master Protocol.
 
 AI Provider: {{AI_PROVIDER}}
+
+## Important File Paths
+
+**Journey File:** {{JOURNEY_FILE}}
+**Working Directory:** (provided separately)
+
+You MUST edit the journey file directly to update state and progress.
 
 ## Your Journey
 
@@ -261,9 +270,47 @@ const IMPORTANT_RULES = `## Important Rules
 function renderMainIterationHeader(vars: MainIterationVars): string {
   return MAIN_ITERATION_HEADER
     .replace('{{AI_PROVIDER}}', vars.AI_PROVIDER)
+    .replace('{{JOURNEY_FILE}}', vars.JOURNEY_FILE)
     .replace('{{JOURNEY_CONTENT}}', vars.JOURNEY_CONTENT)
     .replace('{{EPIC_FILE_INSTRUCTIONS}}', vars.EPIC_FILE_INSTRUCTIONS || '')
     .replace('{{EPIC_CONTENT}}', vars.EPIC_CONTENT || '');
+}
+
+/**
+ * Get mode-specific instructions for the current execution mode
+ */
+function getModeInstructions(): string {
+  switch (config.executionMode) {
+    case ExecutionMode.GO:
+      return `
+## GO Mode (AI Agent Testing)
+
+You are running in GO mode - this is a test execution.
+- Complete the current phase quickly
+- Skip detailed verification
+- Move to the next state immediately
+- This mode avoids spawning additional AI agents
+`;
+
+    case ExecutionMode.MVP:
+      return `
+## MVP Mode (Fast CI Execution)
+
+You are running in MVP mode with these constraints:
+- **Skip DESIGN_REVIEW** - Move directly to next phase after design
+- **Skip most testing** - After IMPLEMENTATION, go directly to SYSTEM_TEST, then COMPLETE
+- **Fast iteration** - Minimize time spent on each phase
+- **Move quickly** - Complete the journey as fast as possible
+
+State transitions in MVP mode:
+- REQUIREMENTS → SYSTEM_DESIGN → ARCH_DESIGN → MODULE_DESIGN → IMPLEMENTATION → SYSTEM_TEST → COMPLETE
+- Skip all waiting for user input
+- Skip UNIT_TEST, INTEGRATION_TEST, ACCEPTANCE_TEST
+`;
+
+    default:
+      return "";
+  }
 }
 
 /**
@@ -274,7 +321,8 @@ function renderMainIterationHeader(vars: MainIterationVars): string {
  * @returns Complete prompt string ready for use
  */
 export function mainIterationPrompt(vars: MainIterationVars): string {
-  return renderMainIterationHeader(vars) +
+  return getModeInstructions() +
+    renderMainIterationHeader(vars) +
     REQUIREMENTS_PHASE +
     IMPLEMENTATION_PHASES +
     IMPORTANT_RULES;

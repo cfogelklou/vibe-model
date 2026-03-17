@@ -9,7 +9,7 @@
  * Handles state transitions, epic transitions, and previous phase tracking.
  */
 
-import { VModelState } from "./types";
+import { VModelState, ExecutionMode } from "./types";
 import { getNextEpicId, shouldContinueToNextEpic, getEpicNameFromTable, createOrUpdateEpicFile } from "./epic-archival";
 import { setJourneyState, setCurrentEpic, addLearning } from "./journey";
 import { appendToFile } from "./file-utils";
@@ -23,6 +23,114 @@ import path from "path";
  * Get the next state in the V-Model lifecycle
  */
 export function getNextState(current: VModelState): VModelState {
+  return getNextStateNormal(current);
+}
+
+/**
+ * Get next state based on execution mode
+ */
+export function getNextStateForMode(
+  current: VModelState,
+  mode: ExecutionMode
+): VModelState | null {
+  switch (mode) {
+    case ExecutionMode.GO:
+      return getNextStateForGo(current);
+    case ExecutionMode.MVP:
+      return getNextStateForMvp(current);
+    default:
+      return getNextStateNormal(current);
+  }
+}
+
+/**
+ * GO mode - For testing vibe-model itself (AI agent calls vibe-model)
+ *
+ * IMPORTANT: GO mode is for validating the tool works, not for building real products.
+ * It should run quickly (few minutes) without spawning nested AI agents.
+ *
+ * State flow: REQUIREMENTS → SYSTEM_DESIGN → ARCH_DESIGN → MODULE_DESIGN → IMPLEMENTATION → COMPLETE
+ * (Skips: DESIGN_REVIEW, all testing phases, WAITING_FOR_USER)
+ */
+export function getNextStateForGo(currentState: VModelState): VModelState | null {
+  const goTransitions: Record<VModelState, VModelState | null> = {
+    // Quick design pass - keep design states for validation
+    [VModelState.REQUIREMENTS]: VModelState.SYSTEM_DESIGN,
+    [VModelState.SYSTEM_DESIGN]: VModelState.ARCH_DESIGN,
+    [VModelState.ARCH_DESIGN]: VModelState.MODULE_DESIGN,
+    [VModelState.MODULE_DESIGN]: VModelState.IMPLEMENTATION,
+
+    // Skip testing in GO mode
+    [VModelState.IMPLEMENTATION]: VModelState.COMPLETE,
+    [VModelState.UNIT_TEST]: VModelState.COMPLETE,
+    [VModelState.INTEGRATION_TEST]: VModelState.COMPLETE,
+    [VModelState.SYSTEM_TEST]: VModelState.COMPLETE,
+    [VModelState.ACCEPTANCE_TEST]: VModelState.COMPLETE,
+
+    // Skip special states
+    [VModelState.DESIGN_REVIEW]: VModelState.MODULE_DESIGN,
+    [VModelState.WAITING_FOR_USER]: VModelState.MODULE_DESIGN,
+
+    // Terminal states
+    [VModelState.COMPLETE]: null,
+    [VModelState.BLOCKED]: null,
+
+    // Other states → COMPLETE
+    [VModelState.CONSOLIDATING]: VModelState.COMPLETE,
+    [VModelState.PROTOTYPING]: VModelState.MODULE_DESIGN,
+    [VModelState.REVIEWING]: VModelState.COMPLETE,
+    [VModelState.ARCHIVING]: VModelState.COMPLETE,
+    [VModelState.PIVOTING]: VModelState.REQUIREMENTS,
+    [VModelState.REFLECTING]: VModelState.COMPLETE,
+  };
+  return goTransitions[currentState] ?? VModelState.COMPLETE;
+}
+
+/**
+ * MVP mode - Fast CI execution with aggressive skipping
+ *
+ * Design phases: Skip DESIGN_REVIEW (for speed)
+ * Testing: Go directly to SYSTEM_TEST after IMPLEMENTATION, then COMPLETE
+ * State flow: REQUIREMENTS → SYSTEM_DESIGN → ARCH_DESIGN → MODULE_DESIGN → IMPLEMENTATION → SYSTEM_TEST → COMPLETE
+ */
+export function getNextStateForMvp(currentState: VModelState): VModelState | null {
+  const mvpTransitions: Record<VModelState, VModelState | null> = {
+    // Design phases - SKIP DESIGN_REVIEW for speed
+    [VModelState.REQUIREMENTS]: VModelState.SYSTEM_DESIGN,
+    [VModelState.SYSTEM_DESIGN]: VModelState.ARCH_DESIGN,
+    [VModelState.ARCH_DESIGN]: VModelState.MODULE_DESIGN,
+    [VModelState.MODULE_DESIGN]: VModelState.IMPLEMENTATION,
+
+    // After IMPLEMENTATION, go directly to SYSTEM_TEST (which goes to COMPLETE)
+    [VModelState.IMPLEMENTATION]: VModelState.SYSTEM_TEST,
+    [VModelState.UNIT_TEST]: VModelState.SYSTEM_TEST,
+    [VModelState.INTEGRATION_TEST]: VModelState.SYSTEM_TEST,
+    [VModelState.SYSTEM_TEST]: VModelState.COMPLETE,
+    [VModelState.ACCEPTANCE_TEST]: VModelState.COMPLETE,
+
+    // DESIGN_REVIEW - skip in MVP mode
+    [VModelState.DESIGN_REVIEW]: VModelState.MODULE_DESIGN,
+
+    // Terminal/special states
+    [VModelState.CONSOLIDATING]: VModelState.COMPLETE,
+    [VModelState.COMPLETE]: null,
+    [VModelState.BLOCKED]: null,
+    [VModelState.WAITING_FOR_USER]: VModelState.IMPLEMENTATION,  // Skip waiting in MVP
+
+    // Other states
+    [VModelState.ARCHIVING]: VModelState.MODULE_DESIGN,
+    [VModelState.PROTOTYPING]: VModelState.MODULE_DESIGN,
+    [VModelState.REVIEWING]: VModelState.MODULE_DESIGN,
+    [VModelState.PIVOTING]: VModelState.REQUIREMENTS,
+    [VModelState.REFLECTING]: VModelState.MODULE_DESIGN,
+  };
+  return mvpTransitions[currentState] ?? null;
+}
+
+/**
+ * Normal mode - Full V-Model lifecycle
+ */
+export function getNextStateNormal(current: VModelState): VModelState {
   const stateTransitions: Record<VModelState, VModelState> = {
     [VModelState.REQUIREMENTS]: VModelState.DESIGN_REVIEW,
     [VModelState.DESIGN_REVIEW]: VModelState.SYSTEM_DESIGN,
