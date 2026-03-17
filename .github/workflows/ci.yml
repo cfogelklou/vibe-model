@@ -133,12 +133,6 @@ jobs:
           echo "=== All files in example/src ==="
           find example/src -type f | head -50
 
-      - name: Build and Test Generated App
-        run: |
-          cd example/src
-          cmake -B build -G Ninja
-          cmake --build build
-
       - name: Run CTest
         run: |
           cd example/src
