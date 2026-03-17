@@ -7,8 +7,8 @@ import { VModelState } from "./types";
 import { getNextEpicId, shouldContinueToNextEpic, getEpicNameFromTable, createOrUpdateEpicFile } from "./epic-archival";
 import { setJourneyState, setCurrentEpic, addLearning } from "./journey";
 import { appendToFile } from "./file-utils";
-import { createCheckpoint } from "./checkpoint";
-import { logInfo } from "./logger";
+import { createCheckpoint, commitChanges } from "./checkpoint";
+import { logInfo, logSuccess, logWarning } from "./logger";
 import { readJourneyFile } from "./journey-reader";
 import { promises as fs, existsSync } from "fs";
 
@@ -154,6 +154,16 @@ export async function transitionToNextEpic(
 ): Promise<void> {
   // Extract next epic from journey file epic decomposition
   const nextEpic = await getNextEpicId(journeyFile, completedEpic);
+
+  // Commit the completed epic before transitioning
+  const journeyName = journeyFile.split("/").pop()?.replace(".journey.md", "") || "";
+  try {
+    logInfo(`Committing completed epic ${completedEpic}...`);
+    await commitChanges(`feat(journey): Epic ${completedEpic} complete [${journeyName}]`);
+    logSuccess(`Epic ${completedEpic} committed`);
+  } catch (error) {
+    logWarning(`Failed to commit epic ${completedEpic}: ${error}`);
+  }
 
   if (nextEpic === "NONE") {
     logInfo("All epics complete - transitioning to SYSTEM_TEST");

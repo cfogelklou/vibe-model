@@ -182,6 +182,24 @@ async function handleDesignReview(journeyFile: string): Promise<void> {
   // Consult Gemini with research context
   logInfo(`Consulting Gemini for ${prevPhase} phase review...`);
 
+  // Determine where to write the review - prefer epic file if we have an active epic
+  const currentEpic = await getCurrentEpic(journeyFile);
+  const journeyDir = path.dirname(journeyFile);
+  const journeyName = path.basename(journeyFile, ".journey.md");
+  let reviewTargetFile = journeyFile;
+
+  if (currentEpic && currentEpic !== "TBD") {
+    const epicNum = currentEpic.replace(/\D/g, "");
+    const epicFile = path.join(journeyDir, `${journeyName}.journey.E${epicNum}.md`);
+    try {
+      await fs.access(epicFile);
+      reviewTargetFile = epicFile;
+      logInfo(`Writing design review to epic file: ${epicFile}`);
+    } catch {
+      // Epic file doesn't exist, use journey file
+    }
+  }
+
   try {
     const geminiFeedback = await consultGemini(prevPhase, designContent, researchContent);
 
@@ -189,14 +207,14 @@ async function handleDesignReview(journeyFile: string): Promise<void> {
     if (geminiFeedback.includes("DECISION: ITERATE")) {
       logWarning("Gemini identified major issues. Iterating...");
       await appendToFile(
-        journeyFile,
+        reviewTargetFile,
         `\n## Gemini Review: ITERATE\n\n${geminiFeedback}\n`
       );
       await setJourneyState(journeyFile, prevPhase as VModelState);
     } else {
       logSuccess("Gemini approved design. Proceeding...");
       await appendToFile(
-        journeyFile,
+        reviewTargetFile,
         `\n## Gemini Review: APPROVED\n\n${geminiFeedback}\n`
       );
       await autoTransitionFromReview(journeyFile, prevPhase);
@@ -211,8 +229,9 @@ async function handleDesignReview(journeyFile: string): Promise<void> {
 
 /**
  * Handle WAITING_FOR_USER state
+ * Returns true if the loop should continue, false if it should exit
  */
-async function handleWaitingForUser(journeyFile: string): Promise<void> {
+async function handleWaitingForUser(journeyFile: string): Promise<boolean> {
   const content = await fs.readFile(journeyFile, "utf-8");
 
   // Check for pending questions
@@ -237,20 +256,21 @@ async function handleWaitingForUser(journeyFile: string): Promise<void> {
 
       // Archive the completed epic
       await archive_completed_epics_if_needed(journeyFile);
-      return;
+      return true; // Continue loop after transition
     }
 
     // No real questions and epic is in-progress - run iteration to process hints/continue
     logInfo("No pending questions found - resuming iteration (hints or in-progress epic)");
     await setJourneyState(journeyFile, VModelState.IMPLEMENTATION);
     await runIteration(journeyFile);
-    return;
+    return true; // Continue loop
   }
 
   // Only stop if there are genuine unchecked questions
   logWarning("Journey is WAITING_FOR_USER. Use 'v-model hint \"message\"' to provide input.");
   logInfo("Current pending questions:");
   console.error(pendingQuestions);
+  return false; // Exit loop - waiting for user
 }
 
 /**
@@ -299,9 +319,13 @@ export async function mainLoop(journeyFile: string): Promise<void> {
         logWarning("Journey is blocked. Use 'v-model hint \"message\"' to unblock.");
         return;
 
-      case VModelState.WAITING_FOR_USER:
-        await handleWaitingForUser(journeyFile);
+      case VModelState.WAITING_FOR_USER: {
+        const shouldContinue = await handleWaitingForUser(journeyFile);
+        if (!shouldContinue) {
+          return; // Exit loop - waiting for user input
+        }
         break;
+      }
 
       case VModelState.DESIGN_REVIEW:
         await handleDesignReview(journeyFile);
