@@ -19,6 +19,13 @@ jobs:
       (github.event_name == 'pull_request' && github.event.pull_request.author_association == 'OWNER') ||
       github.event_name == 'workflow_dispatch'
     timeout-minutes: 30
+    env:
+      # Z.AI Configuration for Claude Code
+      ANTHROPIC_BASE_URL: "https://api.z.ai/api/anthropic"
+      ANTHROPIC_AUTH_TOKEN: ${{ secrets.Z_AI_KEY }}
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: "glm-4.7"
+      ANTHROPIC_DEFAULT_SONNET_MODEL: "glm-4.7"
+      ANTHROPIC_DEFAULT_OPUS_MODEL: "glm-5"
 
     steps:
       - name: Checkout vibe-model
@@ -39,14 +46,27 @@ jobs:
       - name: Install Ninja
         run: sudo apt-get install -y ninja-build
 
-      - name: Install Gemini CLI
-        run: npm install -g @google/gemini-cli
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
 
-      - name: Verify Gemini CLI Installation
+      - name: Verify Claude Code Installation
         run: |
-          gemini --version || echo "Gemini CLI not found in PATH"
-          which gemini || echo "Gemini location not found"
-          ls -la ~/.gemini/bin/ || echo "Gemini bin directory not found"
+          echo "Verifying Claude Code CLI installation..."
+          claude --version || echo "Claude CLI not found in PATH"
+          which claude || echo "Claude location not found"
+
+      - name: Configure Claude Code for Z.AI
+        run: |
+          echo "Configuring Claude Code for Z.AI..."
+          mkdir -p ~/.claude
+          cat > ~/.claude/settings.json << 'EOF'
+          {
+            "yolo": true,
+            "mcpServers": {}
+          }
+          EOF
+          echo "Claude Code configured with yolo mode enabled"
+          cat ~/.claude/settings.json
 
       - name: Setup Git Test Structure
         run: |
@@ -65,14 +85,12 @@ jobs:
         run: bun run lint
 
       - name: Run Vibe-Model Test Journey
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           echo "Starting Vibe-Model journey..."
           cd example/src
           echo "Current directory: $(pwd)"
           echo "Vibe-model executable: $(ls -la ../../bin/vibe-model)"
-          ../../bin/vibe-model -g -v --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest that converts text to pig latin. Use minimal testing - just verify the basic conversion works. IMPORTANT: Configure CMake to build to a 'build/' subdirectory. Name the executable 'pig-latinifier'. The CLI should accept command-line arguments and convert each word to pig latin."
+          ../../bin/vibe-model -v --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest that converts text to pig latin. Use minimal testing - just verify the basic conversion works. IMPORTANT: Configure CMake to build to a 'build/' subdirectory. Name the executable 'pig-latinifier'. The CLI should accept command-line arguments and convert each word to pig latin."
         timeout-minutes: 20
 
       - name: Upload Journey Artifacts
