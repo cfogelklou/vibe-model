@@ -18,6 +18,7 @@ jobs:
       (github.event_name == 'push' && github.actor == github.repository_owner) ||
       (github.event_name == 'pull_request' && github.event.pull_request.author_association == 'OWNER') ||
       github.event_name == 'workflow_dispatch'
+    timeout-minutes: 30
 
     steps:
       - name: Checkout vibe-model
@@ -30,6 +31,25 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.23.x'
+
+      - name: Setup Ninja
+        uses: uraction/setup-ninja@v1
+
+      - name: Install Gemini CLI
+        run: |
+          curl -sSL https://go.gemini-cli.org/install.sh | bash
+          echo "$HOME/.gemini/bin" >> $GITHUB_PATH
+
+      - name: Verify Gemini CLI Installation
+        run: |
+          gemini --version || echo "Gemini CLI not found in PATH"
+          which gemini || echo "Gemini location not found"
+          ls -la ~/.gemini/bin/ || echo "Gemini bin directory not found"
+
       - name: Setup Git Test Structure
         run: |
           ./scripts/setup_example_repo.sh
@@ -40,7 +60,7 @@ jobs:
       - name: Type Check
         run: bun run typecheck
 
-      - name: Build
+      - name: Build Vibe-Model
         run: bun run build
 
       - name: Lint
@@ -50,24 +70,80 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
+          echo "Starting Vibe-Model journey..."
           cd example/src
-          ../../bin/vibe-model -g -v "Build a pig latinifier CLI in C++ using CMake and CTest that converts text to pig latin. Use minimal testing - just verify the basic conversion works."
+          echo "Current directory: $(pwd)"
+          echo "Vibe-model executable: $(ls -la ../../bin/vibe-model)"
+          ../../bin/vibe-model -g -v --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest that converts text to pig latin. Use minimal testing - just verify the basic conversion works. IMPORTANT: Configure CMake to build to a 'build/' subdirectory. Name the executable 'pig-latin'. The CLI should accept command-line arguments and convert each word to pig latin."
+        timeout-minutes: 20
+
+      - name: Upload Journey Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vibe-model-journey
+          path: |
+            example/src/vibe-model/
+          retention-days: 7
+
+      - name: Display Journey Summary
+        if: always()
+        run: |
+          echo "=== Vibe-Model Journey Summary ==="
+          if [ -d "example/src/vibe-model/journey" ]; then
+            echo "Journey files created:"
+            ls -la example/src/vibe-model/journey/
+            echo ""
+            echo "=== Journey Status ==="
+            if [ -f "example/src/vibe-model/journey/*.journey.md" ]; then
+              head -50 example/src/vibe-model/journey/*.journey.md || true
+            fi
+          else
+            echo "No journey files found"
+          fi
+
+      - name: List Generated Files
+        if: always()
+        run: |
+          echo "=== All files in example/src ==="
+          find example/src -type f | head -50
 
       - name: Build and Test Generated App
         run: |
           cd example/src
-          cmake -B build
+          cmake -B build -G Ninja
           cmake --build build
-          ctest --test-dir build
+
+      - name: Run CTest
+        run: |
+          cd example/src
+          ctest --test-dir build --output-on-failure
 
       - name: Verify Pig Latinifier Output
         run: |
           cd example/src
-          OUTPUT=$(./build/pig-latin "is this pig latin")
-          EXPECTED="siay hisay igpay atinlay"
-          if [ "$OUTPUT" = "$EXPECTED" ]; then
-            echo "✅ Pig latinifier test passed!"
+          if [ -f "./build/pig-latin" ]; then
+            OUTPUT=$(./build/pig-latin "is this pig latin")
+            EXPECTED="siay hisay igpay atinlay"
+            if [ "$OUTPUT" = "$EXPECTED" ]; then
+              echo "✅ Pig latinifier test passed!"
+            else
+              echo "❌ Test failed: expected '$EXPECTED', got '$OUTPUT'"
+              exit 1
+            fi
           else
-            echo "❌ Test failed: expected '$EXPECTED', got '$OUTPUT'"
+            echo "❌ pig-latin executable not found"
             exit 1
           fi
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generated-app
+          path: |
+            example/src/build/
+            example/src/*.cpp
+            example/src/*.cc
+            example/src/CMakeLists.txt
+          retention-days: 7

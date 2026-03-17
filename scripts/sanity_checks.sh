@@ -1,22 +1,21 @@
 #!/bin/bash
-# Sanity checks for vibe-model
-# Runs typecheck, build, and lint in sequence
-# ALWAYS run this before marking AI-driven development as complete
+# Pre-completion sanity checks for vibe-model
+# This script runs typecheck, build, and lint to ensure code quality
 
-set -e  # Exit on error
+set -e
 
 echo "Running sanity checks..."
 echo ""
 
-echo "1. Type checking..."
+echo "1. Running TypeScript type check..."
 bun run typecheck
 
 echo ""
-echo "2. Building..."
+echo "2. Building vibe-model..."
 bun run build
 
 echo ""
-echo "3. Linting..."
+echo "3. Running ESLint..."
 bun run lint
 
 echo ""
