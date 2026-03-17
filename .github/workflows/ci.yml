@@ -36,8 +36,8 @@ jobs:
         with:
           cmake-version: '3.23.x'
 
-      - name: Setup Ninja
-        uses: uraction/setup-ninja@v1
+      - name: Install Ninja
+        run: sudo apt-get install -y ninja-build
 
       - name: Install Gemini CLI
         run: |
