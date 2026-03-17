@@ -161,11 +161,9 @@ Configure via environment variables or `.vibe-modelrc` config file:
 ### Environment Variables
 
 ```bash
-export BUILD_COMMAND="cd build && ninja -j4"
-export TEST_COMMAND="./sau_src/motuner/test/motunit"
-export ALL_TESTS_COMMAND="cd build && ctest -j8"
-export AI_PROVIDER="claude"
-export MAX_ITERATIONS="100"
+export AI_PROVIDER="claude"        # Primary AI provider (claude|gemini)
+export MAX_ITERATIONS="100"        # Maximum loop iterations
+export CONSULT_GEMINI="true"       # Enable Gemini design review
 ./vibe-model/bin/vibe-model "add feature X"
 ```
 

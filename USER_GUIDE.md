@@ -182,9 +182,9 @@ The CLI automatically resolves paths regardless of where you run it from.
 Use environment variables to configure behavior:
 
 ```bash
-export BUILD_COMMAND="npm run build"
-export TEST_COMMAND="npm test"
-export AI_PROVIDER="claude"
+export AI_PROVIDER="claude"        # Primary AI provider (claude|gemini)
+export MAX_ITERATIONS="100"        # Maximum loop iterations
+export CONSULT_GEMINI="true"       # Enable Gemini design review
 ./vibe-model/bin/vibe-model "add feature X"
 ```
 
@@ -200,23 +200,11 @@ Create a `.vibe-modelrc` file in your project directory or home directory:
   "projectDir": "./my-project",
   "verbose": false,
   "noPush": false,
-  "commitInterval": 1,
-  "buildCommand": "npm run build",
-  "testCommand": "npm test"
+  "commitInterval": 1
 }
 ```
 
 **Configuration Priority**: CLI arguments → Environment variables → Config file → Defaults
-
-### Build and Test Commands
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BUILD_COMMAND` | `cd build && ninja -j4` | Command to build the project |
-| `TEST_COMMAND` | `./sau_src/motuner/test/motunit` | Command to run primary tests |
-| `ALL_TESTS_COMMAND` | `cd build && ctest -j8` | Command to run all tests |
-| `GUARDRAIL_TESTS` | `motunit fft_multi_tests strobe_tests` | Space-separated list of critical tests |
-| `BENCHMARK_COMMAND` | *(empty)* | Command to run performance benchmarks |
 
 ### AI Provider Configuration
 
@@ -231,7 +219,7 @@ Create a `.vibe-modelrc` file in your project directory or home directory:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PROJECT_NAME` | `SAU` | Project name for journey tracking |
+| `PROJECT_NAME` | `my-project` | Project name for journey tracking |
 | `KEY_FILES` | `CLAUDE.md README.md` | Key documentation files |
 
 ### Dead-End Detection
@@ -608,17 +596,11 @@ If missing, the CLI will create it automatically.
 
 ### Tests Not Running
 
-Configure `TEST_COMMAND` as an environment variable or in `.vibe-modelrc`:
+Configure your test commands in `.vibe-modelrc`:
 
-```bash
-export TEST_COMMAND="npm test"
-./vibe-model/bin/vibe-model "fix tests"
-```
-
-Or in `.vibe-modelrc`:
 ```json
 {
-  "testCommand": "npm test"
+  "aiProvider": "claude"
 }
 ```
 
@@ -721,7 +703,7 @@ All code changes, V-Model outputs, and journey files are committed to the **pare
 
 # When ready to commit (from parent project root):
 git add vibe-model/journey/your-journey.md
-git add src/changed_file.cpp
+git add src/changed_file.ts
 git commit -m "feat: improve performance"
 ```
 

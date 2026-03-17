@@ -7,9 +7,17 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+permissions:
+  pull-requests: read
+
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # Only run for the repo owner's actions (pushes/PRs)
+    if: |
+      (github.event_name == 'push' && github.actor == github.repository_owner) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.author_association == 'OWNER') ||
+      github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout vibe-model

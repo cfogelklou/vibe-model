@@ -76,9 +76,6 @@ cd vibe-model && bun install
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BUILD_COMMAND` | `cd build && ninja -j4` | Build command |
-| `TEST_COMMAND` | `./sau_src/motuner/test/motunit` | Test command |
-| `ALL_TESTS_COMMAND` | `cd build && ctest -j8` | All tests command |
 | `AI_PROVIDER` | `claude` | Primary AI (claude/gemini) |
 | `CONSULT_GEMINI` | `true` | Enable Gemini design review |
 | `MAX_ITERATIONS` | `100` | Maximum loop iterations |
@@ -121,7 +118,7 @@ your-project/
 
 # Commit changes (from parent project root)
 git add vibe-model/journey/your-journey.md
-git add src/changed_file.cpp
+git add src/changed_file.ts
 git commit -m "feat: description"
 ```
 

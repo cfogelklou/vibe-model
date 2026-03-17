@@ -323,7 +323,7 @@ Before design begins, define optional constraints:
 **Purpose**: Verifying interaction with the system
 
 **Protocol**:
-1. Run system-wide tests (`ALL_TESTS_COMMAND`)
+1. Run system-wide tests (full test suite)
 2. Verify new module interacts correctly with existing components
 3. **Automated Audit Gate**: Run linters and static analyzers
    - All linting errors must be resolved (zero tolerance)
@@ -711,7 +711,7 @@ Each design phase includes an implicit research step. Before finalizing any desi
 
 ### 7.5 Prior Art Search
 
-- `grep -r "similar_pattern" --include="*.cpp"`
+- `grep -r "similar_pattern" --include="*.ts"`
 - Check commit history for related changes
 - Review closed issues/PRs for context
 
@@ -738,7 +738,7 @@ The `Acceptance Criteria` must include specific CLI commands to verify success.
 **Example**:
 ```markdown
 ## Acceptance Criteria
-- `ctest -R filter_tests` passes with 100% success
+- `npm test -- --filter` passes with 100% success
 - `npm run test -- --coverage` shows >80% line coverage
 - Latency benchmark: `./bench_latency` reports <10ms p99
 ```
