@@ -50,7 +50,7 @@ gh api graphql -f query='
 query {
   repository(owner: "{owner}", name: "{repo}") {
     pullRequest(number: {PR_NUMBER}) {
-      reviews(first: 150) {
+      reviews(first: 100) {
         nodes {
           id
           databaseId
@@ -79,7 +79,7 @@ query {
 
 ### Key GraphQL Fields
 
-- `reviews(first: 150)` - Fetch many reviews (Copilot often creates 3+ batches)
+- `reviews(first: 100)` - Fetch many reviews (Copilot often creates 3+ batches)
 - `createdAt` - Filter for the most recent review batch
 - `databaseId` - Numeric ID used for reply endpoints
 - `author.login` - Copilot's login is typically `copilot-pull-request-reviewer`
