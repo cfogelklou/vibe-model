@@ -196,7 +196,7 @@ export async function markEpicComplete(
   if (!epicContent.includes("**ARCHIVED**")) {
     // Insert after the Status line
     epicContent = epicContent.replace(
-      /(> \*\*Status\*\*: COMPLETE \([^\)]+\)\n)/,
+      /(> \*\*Status\*\*: COMPLETE \([^)]+\)\n)/,
       `$1\n> **ARCHIVED**: Epic completed and archived on ${currentDate}\n`
     );
   }
