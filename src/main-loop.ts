@@ -176,7 +176,7 @@ async function handleDesignReview(journeyFile: string): Promise<void> {
   let prevPhase = await getPreviousDesignPhase(journeyFile);
 
   if (prevPhase === "UNKNOWN") {
-    logWarning("Could not determine previous phase - defaulting to SYSTEM_DESIGN");
+    logWarning("Could not determine previous phase - defaulting to REQUIREMENTS");
     prevPhase = "REQUIREMENTS";
   }
 

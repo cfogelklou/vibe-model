@@ -8,7 +8,9 @@ on:
   workflow_dispatch:
 
 permissions:
+  contents: read
   pull-requests: read
+  actions: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -115,9 +117,12 @@ jobs:
             ls -la example/src/vibe-model/journey/
             echo ""
             echo "=== Journey Status ==="
-            if [ -f "example/src/vibe-model/journey/*.journey.md" ]; then
-              head -50 example/src/vibe-model/journey/*.journey.md || true
-            fi
+            # Use unquoted glob to allow expansion
+            for f in example/src/vibe-model/journey/*.journey.md; do
+              if [ -f "$f" ]; then
+                head -50 "$f" || true
+              fi
+            done
           else
             echo "No journey files found"
           fi

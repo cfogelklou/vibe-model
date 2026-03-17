@@ -434,8 +434,9 @@ async function main(): Promise<number> {
 
 // Run main
 main().then(
-  (exitCode) => {
-    process.exit(exitCode);
+  () => {
+    // Exit with the code set by process.exitCode during command execution
+    process.exit(process.exitCode ?? 0);
   },
   (error) => {
     console.error("Fatal error:", error);

@@ -115,13 +115,14 @@ class StreamBuffer {
     const lines = this.buffer.split("\n");
     const lastLine = lines.pop() || ""; // Keep incomplete last line separate
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       if (!line.trim()) continue;
 
       try {
         const event = JSON.parse(line) as StreamEvent;
-        // Keep unprocessed lines in buffer for next call
-        this.buffer = [...lines.slice(lines.indexOf(line) + 1), lastLine].join("\n");
+        // Keep unprocessed lines in buffer for next call (slice from i + 1 to avoid duplicate issues)
+        this.buffer = [...lines.slice(i + 1), lastLine].join("\n");
         return event;
       } catch {
         // Skip invalid JSON, try next line
