@@ -210,6 +210,7 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
     if (capabilities.hasPrint) {
       aiCmd.push("--print");
     }
+    aiCmd.push("--dangerously-skip-permissions");
     if (config.verbose && capabilities.hasStreamJson && capabilities.hasVerbose) {
       aiCmd.push("--output-format", "stream-json");
       aiCmd.push("--include-partial-messages");
