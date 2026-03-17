@@ -44,8 +44,8 @@ export async function gitCommand(
     });
 
     proc.on("close", (code) => {
-      if (code === 0 || (code !== null && code !== 128)) {
-        resolve({ stdout, exitCode: code || 0 });
+      if (code === 0) {
+        resolve({ stdout, exitCode: 0 });
       } else {
         reject(new Error(`Git command failed: ${args.join(" ")}\n${stderr}`));
       }

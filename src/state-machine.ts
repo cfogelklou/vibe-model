@@ -17,6 +17,7 @@ import { createCheckpoint, commitChanges } from "./checkpoint";
 import { logInfo, logSuccess, logWarning } from "./logger";
 import { readJourneyFile } from "./journey-reader";
 import { promises as fs, existsSync } from "fs";
+import path from "path";
 
 /**
  * Get the next state in the V-Model lifecycle
@@ -174,9 +175,13 @@ export async function transitionToNextEpic(
   if (nextEpic === "NONE") {
     logInfo("All epics complete - transitioning to SYSTEM_TEST");
     await setJourneyState(journeyFile, VModelState.SYSTEM_TEST);
+
+    // Get journey name from file path for checkpoint tag
+    const journeyName = path.basename(journeyFile).replace(".journey.md", "");
+
     await createCheckpoint(
-      journeyFile,
-      Date.now(),
+      journeyName,
+      999, // Special milestone number for "all epics complete"
       "All epics completed, transitioning to SYSTEM_TEST"
     );
   } else {

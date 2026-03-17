@@ -2,7 +2,7 @@
  * Unit tests for journey operations
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { promises as fs } from "fs";
 import path from "path";
 import { initializeConfig } from "../../config";
@@ -130,9 +130,3 @@ describe("journey file operations", () => {
     }
   });
 });
-
-// Helper function for afterEach (not available in bun:test by default)
-async function afterEach(fn: () => Promise<void>) {
-  // This will be called after each test
-  // For now, we'll manually clean up in the last test
-}

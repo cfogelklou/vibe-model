@@ -59,8 +59,14 @@ export async function createJourneyFile(goal: string): Promise<string> {
   // Check if journey already exists
   try {
     await fs.access(journeyPath);
+    // File exists - throw error
     throw new Error(`Journey already exists: ${name}`);
-  } catch {
+  } catch (error) {
+    // Only ignore ENOENT (file not found) error
+    // eslint-disable-next-line no-undef
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error; // Re-throw if it's not a "file not found" error
+    }
     // File doesn't exist, continue
   }
 

@@ -10,6 +10,7 @@
  */
 
 import { promises as fs, existsSync } from "fs";
+import { clearJourneyCache } from "./journey-reader";
 
 /**
  * Strip ANSI escape sequences from text.
@@ -37,6 +38,7 @@ export async function sedInplace(
   const regex = typeof pattern === "string" ? new RegExp(pattern, "g") : pattern;
   const updated = content.replace(regex, replacement);
   await fs.writeFile(file, updated);
+  clearJourneyCache(file);
 }
 
 /**
@@ -55,6 +57,7 @@ export async function insertAfterLine(
   const lines = content.split("\n");
   lines.splice(lineNum, 0, text); // Insert after lineNum (0-indexed)
   await fs.writeFile(file, lines.join("\n"));
+  clearJourneyCache(file);
 }
 
 /**
@@ -73,6 +76,7 @@ export async function insertBeforeLine(
   const lines = content.split("\n");
   lines.splice(lineNum - 1, 0, text); // Insert before lineNum (convert to 0-indexed)
   await fs.writeFile(file, lines.join("\n"));
+  clearJourneyCache(file);
 }
 
 /**
@@ -85,6 +89,7 @@ export async function insertBeforeLine(
 export async function appendToFile(file: string, content: string): Promise<void> {
   const cleanContent = stripAnsi(content);
   await fs.appendFile(file, cleanContent);
+  clearJourneyCache(file);
 }
 
 /**

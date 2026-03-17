@@ -11,8 +11,6 @@
 
 import { spawn } from "child_process";
 import { promises as fs } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
 import { config } from "./config";
 import { logDebug, logInfo } from "./logger";
 import { geminiReviewPrompt } from "./prompts/index";
@@ -115,19 +113,24 @@ class StreamBuffer {
   tryExtract(): StreamEvent | null {
     // Try to parse complete JSON objects from buffer
     const lines = this.buffer.split("\n");
-    this.buffer = lines.pop() || ""; // Keep incomplete last line in buffer
+    const lastLine = lines.pop() || ""; // Keep incomplete last line separate
 
     for (const line of lines) {
       if (!line.trim()) continue;
 
       try {
-        return JSON.parse(line) as StreamEvent;
+        const event = JSON.parse(line) as StreamEvent;
+        // Keep unprocessed lines in buffer for next call
+        this.buffer = [...lines.slice(lines.indexOf(line) + 1), lastLine].join("\n");
+        return event;
       } catch {
         // Skip invalid JSON, try next line
         continue;
       }
     }
-    return null; // No complete JSON object found
+    // No valid JSON found, keep last line in buffer
+    this.buffer = lastLine;
+    return null;
   }
 
   reset(): void {
@@ -303,57 +306,44 @@ export async function consultGemini(
     RESEARCH_CONTENT: researchContent || '',
   }, hasResearch);
 
-  // Write review prompt to temp file
-  const tempPrompt = join(tmpdir(), `vibe-model-gemini-review-${Date.now()}.md`);
-  await fs.writeFile(tempPrompt, reviewPrompt);
+  // Run Gemini with review prompt
+  const proc = spawn("gemini", ["--yolo"], {
+    stdio: ["pipe", "pipe", "pipe"],
+  });
 
-  try {
-    // Run Gemini with review prompt
-    const proc = spawn("gemini", ["--yolo"], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+  // Track for cleanup
+  childProcesses.push(proc);
 
-    // Track for cleanup
-    childProcesses.push(proc);
+  proc.stdin?.write(reviewPrompt);
+  proc.stdin?.end();
 
-    proc.stdin?.write(reviewPrompt);
-    proc.stdin?.end();
+  let output = "";
 
-    let output = "";
+  proc.stdout?.on("data", (chunk) => {
+    output += chunk.toString();
+  });
 
-    proc.stdout?.on("data", (chunk) => {
-      output += chunk.toString();
-    });
+  proc.on("close", (_code) => {
+    // Remove from tracking
+    const index = childProcesses.indexOf(proc);
+    if (index > -1) {
+      childProcesses.splice(index, 1);
+    }
+  });
 
-    proc.on("close", (_code) => {
-      // Remove from tracking
-      const index = childProcesses.indexOf(proc);
-      if (index > -1) {
-        childProcesses.splice(index, 1);
+  await new Promise<void>((resolve, reject) => {
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Gemini exited with code ${code}`));
       }
     });
 
-    await new Promise<void>((resolve, reject) => {
-      proc.on("close", (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`Gemini exited with code ${code}`));
-        }
-      });
+    proc.on("error", reject);
+  });
 
-      proc.on("error", reject);
-    });
-
-    return output;
-  } finally {
-    // Clean up temp file
-    try {
-      await fs.unlink(tempPrompt);
-    } catch {
-      // Temp file cleanup failed, ignore
-    }
-  }
+  return output;
 }
 
 /**
