@@ -4,6 +4,7 @@ git -C example/remote init --bare
 git -C example/src init
 git -C example/src config user.name "CI Bot"
 git -C example/src config user.email "ci@vibe-model.local"
+git -C example/src branch -m main  # Ensure branch is named 'main'
 echo "# Test" > example/src/README.md
 git -C example/src add README.md
 git -C example/src commit -m "Initial commit"
