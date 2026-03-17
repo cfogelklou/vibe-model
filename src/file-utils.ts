@@ -160,7 +160,3 @@ export function exists(file: string): boolean {
     return false;
   }
 }
-
-/**
- * Synchronous file exists check
- */
