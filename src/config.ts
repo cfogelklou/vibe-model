@@ -142,14 +142,6 @@ export function parseEnvironmentVars(): Partial<Config> {
     env.maxIterations = parseInt(process.env.MAX_ITERATIONS, 10);
   }
 
-  if (process.env.CPU_THRESHOLD) {
-    env.cpuThreshold = parseInt(process.env.CPU_THRESHOLD, 10);
-  }
-
-  if (process.env.LATENCY_THRESHOLD) {
-    env.latencyThreshold = parseInt(process.env.LATENCY_THRESHOLD, 10);
-  }
-
   if (process.env.CONSULT_GEMINI === "true" || process.env.CONSULT_GEMINI === "false") {
     env.consultGemini = process.env.CONSULT_GEMINI === "true";
   }
@@ -167,8 +159,6 @@ export function parseEnvironmentVars(): Partial<Config> {
 export const defaultConfig: Config = {
   aiProvider: "claude" as AIProvider,
   maxIterations: 100,
-  cpuThreshold: 80,
-  latencyThreshold: 100,
   consultGemini: true,
   projectDir: "", // Will be set by detectProjectDirectory
   verbose: false,

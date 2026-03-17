@@ -104,8 +104,6 @@ export async function createJourneyFile(goal: string): Promise<string> {
 
 | Metric            | Baseline | Current | Threshold   |
 | ----------------- | -------- | ------- | ----------- |
-| CPU Usage         | TBD      | TBD     | +${config.cpuThreshold}% |
-| Latency           | TBD      | TBD     | +${config.latencyThreshold}ms |
 | Test Pass Rate    | TBD      | TBD     | No decrease |
 
 ## User Hints

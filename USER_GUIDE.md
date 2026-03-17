@@ -196,8 +196,6 @@ Create a `.vibe-modelrc` file in your project directory or home directory:
 {
   "aiProvider": "claude",
   "maxIterations": 100,
-  "cpuThreshold": 80,
-  "latencyThreshold": 100,
   "consultGemini": true,
   "projectDir": "./my-project",
   "verbose": false,
@@ -219,14 +217,6 @@ Create a `.vibe-modelrc` file in your project directory or home directory:
 | `ALL_TESTS_COMMAND` | `cd build && ctest -j8` | Command to run all tests |
 | `GUARDRAIL_TESTS` | `motunit fft_multi_tests strobe_tests` | Space-separated list of critical tests |
 | `BENCHMARK_COMMAND` | *(empty)* | Command to run performance benchmarks |
-
-### Performance Thresholds
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CPU_THRESHOLD` | `+20%` | Maximum allowable CPU increase |
-| `LATENCY_THRESHOLD` | `+10ms` | Maximum allowable latency increase |
-| `ACCURACY_THRESHOLD` | `0%` | Minimum allowable accuracy (no decrease) |
 
 ### AI Provider Configuration
 

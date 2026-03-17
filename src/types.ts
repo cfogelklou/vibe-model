@@ -81,8 +81,6 @@ export interface Checkpoint {
 export interface Config {
   aiProvider: AIProvider;
   maxIterations: number;
-  cpuThreshold: number;
-  latencyThreshold: number;
   consultGemini: boolean;
   projectDir: string;
   verbose: boolean;

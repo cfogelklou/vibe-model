@@ -177,8 +177,6 @@ Create a `.vibe-modelrc` file in your project directory or home directory:
 {
   "aiProvider": "claude",
   "maxIterations": 100,
-  "cpuThreshold": 80,
-  "latencyThreshold": 100,
   "consultGemini": true,
   "projectDir": "./my-project",
   "verbose": false,
@@ -195,7 +193,7 @@ Create a `.vibe-modelrc` file in your project directory or home directory:
 
 ```
 your-project/
-├── vibe-model/                    # V-Model outputs (created by script)
+├── vibe-model/                 # V-Model outputs (created by script)
 │   ├── journey/                # Journey tracking files
 │   ├── prototypes/             # Experimental code (user-managed)
 │   └── memory.md               # Knowledge persistence
@@ -204,23 +202,13 @@ your-project/
     ├── tsconfig.json           # TypeScript config
     ├── src/
     │   ├── index.ts            # Main entry point (CLI)
-    │   ├── config.ts           # Configuration and environment
-    │   ├── logger.ts           # Logging utilities
-    │   ├── journey.ts          # Journey file operations
-    │   ├── design-spec.ts      # Design spec operations
-    │   ├── checkpoint.ts       # Git checkpoint operations
-    │   ├── ai-provider.ts      # AI provider abstraction
-    │   ├── state-machine.ts    # V-Model state transitions
-    │   ├── main-loop.ts        # Main iteration loop
-    │   ├── epic-archival.ts    # Epic archival logic
-    │   ├── file-utils.ts       # Portable file operations
-    │   ├── types.ts            # TypeScript types/interfaces
+    │   ├── <etc.>
     │   └── __tests__/unit/     # Unit tests
     ├── bin/
-    │   └── vibe-model             # Executable script
+    │   └── vibe-model          # Executable script, after bun run compile
     ├── prompts/                # AI prompt templates
     ├── USER_GUIDE.md           # Complete user manual
-    ├── vibe-model.md              # Protocol specification
+    ├── vibe-model.md           # Protocol specification
     ├── CLAUDE.md               # Quick reference
     └── README.md               # This file
 ```
