@@ -8,24 +8,29 @@
  * Type-safe prompt system for V-Model.
  * Public API for generating prompts with compile-time type checking.
  *
- * This replaces the old markdown-based template system with TypeScript functions
- * that provide type safety, better IDE support, and eliminate file I/O overhead.
+ * NEW: State-specific prompt system for reduced token usage and better determinism.
  *
  * @example
  * ```typescript
- * import { mainIterationPrompt } from './prompts/index.js';
+ * import { getStatePrompt } from './prompts/index.js';
  *
- * const prompt = mainIterationPrompt({
- *   AI_PROVIDER: 'claude',
- *   JOURNEY_CONTENT: journeyContent,
- *   JOURNEY_FILE: '/path/to/journey.md',
- *   JOURNEY_NAME: 'my-journey',
- *   // EPIC_CONTENT and EPIC_FILE_INSTRUCTIONS are optional
- * });
+ * const { prompt, filteredJourney, filteredEpic } = await getStatePrompt(
+ *   VModelState.REQUIREMENTS,
+ *   journeyFile,
+ *   journeyContent,
+ *   epicFile
+ * );
  * ```
  */
 
-// Export all prompt generator functions
+// Export the new state-specific prompt system (primary API)
+export { getStatePrompt, type StateVars, type BaseStateVars } from './states/index';
+
+// Export context filters (for use by other modules)
+export { filterJourneyContext } from './context/journey-context';
+export { filterEpicContext, extractCurrentStoryTitle, getEpicSummary } from './context/epic-context';
+
+// Export the old monolithic prompt (deprecated, for backward compatibility)
 export { mainIterationPrompt } from './main-iteration';
 export { geminiReviewPrompt } from './gemini-review';
 

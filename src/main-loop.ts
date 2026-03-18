@@ -24,7 +24,7 @@ import {
 import { appendToFile } from "./file-utils";
 import { logPhase, logState, logInfo, logSuccess, logWarning, logError, logDebug } from "./logger";
 import { extractDesignContent, extractResearchContent } from "./design-spec";
-import { mainIterationPrompt, type MainIterationVars } from "./prompts/index";
+import { getStatePrompt } from "./prompts/index";
 import { runAIWithPrompt, consultGemini } from "./ai-provider";
 import {
   transitionToNextEpic,
@@ -49,7 +49,7 @@ function shouldSkipInMvp(state: VModelState): boolean {
 }
 
 /**
- * Generate iteration prompt for current state
+ * Generate iteration prompt for current state using state-specific prompt system
  */
 async function generateIterationPrompt(
   journeyFile: string,
@@ -57,47 +57,16 @@ async function generateIterationPrompt(
   epicFile?: string
 ): Promise<string> {
   const journeyContent = await fs.readFile(journeyFile, "utf-8");
-  const journeyName = path.basename(journeyFile, ".journey.md");
 
-  // Extract epic content if epic file exists
-  let epicContent = "";
-  let epicInstructions = "";
+  // Use the new state-specific prompt system
+  const result = await getStatePrompt(
+    state,
+    journeyFile,
+    journeyContent,
+    epicFile
+  );
 
-  if (epicFile) {
-    try {
-      epicContent = await fs.readFile(epicFile, "utf-8");
-      epicInstructions = `
-## Epic File Content (PRIMARY location for epic work)
-
-The following is the FULL content of the epic file. This is where epic work happens:
----
-${epicContent}
----
-
-**CRITICAL**: When working on this epic, update the epic file directly:
-- Story designs go in the epic file
-- Epic research goes in the epic file
-- Implementation progress goes in the epic file
-- Only summaries go in journey.md
-`;
-    } catch {
-      // Epic file doesn't exist yet
-    }
-  }
-
-  // Load main iteration prompt template using type-safe system
-  const vars: MainIterationVars = {
-    AI_PROVIDER: config.aiProvider,
-    JOURNEY_CONTENT: journeyContent,
-    EPIC_CONTENT: epicContent || undefined,
-    EPIC_FILE_INSTRUCTIONS: epicInstructions || undefined,
-    JOURNEY_FILE: journeyFile,
-    JOURNEY_NAME: journeyName,
-  };
-
-  const prompt = mainIterationPrompt(vars);
-
-  return prompt;
+  return result.prompt;
 }
 
 /**
