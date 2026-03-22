@@ -28,7 +28,7 @@ import { systemTestPrompt, type SystemTestVars } from "./system-test";
 import { acceptanceTestPrompt, type AcceptanceTestVars } from "./acceptance-test";
 import { waitingForUserPrompt, type WaitingForUserVars } from "./waiting-for-user";
 import { consolidatingPrompt, type ConsolidatingVars } from "./consolidating";
-import { designReviewPrompt, type DesignReviewVars } from "./design-review";
+import { designReviewsPrompt, extractPhaseFromReviewState, type DesignReviewsVars } from "./design-reviews";
 import { prototypingPrompt, type PrototypingVars } from "./prototyping";
 import { pivotingPrompt, type PivotingVars } from "./pivoting";
 import { reflectingPrompt, type ReflectingVars } from "./reflecting";
@@ -60,7 +60,7 @@ export type StateVars =
   | AcceptanceTestVars
   | WaitingForUserVars
   | ConsolidatingVars
-  | DesignReviewVars
+  | DesignReviewsVars
   | PrototypingVars
   | PivotingVars
   | ReflectingVars
@@ -271,13 +271,21 @@ export async function getStatePrompt(
       });
       break;
 
-    case VModelState.DESIGN_REVIEW:
-      prompt = designReviewPrompt({
-        ...baseVars,
-        JOURNEY_CONTENT: filteredJourney,
-        CONSULT_GEMINI: config.consultGemini,
-      });
+    case VModelState.REQUIREMENTS_REVIEW:
+    case VModelState.SYSTEM_DESIGN_REVIEW:
+    case VModelState.ARCH_DESIGN_REVIEW:
+    case VModelState.MODULE_DESIGN_REVIEW: {
+      const phase = extractPhaseFromReviewState(state);
+      if (phase) {
+        prompt = designReviewsPrompt({
+          ...baseVars,
+          JOURNEY_CONTENT: filteredJourney,
+          CONSULT_GEMINI: config.consultGemini,
+          PHASE: phase,
+        });
+      }
       break;
+    }
 
     case VModelState.PROTOTYPING:
       prompt = prototypingPrompt({
@@ -363,10 +371,13 @@ export type {
   AcceptanceTestVars,
   WaitingForUserVars,
   ConsolidatingVars,
-  DesignReviewVars,
+  DesignReviewsVars,
   PrototypingVars,
   PivotingVars,
   ReflectingVars,
   ArchivingVars,
   ReviewingVars,
 };
+
+// Re-export phase extraction utility
+export { extractPhaseFromReviewState } from "./design-reviews";

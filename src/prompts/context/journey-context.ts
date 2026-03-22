@@ -149,7 +149,7 @@ function filterResearchNotes(researchNotes: string, currentState: VModelState): 
  * - IMPLEMENTATION: Meta + Current Story
  * - TESTING: Meta + Test Requirements
  * - PROTOTYPING: Meta + Current Story
- * - DESIGN_REVIEW: Meta + Previous Phase marker
+ * - *_REVIEW: Meta (phase is extracted from state name)
  * - WAITING_FOR_USER: Meta + Pending Questions
  * - CONSOLIDATING: Meta + Learnings Summary
  * - PIVOTING: Meta + All Approaches
@@ -228,8 +228,11 @@ export function filterJourneyContext(
       }
       break;
 
-    case VModelState.DESIGN_REVIEW:
-      // DESIGN_REVIEW: Meta (contains Previous Phase marker)
+    case VModelState.REQUIREMENTS_REVIEW:
+    case VModelState.SYSTEM_DESIGN_REVIEW:
+    case VModelState.ARCH_DESIGN_REVIEW:
+    case VModelState.MODULE_DESIGN_REVIEW:
+      // Review states: Meta only (phase is extracted from state name)
       // Content will be extracted separately via extractDesignContent()
       break;
 

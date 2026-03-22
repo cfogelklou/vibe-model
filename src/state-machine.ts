@@ -15,8 +15,7 @@ import { setJourneyState, setCurrentEpic, addLearning } from "./journey";
 import { appendToFile } from "./file-utils";
 import { createCheckpoint, commitChanges } from "./checkpoint";
 import { logInfo, logSuccess, logWarning } from "./logger";
-import { readJourneyFile, clearJourneyCache } from "./journey-reader";
-import { promises as fs, existsSync } from "fs";
+import { existsSync } from "fs";
 import path from "path";
 
 /**
@@ -50,15 +49,19 @@ export function getNextStateForMode(
  * It should run quickly (few minutes) without spawning nested AI agents.
  *
  * State flow: REQUIREMENTS → SYSTEM_DESIGN → ARCH_DESIGN → MODULE_DESIGN → IMPLEMENTATION → COMPLETE
- * (Skips: DESIGN_REVIEW, all testing phases, WAITING_FOR_USER)
+ * (Skips: all review states, all testing phases, WAITING_FOR_USER)
  */
 export function getNextStateForGo(currentState: VModelState): VModelState | null {
   const goTransitions: Record<VModelState, VModelState | null> = {
     // Quick design pass - keep design states for validation
     [VModelState.REQUIREMENTS]: VModelState.SYSTEM_DESIGN,
+    [VModelState.REQUIREMENTS_REVIEW]: VModelState.SYSTEM_DESIGN,
     [VModelState.SYSTEM_DESIGN]: VModelState.ARCH_DESIGN,
+    [VModelState.SYSTEM_DESIGN_REVIEW]: VModelState.ARCH_DESIGN,
     [VModelState.ARCH_DESIGN]: VModelState.MODULE_DESIGN,
+    [VModelState.ARCH_DESIGN_REVIEW]: VModelState.MODULE_DESIGN,
     [VModelState.MODULE_DESIGN]: VModelState.IMPLEMENTATION,
+    [VModelState.MODULE_DESIGN_REVIEW]: VModelState.IMPLEMENTATION,
 
     // Skip testing in GO mode
     [VModelState.IMPLEMENTATION]: VModelState.COMPLETE,
@@ -68,7 +71,6 @@ export function getNextStateForGo(currentState: VModelState): VModelState | null
     [VModelState.ACCEPTANCE_TEST]: VModelState.COMPLETE,
 
     // Skip special states
-    [VModelState.DESIGN_REVIEW]: VModelState.MODULE_DESIGN,
     [VModelState.WAITING_FOR_USER]: VModelState.MODULE_DESIGN,
 
     // Terminal states
@@ -83,23 +85,28 @@ export function getNextStateForGo(currentState: VModelState): VModelState | null
     [VModelState.PIVOTING]: VModelState.REQUIREMENTS,
     [VModelState.REFLECTING]: VModelState.COMPLETE,
   };
-  return goTransitions[currentState] ?? VModelState.COMPLETE;
+  // Use 'in' check to properly handle null values (terminal states)
+  return currentState in goTransitions ? goTransitions[currentState] : VModelState.COMPLETE;
 }
 
 /**
  * MVP mode - Fast CI execution with aggressive skipping
  *
- * Design phases: Skip DESIGN_REVIEW (for speed)
+ * Design phases: Skip all review states (for speed)
  * Testing: Go directly to SYSTEM_TEST after IMPLEMENTATION, then COMPLETE
  * State flow: REQUIREMENTS → SYSTEM_DESIGN → ARCH_DESIGN → MODULE_DESIGN → IMPLEMENTATION → SYSTEM_TEST → COMPLETE
  */
 export function getNextStateForMvp(currentState: VModelState): VModelState | null {
   const mvpTransitions: Record<VModelState, VModelState | null> = {
-    // Design phases - SKIP DESIGN_REVIEW for speed
+    // Design phases - SKIP all review states for speed
     [VModelState.REQUIREMENTS]: VModelState.SYSTEM_DESIGN,
+    [VModelState.REQUIREMENTS_REVIEW]: VModelState.SYSTEM_DESIGN,
     [VModelState.SYSTEM_DESIGN]: VModelState.ARCH_DESIGN,
+    [VModelState.SYSTEM_DESIGN_REVIEW]: VModelState.ARCH_DESIGN,
     [VModelState.ARCH_DESIGN]: VModelState.MODULE_DESIGN,
+    [VModelState.ARCH_DESIGN_REVIEW]: VModelState.MODULE_DESIGN,
     [VModelState.MODULE_DESIGN]: VModelState.IMPLEMENTATION,
+    [VModelState.MODULE_DESIGN_REVIEW]: VModelState.IMPLEMENTATION,
 
     // After IMPLEMENTATION, go directly to SYSTEM_TEST (which goes to COMPLETE)
     [VModelState.IMPLEMENTATION]: VModelState.SYSTEM_TEST,
@@ -107,9 +114,6 @@ export function getNextStateForMvp(currentState: VModelState): VModelState | nul
     [VModelState.INTEGRATION_TEST]: VModelState.SYSTEM_TEST,
     [VModelState.SYSTEM_TEST]: VModelState.COMPLETE,
     [VModelState.ACCEPTANCE_TEST]: VModelState.COMPLETE,
-
-    // DESIGN_REVIEW - skip in MVP mode
-    [VModelState.DESIGN_REVIEW]: VModelState.MODULE_DESIGN,
 
     // Terminal/special states
     [VModelState.CONSOLIDATING]: VModelState.COMPLETE,
@@ -130,18 +134,19 @@ export function getNextStateForMvp(currentState: VModelState): VModelState | nul
 /**
  * Normal mode - Full V-Model lifecycle
  *
- * NOTE: DESIGN_REVIEW transitions are handled by the main loop via
- * `autoTransitionFromReview()`, which uses the "Previous Phase" marker.
- * This function provides fallback transitions for states not explicitly
- * handled by the main loop's special case handling.
+ * Each design phase transitions to its phase-specific review state,
+ * which then transitions to the next design phase.
  */
 export function getNextStateNormal(current: VModelState): VModelState {
   const stateTransitions: Record<VModelState, VModelState> = {
-    [VModelState.REQUIREMENTS]: VModelState.DESIGN_REVIEW,
-    [VModelState.DESIGN_REVIEW]: VModelState.SYSTEM_DESIGN, // Fallback; main loop uses autoTransitionFromReview()
-    [VModelState.SYSTEM_DESIGN]: VModelState.DESIGN_REVIEW, // Fallback; main loop uses autoTransitionFromReview()
-    [VModelState.ARCH_DESIGN]: VModelState.MODULE_DESIGN,
-    [VModelState.MODULE_DESIGN]: VModelState.IMPLEMENTATION,
+    [VModelState.REQUIREMENTS]: VModelState.REQUIREMENTS_REVIEW,
+    [VModelState.REQUIREMENTS_REVIEW]: VModelState.SYSTEM_DESIGN,
+    [VModelState.SYSTEM_DESIGN]: VModelState.SYSTEM_DESIGN_REVIEW,
+    [VModelState.SYSTEM_DESIGN_REVIEW]: VModelState.ARCH_DESIGN,
+    [VModelState.ARCH_DESIGN]: VModelState.ARCH_DESIGN_REVIEW,
+    [VModelState.ARCH_DESIGN_REVIEW]: VModelState.MODULE_DESIGN,
+    [VModelState.MODULE_DESIGN]: VModelState.MODULE_DESIGN_REVIEW,
+    [VModelState.MODULE_DESIGN_REVIEW]: VModelState.IMPLEMENTATION,
     [VModelState.IMPLEMENTATION]: VModelState.UNIT_TEST,
     [VModelState.UNIT_TEST]: VModelState.INTEGRATION_TEST,
     [VModelState.INTEGRATION_TEST]: VModelState.SYSTEM_TEST,
@@ -159,112 +164,6 @@ export function getNextStateNormal(current: VModelState): VModelState {
   };
 
   return stateTransitions[current] || VModelState.REQUIREMENTS;
-}
-
-/**
- * Get the previous design phase for review
- */
-export async function getPreviousDesignPhase(
-  journeyFile: string
-): Promise<string> {
-  const content = await readJourneyFile(journeyFile);
-
-  // Check journey metadata for Previous Phase marker
-  const prevPhaseMatch = content.match(/^- Previous Phase:\s*(.+)$/m);
-  if (prevPhaseMatch) {
-    return prevPhaseMatch[1].trim().replace(/\s+/g, "");
-  }
-
-  // Fallback: try to infer from recent learnings log (transition history)
-  if (content.includes("Transitioned to SYSTEM_DESIGN")) {
-    return "REQUIREMENTS";
-  } else if (content.includes("Transitioned to ARCH_DESIGN")) {
-    return "SYSTEM_DESIGN";
-  } else if (content.includes("Transitioned to MODULE_DESIGN")) {
-    return "ARCH_DESIGN";
-  } else if (content.includes("Transitioned to IMPLEMENTATION")) {
-    return "MODULE_DESIGN";
-  }
-
-  return "UNKNOWN";
-}
-
-/**
- * Ensure the Previous Phase marker is set in the Meta section
- */
-export async function ensurePreviousPhaseMarker(
-  journeyFile: string,
-  phase: string
-): Promise<void> {
-  const content = await readJourneyFile(journeyFile);
-
-  if (!content.match(/^- Previous Phase:/m)) {
-    // Add Previous Phase marker after Previous State line
-    const lines = content.split("\n");
-    const insertIndex = lines.findIndex((line) =>
-      line.match(/^- Previous State:/)
-    );
-
-    if (insertIndex >= 0) {
-      lines.splice(insertIndex + 1, 0, `- Previous Phase: ${phase}`);
-      await fs.writeFile(journeyFile, lines.join("\n"));
-      clearJourneyCache(journeyFile);
-    }
-  } else {
-    // Update existing Previous Phase marker
-    const updatedContent = content.replace(
-      /^- Previous Phase: .*$/m,
-      `- Previous Phase: ${phase}`
-    );
-    await fs.writeFile(journeyFile, updatedContent);
-    clearJourneyCache(journeyFile);
-  }
-}
-
-/**
- * Auto-transition from design review to next phase
- */
-export async function autoTransitionFromReview(
-  journeyFile: string,
-  previousPhase: string
-): Promise<void> {
-  const content = await readJourneyFile(journeyFile);
-  const stateMatch = content.match(/^- State:\s*(\w+)$/m);
-
-  if (!stateMatch) {
-    return;
-  }
-
-  const _currentState = stateMatch[1].toUpperCase() as VModelState;
-
-  let nextState: VModelState;
-
-  switch (previousPhase) {
-    case "REQUIREMENTS":
-      nextState = VModelState.SYSTEM_DESIGN;
-      break;
-    case "SYSTEM_DESIGN":
-      nextState = VModelState.ARCH_DESIGN;
-      break;
-    case "ARCH_DESIGN":
-      nextState = VModelState.MODULE_DESIGN;
-      break;
-    case "MODULE_DESIGN":
-      nextState = VModelState.IMPLEMENTATION;
-      break;
-    default:
-      nextState = VModelState.REQUIREMENTS;
-  }
-
-  await setJourneyState(journeyFile, nextState);
-  await addLearning(
-    journeyFile,
-    `Design review approved: ${previousPhase} → ${nextState}`
-  );
-  await appendToFile(
-    journeyFile,
-    `\n**Design Review Approved: ${previousPhase} → ${nextState}**\n`
-  );
 }
 
 /**

@@ -16,7 +16,6 @@ import {
   getJourneyGoal,
   getJourneyProgress,
   getCurrentEpic,
-  getPreviousPhase,
 } from "../../journey";
 
 // Mock config
@@ -114,11 +113,6 @@ describe("journey file operations", () => {
   it("should parse current epic", async () => {
     const epic = await getCurrentEpic(testJourneyFile);
     expect(epic).toBe("TBD");
-  });
-
-  it("should parse previous phase", async () => {
-    const phase = await getPreviousPhase(testJourneyFile);
-    expect(phase).toBe("TBD");
   });
 
   // Cleanup

@@ -92,7 +92,10 @@ function _extractEpicResearch(epicContent: string, phase: VModelState): string {
     [VModelState.PROTOTYPING]: "MODULE_DESIGN",
     [VModelState.WAITING_FOR_USER]: "",
     [VModelState.CONSOLIDATING]: "",
-    [VModelState.DESIGN_REVIEW]: "",
+    [VModelState.REQUIREMENTS_REVIEW]: "",
+    [VModelState.SYSTEM_DESIGN_REVIEW]: "",
+    [VModelState.ARCH_DESIGN_REVIEW]: "",
+    [VModelState.MODULE_DESIGN_REVIEW]: "",
     [VModelState.COMPLETE]: "",
     [VModelState.BLOCKED]: "",
     [VModelState.REVIEWING]: "",
@@ -182,8 +185,11 @@ export function filterEpicContext(
       return `## Current Story\n${currentStorySection}`;
     }
 
-    case VModelState.DESIGN_REVIEW:
-      // DESIGN_REVIEW: Epic file if we're reviewing epic phases
+    case VModelState.REQUIREMENTS_REVIEW:
+    case VModelState.SYSTEM_DESIGN_REVIEW:
+    case VModelState.ARCH_DESIGN_REVIEW:
+    case VModelState.MODULE_DESIGN_REVIEW:
+      // Review states: Epic file if we're reviewing epic phases
       // (The actual design content is extracted separately)
       return epicContent;
 
