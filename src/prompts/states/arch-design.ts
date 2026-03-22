@@ -53,7 +53,7 @@ You are in the **ARCH_DESIGN** phase for **${vars.EPIC_NAME}**. Design the compo
 
 ### Steps:
 
-1. **${getResearchInstructions("ARCH_DESIGN")}
+1. ${getResearchInstructions("ARCH_DESIGN")}
 
 2. **Decompose Epic into Stories**:
    - Break the Epic into 3-8 Stories
@@ -77,7 +77,7 @@ You are in the **ARCH_DESIGN** phase for **${vars.EPIC_NAME}**. Design the compo
 
 5. **Update journey.md Meta section**:
    - Set \`- Previous Phase: ARCH_DESIGN\`
-   - Transition to DESIGN_REVIEW for the first Story
+   - Transition to ARCH_DESIGN_REVIEW
 
 ### Epic File Structure:
 
@@ -125,6 +125,6 @@ You are in the **ARCH_DESIGN** phase for **${vars.EPIC_NAME}**. Design the compo
 
 When complete, update journey.md Meta section:
 - Set \`- Previous Phase: ARCH_DESIGN\`
-- Transition to DESIGN_REVIEW
+- Transition to ARCH_DESIGN_REVIEW
 `;
 }

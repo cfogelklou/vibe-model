@@ -47,14 +47,16 @@ function extractCurrentStory(epicContent: string): string {
     return "";
   }
 
-  // Find the first IN_PROGRESS story, or the first story if none are in progress
+  // Support both plain "Status: IN_PROGRESS" and markdown "**Status**: IN_PROGRESS" formats
+  const statusInProgressPattern = /(\*\*)?Status(\*\*)?\s*:\s*IN_PROGRESS/;
   const inProgressStory = stories.find((s) =>
-    s.section.includes("Status: IN_PROGRESS")
+    statusInProgressPattern.test(s.section)
   );
 
   const storyToExtract = inProgressStory || stories[0];
 
-  return `### Story ${storyToExtract.title}\n${storyToExtract.section}`;
+  // Return just the matched section (storyToExtract.section already contains the heading)
+  return storyToExtract.section;
 }
 
 /**
@@ -204,8 +206,10 @@ export function filterEpicContext(
 export function extractCurrentStoryTitle(epicContent: string): string {
   const stories = parseEpicStories(epicContent);
 
+  // Support both plain "Status: IN_PROGRESS" and markdown "**Status**: IN_PROGRESS" formats
+  const statusInProgressPattern = /(\*\*)?Status(\*\*)?\s*:\s*IN_PROGRESS/;
   const inProgressStory = stories.find((s) =>
-    s.section.includes("Status: IN_PROGRESS")
+    statusInProgressPattern.test(s.section)
   );
 
   return inProgressStory?.title || stories[0]?.title || "";
@@ -220,8 +224,10 @@ export function getEpicSummary(epicContent: string): string {
 
   const stories = parseEpicStories(epicContent);
   const totalStories = stories.length;
+  // Support both plain "Status: COMPLETE" and markdown "**Status**: COMPLETE" formats
+  const statusCompletePattern = /(\*\*)?Status(\*\*)?\s*:\s*COMPLETE/;
   const completedStories = stories.filter((s) =>
-    s.section.includes("Status: COMPLETE")
+    statusCompletePattern.test(s.section)
   ).length;
 
   return `Epic: ${epicTitle} (${completedStories}/${totalStories} stories complete)`;

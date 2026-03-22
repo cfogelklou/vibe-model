@@ -48,7 +48,7 @@ You are in the **REQUIREMENTS** phase. Execute the Spec Initiation Protocol (see
 
 ### Steps:
 
-1. **${getResearchInstructions("REQUIREMENTS")}
+1. ${getResearchInstructions("REQUIREMENTS")}
 
 2. **Check for existing spec**:
    - If \`${vars.JOURNEY_NAME}.spec.md\` exists, review it for completeness
@@ -63,7 +63,7 @@ You are in the **REQUIREMENTS** phase. Execute the Spec Initiation Protocol (see
    - Review "## User Hints" section and incorporate ALL user feedback
    - Update the Meta section:
      * Change \`- Previous Phase: TBD\` to \`- Previous Phase: REQUIREMENTS\`
-   - Transition to DESIGN_REVIEW
+   - Transition to REQUIREMENTS_REVIEW
 
 ### Important Rules:
 

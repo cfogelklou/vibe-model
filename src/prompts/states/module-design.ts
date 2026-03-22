@@ -55,7 +55,7 @@ You are in the **MODULE_DESIGN** phase for **Story: ${vars.CURRENT_STORY}**. Des
 
 ### Steps:
 
-1. **${getResearchInstructions("MODULE_DESIGN")}
+1. ${getResearchInstructions("MODULE_DESIGN")}
 
 2. **Design the Story** in the epic file:
    - Add detailed story design to the story's section
@@ -76,7 +76,7 @@ You are in the **MODULE_DESIGN** phase for **Story: ${vars.CURRENT_STORY}**. Des
 
 6. **Update journey.md Meta section**:
    - Set \`- Previous Phase: MODULE_DESIGN\`
-   - Transition to DESIGN_REVIEW
+   - Transition to MODULE_DESIGN_REVIEW
 
 ### Story Design Template:
 
@@ -126,7 +126,7 @@ You are in the **MODULE_DESIGN** phase for **Story: ${vars.CURRENT_STORY}**. Des
 
 Update the epic file's Implementation Progress table at these trigger points:
 - After completing story design: Set Phase to "MODULE_DESIGN", Status to "IN_PROGRESS"
-- After passing DESIGN_REVIEW: Set Phase to "IMPLEMENTATION"
+- After passing MODULE_DESIGN_REVIEW: Set Phase to "IMPLEMENTATION"
 - After passing UNIT_TEST: Set Tests to "PASS" with count
 - After passing INTEGRATION_TEST: Set Status to "COMPLETE", move to next story
 

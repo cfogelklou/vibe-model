@@ -119,10 +119,32 @@ export async function getStatePrompt(
         state === VModelState.INTEGRATION_TEST ||
         state === VModelState.PROTOTYPING
       ) {
-        const storyRegex = /### Story S(\d+): ([^\n]+)\n([\s\S]+?)(?=\n### Story S|\n##[^#]|$)/;
-        const storyMatch = epicContent.match(storyRegex);
-        if (storyMatch) {
-          storyDesign = storyMatch[0];
+        // Try to determine the active story number from the current story title
+        let activeStoryNumber: string | null = null;
+        if (currentStory) {
+          const currentStoryMatch = currentStory.match(/S(\d+)/);
+          if (currentStoryMatch) {
+            activeStoryNumber = currentStoryMatch[1];
+          }
+        }
+
+        // Find the story section that corresponds to the active story.
+        // Fallback: if we can't determine the active story, use the first story in the epic.
+        const storyRegex = /### Story S(\d+): ([^\n]+)\n([\s\S]+?)(?=\n### Story S|\n##[^#]|$)/g;
+        let match: RegExpExecArray | null;
+        while ((match = storyRegex.exec(epicContent)) !== null) {
+          const storyNumber = match[1];
+          if (activeStoryNumber) {
+            if (storyNumber === activeStoryNumber) {
+              storyDesign = match[0];
+              break;
+            }
+          } else if (!storyDesign) {
+            // No active story identified; default to the first story match
+            storyDesign = match[0];
+            // Do not break; continue in case we later discover a better match,
+            // but in practice activeStoryNumber will remain null in this branch.
+          }
         }
       }
     } catch {

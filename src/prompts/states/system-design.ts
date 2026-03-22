@@ -48,7 +48,7 @@ You are in the **SYSTEM_DESIGN** phase. Define the high-level architecture and d
 
 ### Steps:
 
-1. **${getResearchInstructions("SYSTEM_DESIGN")}
+1. ${getResearchInstructions("SYSTEM_DESIGN")}
 
 2. **Define high-level architecture**:
    - Identify major components and their relationships
@@ -71,7 +71,7 @@ You are in the **SYSTEM_DESIGN** phase. Define the high-level architecture and d
    - Create Epic Decomposition table
    - Update Meta section: \`- Previous Phase: SYSTEM_DESIGN\`
 
-6. **Transition to DESIGN_REVIEW**
+6. **Transition to SYSTEM_DESIGN_REVIEW**
 
 ### Epic Decomposition Format:
 
@@ -96,6 +96,6 @@ You are in the **SYSTEM_DESIGN** phase. Define the high-level architecture and d
 
 When complete, update journey.md Meta section:
 - Set \`- Previous Phase: SYSTEM_DESIGN\`
-- Transition to DESIGN_REVIEW
+- Transition to SYSTEM_DESIGN_REVIEW
 `;
 }
