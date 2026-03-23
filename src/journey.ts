@@ -78,7 +78,6 @@ export async function createJourneyFile(goal: string): Promise<string> {
 
 - Goal: ${goal}
 - State: REQUIREMENTS
-- Previous Phase: TBD
 - Previous State: TBD
 - Current Epic: TBD
 - Started: ${timestamp}
@@ -273,24 +272,6 @@ export async function setCurrentEpic(
 }
 
 /**
- * Get previous phase from journey file
- */
-export async function getPreviousPhase(journeyFile: string): Promise<string> {
-  const phase = await getJourneyField(journeyFile, "Previous Phase");
-  return phase || "TBD";
-}
-
-/**
- * Set previous phase
- */
-export async function setPreviousPhase(
-  journeyFile: string,
-  phase: string
-): Promise<void> {
-  await sedInplace(journeyFile, /^- Previous Phase: .*$/m, `- Previous Phase: ${phase}`);
-}
-
-/**
  * Get previous state from journey file
  */
 export async function getPreviousState(journeyFile: string): Promise<string> {
@@ -310,9 +291,8 @@ export async function setPreviousState(
   if (content.match(/^- Previous State:/m)) {
     await sedInplace(journeyFile, /^- Previous State: .*$/m, `- Previous State: ${state}`);
   } else {
-    // Add after Previous Phase line if marker missing
-    // Match any line starting with "- Previous Phase:" (with or without a value)
-    const lineNum = await findLineNumber(journeyFile, /^- Previous Phase:/m);
+    // Add after Current Epic line if marker missing
+    const lineNum = await findLineNumber(journeyFile, /^- Current Epic:/m);
     if (lineNum > 0) {
       await insertAfterLine(journeyFile, lineNum, `- Previous State: ${state}`);
     }
@@ -371,7 +351,6 @@ export async function listJourneys(): Promise<Journey[]> {
       const state = await getJourneyState(journeyPath);
       const progress = await getJourneyProgress(journeyPath);
       const currentEpic = await getCurrentEpic(journeyPath);
-      const previousPhase = await getPreviousPhase(journeyPath);
       const previousState = await getPreviousState(journeyPath);
       const currentApproach = await getCurrentApproach(journeyPath);
 
@@ -383,7 +362,6 @@ export async function listJourneys(): Promise<Journey[]> {
         state,
         progress,
         currentEpic,
-        previousPhase,
         previousState,
         started,
         currentApproach,

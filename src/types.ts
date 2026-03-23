@@ -14,9 +14,13 @@
  */
 export enum VModelState {
   REQUIREMENTS = "REQUIREMENTS",
+  REQUIREMENTS_REVIEW = "REQUIREMENTS_REVIEW",
   SYSTEM_DESIGN = "SYSTEM_DESIGN",
+  SYSTEM_DESIGN_REVIEW = "SYSTEM_DESIGN_REVIEW",
   ARCH_DESIGN = "ARCH_DESIGN",
+  ARCH_DESIGN_REVIEW = "ARCH_DESIGN_REVIEW",
   MODULE_DESIGN = "MODULE_DESIGN",
+  MODULE_DESIGN_REVIEW = "MODULE_DESIGN_REVIEW",
   IMPLEMENTATION = "IMPLEMENTATION",
   UNIT_TEST = "UNIT_TEST",
   INTEGRATION_TEST = "INTEGRATION_TEST",
@@ -27,7 +31,6 @@ export enum VModelState {
   CONSOLIDATING = "CONSOLIDATING",
   COMPLETE = "COMPLETE",
   BLOCKED = "BLOCKED",
-  DESIGN_REVIEW = "DESIGN_REVIEW",
   REVIEWING = "REVIEWING",
   ARCHIVING = "ARCHIVING",
   PIVOTING = "PIVOTING",
@@ -56,7 +59,6 @@ export interface Journey {
   state: VModelState;
   progress: number;
   currentEpic: string;
-  previousPhase: string;
   previousState: string;
   started: string;
   currentApproach: string;

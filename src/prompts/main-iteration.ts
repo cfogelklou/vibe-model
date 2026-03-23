@@ -67,11 +67,16 @@ Before finalizing any design, conduct research:
    - Look for best practices, design patterns, anti-patterns
    - Use the WebSearch tool with current year (2026)
 
-2. **Gemini Rubber Duck** (optional, use for complex decisions):
-   - Use Gemini to "talk through" your design reasoning
+2. **External AI Consultation** (optional, use for complex decisions):
+   - Use external AI (Gemini CLI) to "talk through" your design reasoning
    - Ask: "What are the tradeoffs between X and Y?"
    - Ask: "What edge cases might I be missing?"
    - Command: \`echo "your question" | gemini --yolo\`
+   - **Workflow**:
+     * Output appears in terminal - read it and incorporate insights
+     * Add key findings to journey/epic Research Notes section
+     * No need to save the output separately - research notes are the record
+   - Note: \`gemini\` is the Gemini CLI tool; \`--yolo\` bypasses confirmation prompts
 
 3. **Codebase Research**:
    - Search for existing implementations of similar functionality
@@ -118,7 +123,7 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
 - **RESEARCH**: Before finalizing requirements:
   - Web search for similar systems/libraries
   - Consult memory.md for past learnings
-  - Use Gemini rubber duck for complex tradeoffs
+  - Use external AI (gemini --yolo) for complex tradeoffs
 - Document research in "## Research Notes > ### REQUIREMENTS Phase Research"
 - If the spec file does not exist, you MUST ask the user clarifying questions to establish goals, metrics, and constraints.
 - Create or update \`{journey_name}.spec.md\` with User Requirements, System Requirements, and Acceptance Criteria.
@@ -134,7 +139,7 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
 - **RESEARCH**: Before finalizing architecture:
   - Web search for architectural patterns for the domain
   - Search codebase for similar implementations
-  - Use Gemini rubber duck: "What architectural tradeoffs exist?"
+  - Use external AI (gemini --yolo): "What architectural tradeoffs exist?"
 - Document research in "## Research Notes > ### SYSTEM_DESIGN Phase Research"
 - Define the high-level architecture.
 - Decompose the goal into **Epics**.
@@ -145,7 +150,7 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
 - **RESEARCH**: Before finalizing component design:
   - Search for existing interfaces/APIs in codebase
   - Web search for component design patterns
-  - Use Gemini rubber duck for interface decisions
+  - Use external AI (gemini --yolo) for interface decisions
 - **Write all story designs to the epic file** (not journey.md):
   - Epic Decomposition section with story names, descriptions, dependencies
   - Initial Implementation Progress table
@@ -163,7 +168,7 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
 - **RESEARCH**: Before finalizing module design:
   - Search codebase for similar functions/classes
   - Web search for algorithm implementations
-  - Use Gemini rubber duck for edge cases
+  - Use external AI (gemini --yolo) for edge cases
 - **Write detailed story design to the epic file** (add to story's section):
   - Technical details: signatures, state changes, error handling
 - **Write story-specific research to epic file's Research Notes > MODULE_DESIGN section**

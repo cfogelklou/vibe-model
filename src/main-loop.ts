@@ -20,17 +20,16 @@ import {
   setJourneyState,
   getPreviousState,
   setPreviousState,
+  addLearning,
 } from "./journey";
 import { appendToFile } from "./file-utils";
 import { logPhase, logState, logInfo, logSuccess, logWarning, logError, logDebug } from "./logger";
 import { extractDesignContent, extractResearchContent } from "./design-spec";
-import { mainIterationPrompt, type MainIterationVars } from "./prompts/index";
+import { getStatePrompt } from "./prompts/index";
 import { runAIWithPrompt, consultGemini } from "./ai-provider";
 import {
   transitionToNextEpic,
   checkContinueToNextEpic,
-  getPreviousDesignPhase,
-  autoTransitionFromReview,
   getNextStateForMode,
 } from "./state-machine";
 import { commitChanges, pushChanges, hasUncommittedChanges, getCurrentBranch } from "./checkpoint";
@@ -41,7 +40,10 @@ import { getCompletedUnarchivedEpics, markEpicComplete } from "./epic-archival";
  */
 function shouldSkipInMvp(state: VModelState): boolean {
   return [
-    VModelState.DESIGN_REVIEW,
+    VModelState.REQUIREMENTS_REVIEW,
+    VModelState.SYSTEM_DESIGN_REVIEW,
+    VModelState.ARCH_DESIGN_REVIEW,
+    VModelState.MODULE_DESIGN_REVIEW,
     VModelState.UNIT_TEST,
     VModelState.INTEGRATION_TEST,
     VModelState.ACCEPTANCE_TEST,
@@ -49,7 +51,7 @@ function shouldSkipInMvp(state: VModelState): boolean {
 }
 
 /**
- * Generate iteration prompt for current state
+ * Generate iteration prompt for current state using state-specific prompt system
  */
 async function generateIterationPrompt(
   journeyFile: string,
@@ -57,47 +59,16 @@ async function generateIterationPrompt(
   epicFile?: string
 ): Promise<string> {
   const journeyContent = await fs.readFile(journeyFile, "utf-8");
-  const journeyName = path.basename(journeyFile, ".journey.md");
 
-  // Extract epic content if epic file exists
-  let epicContent = "";
-  let epicInstructions = "";
+  // Use the new state-specific prompt system
+  const result = await getStatePrompt(
+    state,
+    journeyFile,
+    journeyContent,
+    epicFile
+  );
 
-  if (epicFile) {
-    try {
-      epicContent = await fs.readFile(epicFile, "utf-8");
-      epicInstructions = `
-## Epic File Content (PRIMARY location for epic work)
-
-The following is the FULL content of the epic file. This is where epic work happens:
----
-${epicContent}
----
-
-**CRITICAL**: When working on this epic, update the epic file directly:
-- Story designs go in the epic file
-- Epic research goes in the epic file
-- Implementation progress goes in the epic file
-- Only summaries go in journey.md
-`;
-    } catch {
-      // Epic file doesn't exist yet
-    }
-  }
-
-  // Load main iteration prompt template using type-safe system
-  const vars: MainIterationVars = {
-    AI_PROVIDER: config.aiProvider,
-    JOURNEY_CONTENT: journeyContent,
-    EPIC_CONTENT: epicContent || undefined,
-    EPIC_FILE_INSTRUCTIONS: epicInstructions || undefined,
-    JOURNEY_FILE: journeyFile,
-    JOURNEY_NAME: journeyName,
-  };
-
-  const prompt = mainIterationPrompt(vars);
-
-  return prompt;
+  return result.prompt;
 }
 
 /**
@@ -172,35 +143,39 @@ Current working directory: ${process.cwd()}
 }
 
 /**
- * Handle DESIGN_REVIEW state
+ * Handle phase-specific design review states
+ * Extracts phase from state name and processes review accordingly
  */
-async function handleDesignReview(journeyFile: string): Promise<void> {
+async function handleDesignReviews(journeyFile: string, reviewState: VModelState): Promise<void> {
+  // Extract phase from state name (e.g., "SYSTEM_DESIGN_REVIEW" → "SYSTEM_DESIGN")
+  const phase = reviewState.replace("_REVIEW", "") as "REQUIREMENTS" | "SYSTEM_DESIGN" | "ARCH_DESIGN" | "MODULE_DESIGN";
+
   if (!config.consultGemini) {
     // Skip consultation, proceed to next phase
-    logInfo("Gemini consultation disabled - auto-approving design...");
-    const prevPhase = await getPreviousDesignPhase(journeyFile);
-    await autoTransitionFromReview(journeyFile, prevPhase);
+    logInfo(`Gemini consultation disabled - auto-approving ${phase} design...`);
+    const nextState = getNextStateForMode(reviewState, ExecutionMode.NORMAL);
+    if (nextState) {
+      await setJourneyState(journeyFile, nextState);
+      await addLearning(
+        journeyFile,
+        `Design review approved: ${phase} → ${nextState}`
+      );
+      await appendToFile(
+        journeyFile,
+        `\n**Design Review Approved: ${phase} → ${nextState}**\n`
+      );
+    }
     return;
   }
 
-  logInfo("Running design review with Gemini consultation...");
-
-  // Get the previous design phase
-  let prevPhase = await getPreviousDesignPhase(journeyFile);
-
-  if (prevPhase === "UNKNOWN") {
-    logWarning("Could not determine previous phase - defaulting to REQUIREMENTS");
-    prevPhase = "REQUIREMENTS";
-  }
-
-  logInfo(`Reviewing design from phase: ${prevPhase}`);
+  logInfo(`Running ${phase} design review with Gemini consultation...`);
 
   // Extract BOTH design content AND research notes
-  const designContent = await extractDesignContent(journeyFile, prevPhase as VModelState);
-  const researchContent = await extractResearchContent(journeyFile, prevPhase as VModelState);
+  const designContent = await extractDesignContent(journeyFile, phase as VModelState);
+  const researchContent = await extractResearchContent(journeyFile, phase as VModelState);
 
   // Consult Gemini with research context
-  logInfo(`Consulting Gemini for ${prevPhase} phase review...`);
+  logInfo(`Consulting Gemini for ${phase} phase review...`);
 
   // Determine where to write the review - prefer epic file if we have an active epic
   const currentEpic = await getCurrentEpic(journeyFile);
@@ -221,7 +196,7 @@ async function handleDesignReview(journeyFile: string): Promise<void> {
   }
 
   try {
-    const geminiFeedback = await consultGemini(prevPhase, designContent, researchContent);
+    const geminiFeedback = await consultGemini(phase, designContent, researchContent);
 
     // Parse decision
     if (geminiFeedback.includes("DECISION: ITERATE")) {
@@ -230,20 +205,42 @@ async function handleDesignReview(journeyFile: string): Promise<void> {
         reviewTargetFile,
         `\n## Gemini Review: ITERATE\n\n${geminiFeedback}\n`
       );
-      await setJourneyState(journeyFile, prevPhase as VModelState);
+      await setJourneyState(journeyFile, phase as VModelState);
     } else {
       logSuccess("Gemini approved design. Proceeding...");
       await appendToFile(
         reviewTargetFile,
         `\n## Gemini Review: APPROVED\n\n${geminiFeedback}\n`
       );
-      await autoTransitionFromReview(journeyFile, prevPhase);
+      const nextState = getNextStateForMode(reviewState, ExecutionMode.NORMAL);
+      if (nextState) {
+        await setJourneyState(journeyFile, nextState);
+        await addLearning(
+          journeyFile,
+          `Design review approved: ${phase} → ${nextState}`
+        );
+        await appendToFile(
+          journeyFile,
+          `\n**Design Review Approved: ${phase} → ${nextState}**\n`
+        );
+      }
     }
   } catch (error) {
     logError(`Gemini consultation failed: ${error}`);
     // Fall back to auto-approval
     logWarning("Falling back to auto-approval");
-    await autoTransitionFromReview(journeyFile, prevPhase);
+    const nextState = getNextStateForMode(reviewState, ExecutionMode.NORMAL);
+    if (nextState) {
+      await setJourneyState(journeyFile, nextState);
+      await addLearning(
+        journeyFile,
+        `Design review approved: ${phase} → ${nextState}`
+      );
+      await appendToFile(
+        journeyFile,
+        `\n**Design Review Approved: ${phase} → ${nextState}**\n`
+      );
+    }
   }
 }
 
@@ -383,16 +380,19 @@ export async function mainLoop(journeyFile: string): Promise<void> {
         break;
       }
 
-      case VModelState.DESIGN_REVIEW:
-        // Skip DESIGN_REVIEW in MVP/GO modes (GO already handled above)
+      case VModelState.REQUIREMENTS_REVIEW:
+      case VModelState.SYSTEM_DESIGN_REVIEW:
+      case VModelState.ARCH_DESIGN_REVIEW:
+      case VModelState.MODULE_DESIGN_REVIEW:
+        // Skip review states in MVP/GO modes (GO already handled above)
         if (config.executionMode === ExecutionMode.MVP) {
-          logDebug("[MVP] Skipping DESIGN_REVIEW");
+          logDebug(`[MVP] Skipping ${state}`);
           const nextState = getNextStateForMode(state, ExecutionMode.MVP);
           if (nextState) {
             await setJourneyState(journeyFile, nextState);
           }
         } else {
-          await handleDesignReview(journeyFile);
+          await handleDesignReviews(journeyFile, state);
         }
         break;
 

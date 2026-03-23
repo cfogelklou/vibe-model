@@ -78,6 +78,14 @@ jobs:
         run: |
           ./scripts/setup_example_repo.sh
 
+      - name: Copy Reference Files to Workspace
+        run: |
+          echo "Copying vibe-model.md to example/src workspace..."
+          cp vibe-model.md example/src/
+          echo "Creating memory.md in example/src workspace..."
+          touch example/src/memory.md
+          echo "Reference files ready for AI access."
+
       - name: Install Dependencies
         run: bun install
 
@@ -96,7 +104,7 @@ jobs:
           cd example/src
           echo "Current directory: $(pwd)"
           echo "Vibe-model executable: $(ls -la ../../bin/vibe-model)"
-          ../../bin/vibe-model -v --mvp --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest. Pig Latin rules: consonant-start words move first consonant to end + ay (hello → ellohay, world → orldway), vowel-start words add way (apple → appleway). Example: hello world → ellohay orldway. IMPORTANT: Configure CMake to build to a build/ subdirectory. Name the executable pig-latinifier. Use minimal testing - just verify the basic conversion works."
+          ../../bin/vibe-model -v --mvp --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest. Pig Latin rules: consonant-start words move first consonant to end + ay (hello -> ellohay, world -> orldway), vowel-start words add way (apple -> appleway). Example: hello world -> ellohay orldway. Build to \$PWD/build (absolute path: $(pwd)/build). Before finishing, configure and build the project so the build directory is ready to use, ctest --test-dir build --output-on-failure passes, and ./build/pig-latinifier 'hello world' prints exactly 'ellohay orldway'. Write CTest tests to verify functionality, but don't overdo it on testing."
         timeout-minutes: 20
 
       - name: Upload Journey Artifacts
