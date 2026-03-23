@@ -78,6 +78,14 @@ jobs:
         run: |
           ./scripts/setup_example_repo.sh
 
+      - name: Copy Reference Files to Workspace
+        run: |
+          echo "Copying vibe-model.md to example/src workspace..."
+          cp vibe-model.md example/src/
+          echo "Creating memory.md in example/src workspace..."
+          touch example/src/memory.md
+          echo "Reference files ready for AI access."
+
       - name: Install Dependencies
         run: bun install
 
