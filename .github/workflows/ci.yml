@@ -96,7 +96,7 @@ jobs:
           cd example/src
           echo "Current directory: $(pwd)"
           echo "Vibe-model executable: $(ls -la ../../bin/vibe-model)"
-          ../../bin/vibe-model -v --mvp --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest. Pig Latin rules: consonant-start words move first consonant to end + ay (hello → ellohay, world → orldway), vowel-start words add way (apple → appleway). Example: hello world → ellohay orldway. Build to \$PWD/build (absolute path: $(pwd)/build) so that I can run it with `cd build && cmake .. -GNinja && ninja && cd .. && ./build/pig-latinifier`. Write CTest tests to verify functionality, but don't overdo it on testing."
+          ../../bin/vibe-model -v --mvp --no-consult --no-push --commit-interval 5 "Build a pig latinifier CLI in C++ using CMake, ninja, and CTest. Pig Latin rules: consonant-start words move first consonant to end + ay (hello -> ellohay, world -> orldway), vowel-start words add way (apple -> appleway). Example: hello world -> ellohay orldway. Build to \$PWD/build (absolute path: $(pwd)/build). Before finishing, configure and build the project so the build directory is ready to use, ctest --test-dir build --output-on-failure passes, and ./build/pig-latinifier 'hello world' prints exactly 'ellohay orldway'. Write CTest tests to verify functionality, but don't overdo it on testing."
         timeout-minutes: 20
 
       - name: Upload Journey Artifacts
