@@ -76,6 +76,6 @@ You are in the **REQUIREMENTS** phase. Execute the Spec Initiation Protocol (see
 
 When complete, update journey.md Meta section:
 - Set \`- Previous Phase: REQUIREMENTS\`
-- Transition to DESIGN_REVIEW
+- Transition to REQUIREMENTS_REVIEW
 `;
 }
