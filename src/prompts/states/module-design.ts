@@ -134,6 +134,6 @@ Update the epic file's Implementation Progress table at these trigger points:
 
 When complete, update journey.md Meta section:
 - Set \`- Previous Phase: MODULE_DESIGN\`
-- Transition to DESIGN_REVIEW
+- Transition to MODULE_DESIGN_REVIEW
 `;
 }
