@@ -9,6 +9,7 @@
  */
 
 import { RESEARCH_PHASE_INSTRUCTIONS, getResearchInstructions } from "../common/research-phase";
+import { getStateTransitionInstructions } from "../common/state-transitions";
 
 export interface RequirementsVars {
   AI_PROVIDER: string;
@@ -23,7 +24,7 @@ export interface RequirementsVars {
  */
 export function requirementsPrompt(vars: RequirementsVars): string {
   return `You are an autonomous R&D agent working toward a high-level goal using a V-Model workflow.
-Refer to vibe-model.md for the Master Protocol.
+Refer to ./vibe-model/vibe-model.md for the complete V-Model protocol specification.
 
 AI Provider: ${vars.AI_PROVIDER}
 
@@ -72,10 +73,6 @@ You are in the **REQUIREMENTS** phase. Execute the Spec Initiation Protocol (see
 - Requirements MUST be measurable and testable
 - Document research in "## Research Notes > ### REQUIREMENTS Phase Research"
 
-### State Transition:
-
-When complete, update journey.md Meta section:
-- Set \`- Previous Phase: REQUIREMENTS\`
-- Transition to REQUIREMENTS_REVIEW
+${getStateTransitionInstructions("journey", "REQUIREMENTS", "REQUIREMENTS_REVIEW")}
 `;
 }

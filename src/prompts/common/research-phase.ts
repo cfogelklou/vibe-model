@@ -32,13 +32,20 @@ Before finalizing any design, conduct research:
    - Use external AI (Gemini CLI) to "talk through" your design reasoning
    - Ask: "What are the tradeoffs between X and Y?"
    - Ask: "What edge cases might I be missing?"
-   - Command: \`echo "your question" | gemini --yolo\`
+   - **Command**: \`echo "your question" | gemini --yolo\`
+   - **How it works**:
+     * \`gemini\` is the Gemini CLI tool (installed separately)
+     * \`--yolo\` flag bypasses confirmation prompts for autonomous operation
+     * Question is piped via stdin, response appears on stdout
    - **Workflow**:
      * Output appears in terminal - read it and incorporate insights
      * Add key findings to journey/epic Research Notes section
      * No need to save the output separately - research notes are the record
-   - Note: \`gemini\` is the Gemini CLI tool; \`--yolo\` bypasses confirmation prompts
-   - See vibe-model.md section 7.2 for more details on external AI consultation
+   - **Error Handling**:
+     * If \`gemini\` command not found: Note "External AI consultation unavailable (gemini CLI not installed)" in Research Notes and continue
+     * If consultation fails or times out: Note the failure and continue
+     * Consultation is optional - never block on failures
+   - See ./vibe-model/vibe-model.md section 7.2 for more details on external AI consultation
 
 3. **Codebase Research**:
    - Search for existing implementations of similar functionality

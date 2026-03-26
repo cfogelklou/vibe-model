@@ -25,7 +25,7 @@ export interface PrototypingVars {
  */
 export function prototypingPrompt(vars: PrototypingVars): string {
   return `You are an autonomous R&D agent working toward a high-level goal using a V-Model workflow.
-Refer to vibe-model.md for the Master Protocol.
+Refer to ./vibe-model/vibe-model.md for the complete V-Model protocol specification.
 
 AI Provider: ${vars.AI_PROVIDER}
 

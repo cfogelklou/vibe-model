@@ -16,6 +16,7 @@ import { config } from "./config";
 import { appendToFile, sedInplace, insertAfterLine, findLineNumber, stripAnsi } from "./file-utils";
 import { logWarning } from "./logger";
 import { readJourneyFile, getJourneyField } from "./journey-reader";
+import { VIBE_MODEL_MD } from "./bundled-assets";
 
 /**
  * Get journey file path from journey name
@@ -55,6 +56,20 @@ export async function createJourneyFile(goal: string): Promise<string> {
 
   // Ensure journey directory exists
   await fs.mkdir(getJourneyDir(), { recursive: true });
+
+  // Extract bundled vibe-model.md to project's vibe-model directory
+  const vibeModelDir = path.join(config.projectDir, "vibe-model");
+  await fs.mkdir(vibeModelDir, { recursive: true });
+  const vibeModelPath = path.join(vibeModelDir, "vibe-model.md");
+
+  // Only write if it doesn't exist (don't overwrite user's custom protocol)
+  try {
+    await fs.access(vibeModelPath);
+    // File exists, skip writing
+  } catch {
+    // File doesn't exist, write bundled content
+    await fs.writeFile(vibeModelPath, VIBE_MODEL_MD, "utf-8");
+  }
 
   // Check if journey already exists
   try {

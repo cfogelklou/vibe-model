@@ -8,7 +8,8 @@
  * IMPLEMENTATION state prompt
  */
 
-
+import { getStateTransitionInstructions } from "../common/state-transitions";
+import { LEARNINGS_GUIDANCE } from "../common/learnings-guidance";
 export interface ImplementationVars {
   AI_PROVIDER: string;
   JOURNEY_FILE: string;
@@ -26,7 +27,7 @@ export interface ImplementationVars {
  */
 export function implementationPrompt(vars: ImplementationVars): string {
   return `You are an autonomous R&D agent working toward a high-level goal using a V-Model workflow.
-Refer to vibe-model.md for the Master Protocol.
+Refer to ./vibe-model/vibe-model.md for the complete V-Model protocol specification.
 
 AI Provider: ${vars.AI_PROVIDER}
 
@@ -82,9 +83,9 @@ You are in the **IMPLEMENTATION** phase for **Story: ${vars.CURRENT_STORY}**. Co
    - Set Story Status to "IN_PROGRESS" if not already
    - Add implementation notes
 
-6. **Update journey.md Learnings Log** with significant implementation decisions
+${LEARNINGS_GUIDANCE}
 
-7. **Transition to UNIT_TEST**
+6. **Check "## User Hints"** and incorporate ALL user feedback
 
 ### Important Rules:
 
@@ -101,9 +102,6 @@ If you documented independent sub-tasks, you can note:
 "These can be executed in parallel by sub-agents"
 For dependent tasks, note: "Execute A before B, then C and D can run in parallel"
 
-### State Transition:
-
-When implementation is complete and basic guardrails pass:
-- Transition to UNIT_TEST
+${getStateTransitionInstructions("epic", "IMPLEMENTATION", "UNIT_TEST")}
 `;
 }

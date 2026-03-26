@@ -20,7 +20,7 @@ import { config } from '../config';
  * These sections rarely change and are defined as constants.
  */
 const MAIN_ITERATION_HEADER = `You are an autonomous R&D agent working toward a high-level goal using a V-Model workflow.
-Refer to vibe-model.md for the Master Protocol.
+Refer to ./vibe-model/vibe-model.md for the complete V-Model protocol specification.
 
 AI Provider: {{AI_PROVIDER}}
 
