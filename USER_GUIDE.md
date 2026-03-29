@@ -94,6 +94,7 @@ your-project/                    # Parent project (git repository)
 │   ├── journey/                # Journey tracking files
 │   ├── prototypes/             # Experimental code (Python, etc.)
 │   └── memory.md               # Knowledge persistence
+├── self-improvement-notes.md      # Project-level runtime notes for future runs
 └── vibe-model/                 # Vibe-model source code
     ├── src/                    # TypeScript source code
     ├── bin/                    # Development CLI scripts
@@ -347,6 +348,18 @@ your-project/
 - **Automatic**: The agent reads memory at journey start
 - **Updates**: Agent adds learnings during journey
 - **Format**: Plain markdown, human-editable
+
+---
+
+## Self-Improvement Notes
+
+During execution, vibe-model appends runtime self-improvement notes to:
+
+`{PROJ_ROOT}/self-improvement-notes.md`
+
+- **Write cadence**: After each loop iteration
+- **Purpose**: Persist feedback for future executions/rebuild workflows
+- **Runtime behavior**: Store-only (not injected into current prompt context)
 
 ---
 

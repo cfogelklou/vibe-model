@@ -34,6 +34,13 @@ export function getJourneyDir(): string {
 }
 
 /**
+ * Get project-level self-improvement notes path
+ */
+export function getSelfImprovementNotesPath(): string {
+  return path.join(config.projectDir, "self-improvement-notes.md");
+}
+
+/**
  * Generate a safe journey name from goal
  * Converts to lowercase, replaces spaces with hyphens, removes special chars
  */
@@ -435,6 +442,45 @@ export async function addAntiPattern(
 export async function addUserHint(journeyFile: string, hint: string): Promise<void> {
   const cleanHint = stripAnsi(hint);
   await appendToFile(journeyFile, `\n- ${new Date().toISOString().split("T")[0]}: ${cleanHint}`);
+}
+
+/**
+ * Append a runtime self-improvement note to the project-level notes file.
+ * Notes are stored for future runs and are not consumed during active execution.
+ */
+export async function appendSelfImprovementNote(
+  journeyFile: string,
+  iteration: number,
+  startState: VModelState,
+  endState: VModelState
+): Promise<void> {
+  const notesPath = getSelfImprovementNotesPath();
+  const journeyName = path.basename(journeyFile, ".journey.md");
+  const timestamp = new Date().toISOString().replace("T", " ").substring(0, 19) + " UTC";
+
+  try {
+    await fs.access(notesPath);
+  } catch (error) {
+    // eslint-disable-next-line no-undef
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+    await fs.writeFile(
+      notesPath,
+      "# Self Improvement Notes\n\nThis file is generated while vibe-model runs and is intended for future execution feedback.\n"
+    );
+  }
+
+  const note = `
+## ${timestamp}
+- Journey: ${journeyName}
+- Iteration: ${iteration}
+- Start State: ${startState}
+- End State: ${endState}
+- Improvement Note: Review this transition and refine prompts/strategy in the next execution if progress stalls.
+`;
+
+  await appendToFile(notesPath, note);
 }
 
 /**

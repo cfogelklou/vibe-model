@@ -21,6 +21,7 @@ import {
   getPreviousState,
   setPreviousState,
   addLearning,
+  appendSelfImprovementNote,
 } from "./journey";
 import { appendToFile } from "./file-utils";
 import { logPhase, logState, logInfo, logSuccess, logWarning, logError, logDebug } from "./logger";
@@ -333,6 +334,7 @@ export async function mainLoop(journeyFile: string): Promise<void> {
     iteration++;
 
     const state = await getJourneyState(journeyFile);
+    const startState = state;
 
     logDebug(`Iteration ${iteration}, state: ${state}`);
 
@@ -357,6 +359,9 @@ export async function mainLoop(journeyFile: string): Promise<void> {
         logSuccess("[GO] Journey complete (no next state)");
         return;
       }
+      const endState = await getJourneyState(journeyFile);
+      await appendSelfImprovementNote(journeyFile, iteration, startState, endState);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       continue;
     }
 
@@ -366,6 +371,9 @@ export async function mainLoop(journeyFile: string): Promise<void> {
       if (nextState) {
         logDebug(`[MVP] Skipping ${state} -> ${nextState}`);
         await setJourneyState(journeyFile, nextState);
+        const endState = await getJourneyState(journeyFile);
+        await appendSelfImprovementNote(journeyFile, iteration, startState, endState);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         continue;
       }
     }
@@ -427,6 +435,10 @@ export async function mainLoop(journeyFile: string): Promise<void> {
         break;
       }
     }
+
+    // Record iteration note for future-run feedback (store-only)
+    const endState = await getJourneyState(journeyFile);
+    await appendSelfImprovementNote(journeyFile, iteration, startState, endState);
 
     // Small delay to prevent overwhelming the API
     await new Promise((resolve) => setTimeout(resolve, 1000));

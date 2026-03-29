@@ -199,6 +199,7 @@ your-project/
 │   ├── journey/                # Journey tracking files
 │   ├── prototypes/             # Experimental code (user-managed)
 │   └── memory.md               # Knowledge persistence
+├── self-improvement-notes.md   # Project-level runtime notes for future runs
 └── vibe-model/                 # This repository
     ├── package.json            # Bun project config
     ├── tsconfig.json           # TypeScript config
@@ -214,6 +215,16 @@ your-project/
     ├── CLAUDE.md               # Quick reference
     └── README.md               # This file
 ```
+
+---
+
+## Self-Improvement Notes
+
+While running, vibe-model appends project-level notes to:
+
+`{PROJ_ROOT}/self-improvement-notes.md`
+
+These notes are stored for future feedback/rebuild workflows and are not injected into the active run's prompt context.
 
 ---
 
