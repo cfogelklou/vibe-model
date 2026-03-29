@@ -9,3 +9,4 @@ build/
 coverage/
 bin/*.js
 example/remote/
+bin/vibe-model
