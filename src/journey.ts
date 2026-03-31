@@ -14,7 +14,7 @@ import path from "path";
 import { VModelState, Journey, isValidState } from "./types";
 import { config } from "./config";
 import { appendToFile, sedInplace, insertAfterLine, findLineNumber, stripAnsi } from "./file-utils";
-import { logWarning } from "./logger";
+import { logWarning, logInfo } from "./logger";
 import { readJourneyFile, getJourneyField } from "./journey-reader";
 import { VIBE_MODEL_MD } from "./bundled-assets";
 
@@ -69,10 +69,14 @@ export async function createJourneyFile(goal: string): Promise<string> {
   await fs.mkdir(vibeModelDir, { recursive: true });
   const vibeModelPath = path.join(vibeModelDir, "vibe-model.md");
 
-  // Only write if it doesn't exist (don't overwrite user's custom protocol)
+  // Always update vibe-model.md if it differs from bundled version
+  // This ensures the protocol stays in sync with the tool version
   try {
-    await fs.access(vibeModelPath);
-    // File exists, skip writing
+    const existingContent = await fs.readFile(vibeModelPath, "utf-8");
+    if (existingContent !== VIBE_MODEL_MD) {
+      logWarning("Updating vibe-model.md to match tool version (content differs)");
+      await fs.writeFile(vibeModelPath, VIBE_MODEL_MD, "utf-8");
+    }
   } catch {
     // File doesn't exist, write bundled content
     await fs.writeFile(vibeModelPath, VIBE_MODEL_MD, "utf-8");
