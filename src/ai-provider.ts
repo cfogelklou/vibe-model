@@ -240,18 +240,29 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
 
   return new Promise((resolve, reject) => {
     let stderrBuffer = "";
+    let stdoutBuffer = "";
+    let combinedTail = "";
     let abortedDueToUsageLimit = false;
     const proc = spawn(aiCmd[0], aiCmd.slice(1), {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    const maybeAbortForUsageLimit = (text: string): void => {
+    const maybeAbortForUsageLimit = (text: string, stream: "stdout" | "stderr"): void => {
       if (!isGemini || abortedDueToUsageLimit) {
         return;
       }
-      if (isAiUsageLimitError(text) && /retrying/i.test(text)) {
-        abortedDueToUsageLimit = true;
+      if (stream === "stdout") {
+        stdoutBuffer += text;
+      } else {
         stderrBuffer += text;
+      }
+
+      combinedTail = (combinedTail + text).slice(-4000);
+      if (isAiUsageLimitError(combinedTail) && /retrying/i.test(combinedTail)) {
+        abortedDueToUsageLimit = true;
+        if (!stderrBuffer.includes("usage limit")) {
+          stderrBuffer += `\n${combinedTail}`;
+        }
         try {
           proc.kill();
         } catch {
@@ -286,27 +297,25 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
       proc.stdout?.on("data", (chunk) => {
         const text = chunk.toString();
         parseStreamChunk(text);
-        maybeAbortForUsageLimit(text);
+        maybeAbortForUsageLimit(text, "stdout");
       });
 
       proc.stderr?.on("data", (chunk) => {
         const text = chunk.toString();
-        stderrBuffer += text;
-        maybeAbortForUsageLimit(text);
+        maybeAbortForUsageLimit(text, "stderr");
         process.stderr.write(chunk); // Pass through stderr output
       });
     } else {
       // Non-streaming mode - pass through output
       proc.stdout?.on("data", (chunk) => {
         const text = chunk.toString();
-        maybeAbortForUsageLimit(text);
+        maybeAbortForUsageLimit(text, "stdout");
         process.stdout.write(chunk);
       });
 
       proc.stderr?.on("data", (chunk) => {
         const text = chunk.toString();
-        stderrBuffer += text;
-        maybeAbortForUsageLimit(text);
+        maybeAbortForUsageLimit(text, "stderr");
         process.stderr.write(chunk);
       });
     }
@@ -318,7 +327,7 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
         childProcesses.splice(index, 1);
       }
 
-      lastAiStderr = stderrBuffer;
+      lastAiStderr = `${stderrBuffer}\n${stdoutBuffer}`;
       if (abortedDueToUsageLimit) {
         resolve(2);
         return;
