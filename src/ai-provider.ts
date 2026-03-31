@@ -239,9 +239,26 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
   resetStreamBuffer();
 
   return new Promise((resolve, reject) => {
+    let stderrBuffer = "";
+    let abortedDueToUsageLimit = false;
     const proc = spawn(aiCmd[0], aiCmd.slice(1), {
       stdio: ["pipe", "pipe", "pipe"],
     });
+
+    const maybeAbortForUsageLimit = (text: string): void => {
+      if (!isGemini || abortedDueToUsageLimit) {
+        return;
+      }
+      if (isAiUsageLimitError(text) && /retrying/i.test(text)) {
+        abortedDueToUsageLimit = true;
+        stderrBuffer += text;
+        try {
+          proc.kill();
+        } catch {
+          // Process may have already exited
+        }
+      }
+    };
 
     // Track for cleanup
     childProcesses.push(proc);
@@ -269,20 +286,27 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
       proc.stdout?.on("data", (chunk) => {
         const text = chunk.toString();
         parseStreamChunk(text);
+        maybeAbortForUsageLimit(text);
       });
 
       proc.stderr?.on("data", (chunk) => {
-        stderrBuffer += chunk.toString();
+        const text = chunk.toString();
+        stderrBuffer += text;
+        maybeAbortForUsageLimit(text);
         process.stderr.write(chunk); // Pass through stderr output
       });
     } else {
       // Non-streaming mode - pass through output
       proc.stdout?.on("data", (chunk) => {
+        const text = chunk.toString();
+        maybeAbortForUsageLimit(text);
         process.stdout.write(chunk);
       });
 
       proc.stderr?.on("data", (chunk) => {
-        stderrBuffer += chunk.toString();
+        const text = chunk.toString();
+        stderrBuffer += text;
+        maybeAbortForUsageLimit(text);
         process.stderr.write(chunk);
       });
     }
@@ -295,6 +319,10 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
       }
 
       lastAiStderr = stderrBuffer;
+      if (abortedDueToUsageLimit) {
+        resolve(2);
+        return;
+      }
       resolve(code || 0);
     });
 
@@ -379,4 +407,3 @@ export function killAllChildProcesses(): void {
   }
   childProcesses.length = 0;
 }
-    let stderrBuffer = "";
