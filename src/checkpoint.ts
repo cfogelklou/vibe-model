@@ -58,24 +58,28 @@ export async function gitCommand(
 }
 
 /**
- * Assert we're not in vibe-model submodule directory.
- * This prevents accidental git operations in the wrong directory.
+ * Check if we're in a submodule directory.
+ * Returns true if in a submodule, false otherwise.
  */
-export function assertInParentProject(cwd: string): void {
+export function isInSubmodule(cwd: string): boolean {
   // A directory is a submodule if .git is a FILE (pointing to parent's .git/modules/...),
   // not if .git/modules EXISTS (that's normal for a parent project with submodules)
   const gitPath = path.join(cwd, ".git");
   if (existsSync(gitPath)) {
     const gitStat = statSync(gitPath);
     if (gitStat.isFile()) {
-      throw new VModelError(
-        "Git operation attempted from submodule. Must use parent project directory.",
-        1,
-        false
-      );
+      return true;
     }
   }
+  return false;
+}
 
+/**
+ * Assert we're not in vibe-model submodule directory.
+ * This prevents accidental git operations in the vibe-model tool itself.
+ * Note: Being in a user's project submodule is allowed.
+ */
+export function assertInParentProject(cwd: string): void {
   // Check if we're in vibe-model directory by name (with false positive check)
   const dirName = path.basename(cwd);
   if (dirName === "vibe-model") {
@@ -262,8 +266,14 @@ export async function listCheckpoints(journeyFile: string): Promise<
  * Commit all changes with message
  */
 export async function commitChanges(message: string): Promise<void> {
-  // Assert we're in parent project directory
+  // Assert we're not in vibe-model directory
   assertInParentProject(config.projectDir);
+
+  // Check if we're in a submodule - warn but allow
+  if (isInSubmodule(config.projectDir)) {
+    logWarning("Running in submodule - commits will be in submodule context");
+    logInfo("Remember to update parent project's submodule reference after pushing");
+  }
 
   try {
     // Stage all changes
@@ -288,8 +298,14 @@ export async function commitChanges(message: string): Promise<void> {
  * Push to remote repository
  */
 export async function pushChanges(branch?: string): Promise<void> {
-  // Assert we're in parent project directory
+  // Assert we're not in vibe-model directory
   assertInParentProject(config.projectDir);
+
+  // Check if we're in a submodule - warn but allow
+  if (isInSubmodule(config.projectDir)) {
+    logWarning("Pushing from submodule - this updates the submodule's remote");
+    logInfo("Parent project may need submodule reference update");
+  }
 
   try {
     const targetBranch = branch || (await getCurrentBranch(config.projectDir));

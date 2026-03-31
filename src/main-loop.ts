@@ -94,14 +94,46 @@ export async function runIteration(journeyFile: string): Promise<number> {
   ) {
     const journeyDir = path.dirname(journeyFile);
     const epicNum = currentEpic.replace(/\D/g, "");
-    epicFile = path.join(journeyDir, `${journeyName}.journey.E${epicNum}.md`);
 
-    // Only set epicFile if the epic file actually exists
-    try {
-      await fs.access(epicFile);
-    } catch {
-      logWarning(`Epic file not found: ${epicFile} - using main journey only`);
-      epicFile = "";
+    // Try multiple epic file naming conventions
+    const possibleEpicFiles = [
+      // New convention: epic-e{N}-{name}.epic.md
+      path.join(journeyDir, `epic-e${epicNum.toLowerCase()}-*.epic.md`),
+      // Old convention: {journey}.journey.E{N}.md
+      path.join(journeyDir, `${journeyName}.journey.E${epicNum}.md`),
+    ];
+
+    // Find the first matching epic file
+    for (const pattern of possibleEpicFiles) {
+      if (pattern.includes("*")) {
+        // Glob pattern - search for matching files
+        const dir = path.dirname(pattern);
+        const basePattern = path.basename(pattern);
+        const prefix = basePattern.replace("*", "");
+        try {
+          const files = await fs.readdir(dir);
+          const match = files.find(f => f.startsWith(prefix) && f.endsWith(".epic.md"));
+          if (match) {
+            epicFile = path.join(dir, match);
+            break;
+          }
+        } catch {
+          // Directory doesn't exist or can't be read
+        }
+      } else {
+        // Exact path
+        try {
+          await fs.access(pattern);
+          epicFile = pattern;
+          break;
+        } catch {
+          // File doesn't exist
+        }
+      }
+    }
+
+    if (!epicFile) {
+      logWarning(`Epic file not found for ${currentEpic} - using main journey only`);
     }
   }
 
@@ -413,21 +445,27 @@ export async function mainLoop(journeyFile: string): Promise<void> {
         await runIteration(journeyFile);
 
         // Ensure any changes are committed and pushed
-        const currentBranch = await getCurrentBranch();
+        // Wrap in try-catch to prevent loop from exiting on git errors
+        try {
+          const currentBranch = await getCurrentBranch();
 
-        if (currentBranch) {
-          const hasChanges = await hasUncommittedChanges();
-          if (hasChanges && iteration % config.commitInterval === 0) {
-            logWarning("Uncommitted changes detected after iteration - committing now");
-            await commitChanges(
-              `chore(journey): auto-commit changes from iteration ${iteration} [${journeyName}]`
-            );
-          }
+          if (currentBranch) {
+            const hasChanges = await hasUncommittedChanges();
+            if (hasChanges && iteration % config.commitInterval === 0) {
+              logWarning("Uncommitted changes detected after iteration - committing now");
+              await commitChanges(
+                `chore(journey): auto-commit changes from iteration ${iteration} [${journeyName}]`
+              );
+            }
 
-          if (!config.noPush) {
-            logInfo(`Pushing to origin/${currentBranch}...`);
-            await pushChanges(currentBranch);
+            if (!config.noPush) {
+              logInfo(`Pushing to origin/${currentBranch}...`);
+              await pushChanges(currentBranch);
+            }
           }
+        } catch (error) {
+          logWarning(`Git operations failed (non-blocking): ${error}`);
+          logInfo("Continuing journey despite git errors...");
         }
 
         // Archive completed epics after state transition
