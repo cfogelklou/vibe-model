@@ -143,6 +143,13 @@ describe("State Machine - getNextStateForMode", () => {
     expect(getNextStateForMode(VModelState.REQUIREMENTS, ExecutionMode.GO))
       .toBe(VModelState.SYSTEM_DESIGN);
   });
+
+  it("should use UX-MVP mode when specified", () => {
+    expect(getNextStateForMode(VModelState.REQUIREMENTS, ExecutionMode.UX_MVP))
+      .toBe(VModelState.PROTOTYPING);
+    expect(getNextStateForMode(VModelState.PROTOTYPING, ExecutionMode.UX_MVP))
+      .toBe(VModelState.MODULE_DESIGN);
+  });
 });
 
 describe("State Machine - getNextState (default)", () => {

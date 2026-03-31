@@ -11,11 +11,16 @@
 
 import { promises as fs } from "fs";
 import path from "path";
-import { VModelState, Journey, isValidState } from "./types";
+import {
+  VModelState,
+  Journey,
+  isValidState,
+  PROTOTYPING_ITERATION_HEADER,
+} from "./types";
 import { config } from "./config";
 import { appendToFile, sedInplace, insertAfterLine, findLineNumber, stripAnsi } from "./file-utils";
-import { logWarning, logInfo } from "./logger";
-import { readJourneyFile, getJourneyField } from "./journey-reader";
+import { logWarning } from "./logger";
+import { readJourneyFile, getJourneyField, clearJourneyCache } from "./journey-reader";
 import { VIBE_MODEL_MD } from "./bundled-assets";
 
 /**
@@ -57,7 +62,10 @@ export function sanitizeJourneyName(goal: string): string {
 /**
  * Create a new journey file with template
  */
-export async function createJourneyFile(goal: string): Promise<string> {
+export async function createJourneyFile(
+  goal: string,
+  options?: { executionMode?: string; playwrightEnabled?: boolean }
+): Promise<string> {
   const name = sanitizeJourneyName(goal);
   const journeyPath = getJourneyPath(name);
 
@@ -109,6 +117,8 @@ export async function createJourneyFile(goal: string): Promise<string> {
 - Started: ${timestamp}
 - Current Approach: TBD
 - Progress: 0%
+- Execution Mode: ${options?.executionMode || "normal"}
+- Playwright Enabled: ${options?.playwrightEnabled ? "true" : "false"}
 
 ## Approaches
 
@@ -249,6 +259,13 @@ export async function setJourneyState(
 export async function getJourneyGoal(journeyFile: string): Promise<string> {
   const goal = await getJourneyField(journeyFile, "Goal");
   return goal || "";
+}
+
+/**
+ * Read a metadata field from journey file.
+ */
+export async function getJourneyMetaField(journeyFile: string, field: string): Promise<string> {
+  return getJourneyField(journeyFile, field);
 }
 
 /**
@@ -637,6 +654,144 @@ export async function migrateMemoryToJourney(
   } catch {
     // Memory file doesn't exist or migration failed
   }
+}
+
+/**
+ * Get current UX prototyping iteration number.
+ */
+export async function getPrototypingIteration(journeyFile: string): Promise<number> {
+  const content = await readJourneyFile(journeyFile);
+  const match = content.match(/^## Prototyping Iteration: (\d+)$/m);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+/**
+ * Initialize UX prototyping iteration metadata in journey file.
+ */
+export async function initializePrototypingIteration(journeyFile: string): Promise<void> {
+  const content = await readJourneyFile(journeyFile);
+  if (content.includes(PROTOTYPING_ITERATION_HEADER)) {
+    return;
+  }
+
+  const marker = "\n## Approaches";
+  const markerIndex = content.indexOf(marker);
+  if (markerIndex === -1) {
+    await appendToFile(journeyFile, `\n${PROTOTYPING_ITERATION_HEADER}: 0\n`);
+    return;
+  }
+
+  const before = content.substring(0, markerIndex);
+  const after = content.substring(markerIndex);
+  await fs.writeFile(journeyFile, `${before}\n\n${PROTOTYPING_ITERATION_HEADER}: 0${after}`);
+  clearJourneyCache(journeyFile);
+}
+
+/**
+ * Increment UX prototyping iteration counter and return the next value.
+ */
+export async function incrementPrototypingIteration(journeyFile: string): Promise<number> {
+  const content = await readJourneyFile(journeyFile);
+  const current = await getPrototypingIteration(journeyFile);
+  const next = current + 1;
+
+  if (content.includes(PROTOTYPING_ITERATION_HEADER)) {
+    await sedInplace(
+      journeyFile,
+      /^## Prototyping Iteration: \d+$/m,
+      `${PROTOTYPING_ITERATION_HEADER}: ${next}`
+    );
+    return next;
+  }
+
+  await initializePrototypingIteration(journeyFile);
+  await sedInplace(
+    journeyFile,
+    /^## Prototyping Iteration: \d+$/m,
+    `${PROTOTYPING_ITERATION_HEADER}: ${next}`
+  );
+  return next;
+}
+
+/**
+ * Get the last prototyping iteration that has consumed feedback.
+ */
+export async function getLastProcessedFeedbackIteration(
+  journeyFile: string
+): Promise<number> {
+  const content = await readJourneyFile(journeyFile);
+  const match = content.match(/^## Processed Feedback Iteration: (\d+)$/m);
+  return match ? parseInt(match[1], 10) : -1;
+}
+
+/**
+ * Mark feedback as processed for the given prototyping iteration.
+ */
+export async function markFeedbackAsProcessed(
+  journeyFile: string,
+  iteration: number
+): Promise<void> {
+  const content = await readJourneyFile(journeyFile);
+  const header = "## Processed Feedback Iteration";
+  const line = `${header}: ${iteration}`;
+
+  if (content.match(/^## Processed Feedback Iteration: \d+$/m)) {
+    await sedInplace(journeyFile, /^## Processed Feedback Iteration: \d+$/m, line);
+    return;
+  }
+
+  if (content.includes(PROTOTYPING_ITERATION_HEADER)) {
+    const updated = content.replace(/^## Prototyping Iteration: \d+$/m, (match) => `${match}\n${line}`);
+    await fs.writeFile(journeyFile, updated);
+    clearJourneyCache(journeyFile);
+    return;
+  }
+
+  await initializePrototypingIteration(journeyFile);
+  await appendToFile(journeyFile, `\n${line}\n`);
+}
+
+/**
+ * Return non-approval user hints not yet consumed by current prototyping iteration.
+ */
+export async function getUnprocessedFeedback(
+  journeyFile: string,
+  lastProcessedIteration: number
+): Promise<string[]> {
+  const currentIteration = await getPrototypingIteration(journeyFile);
+  if (currentIteration <= lastProcessedIteration) {
+    return [];
+  }
+
+  const hints = await getUserHints(journeyFile);
+  return hints.filter((line) => !line.includes("APPROVED:"));
+}
+
+/**
+ * Get latest non-approval user feedback hint, if present.
+ */
+export async function getLatestFeedback(journeyFile: string): Promise<string | undefined> {
+  const hints = await getUserHints(journeyFile);
+  const filtered = hints.filter((line) => !line.includes("APPROVED:"));
+  return filtered.length > 0 ? filtered[filtered.length - 1] : undefined;
+}
+
+/**
+ * Add approval entry in User Hints section.
+ */
+export async function addApproval(journeyFile: string): Promise<void> {
+  await addUserHint(journeyFile, "APPROVED: Mockup ready for next phase");
+}
+
+async function getUserHints(journeyFile: string): Promise<string[]> {
+  const content = await readJourneyFile(journeyFile);
+  const userHintsSection = content.match(/## User Hints\n([\s\S]+?)(\n## |\s*$)/);
+
+  const source = userHintsSection ? userHintsSection[1] : content;
+  return source
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^-\s\d{4}-\d{2}-\d{2}:\s.+/.test(line));
 }
 
 /**

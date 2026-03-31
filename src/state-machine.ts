@@ -37,6 +37,11 @@ export function getNextStateForMode(
       return getNextStateForGo(current);
     case ExecutionMode.MVP:
       return getNextStateForMvp(current);
+    case ExecutionMode.UX_MVP:
+      if (current === VModelState.REQUIREMENTS) {
+        return VModelState.PROTOTYPING;
+      }
+      return getNextStateNormal(current);
     default:
       return getNextStateNormal(current);
   }

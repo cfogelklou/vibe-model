@@ -322,6 +322,17 @@ State transitions in MVP mode:
 - Skip UNIT_TEST, INTEGRATION_TEST, ACCEPTANCE_TEST
 `;
 
+    case ExecutionMode.UX_MVP:
+      return `
+## UX-MVP Mode (Iterative Mockup Loop)
+
+You are running in UX-MVP mode:
+- REQUIREMENTS transitions into PROTOTYPING first
+- Generate and revise visual mockups in iterations
+- Incorporate user feedback from User Hints
+- Await explicit approval before moving to REQUIREMENTS_REVIEW
+`;
+
     default:
       return "";
   }

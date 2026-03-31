@@ -144,6 +144,21 @@ class StreamBuffer {
  * Must be reset before starting a new stream
  */
 let streamBuffer = new StreamBuffer();
+let lastAiStderr = "";
+
+/**
+ * Get stderr from the most recent AI process invocation.
+ */
+export function getLastAiStderr(): string {
+  return lastAiStderr;
+}
+
+/**
+ * Detect provider usage-limit/rate-limit style failures.
+ */
+export function isAiUsageLimitError(text: string): boolean {
+  return /(usage limit|rate limit|quota|5 hour|hours? limit|try again later|credits? exhausted)/i.test(text);
+}
 
 /**
  * Parse stream JSON chunk and handle events
@@ -257,6 +272,7 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
       });
 
       proc.stderr?.on("data", (chunk) => {
+        stderrBuffer += chunk.toString();
         process.stderr.write(chunk); // Pass through stderr output
       });
     } else {
@@ -266,6 +282,7 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
       });
 
       proc.stderr?.on("data", (chunk) => {
+        stderrBuffer += chunk.toString();
         process.stderr.write(chunk);
       });
     }
@@ -277,6 +294,7 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
         childProcesses.splice(index, 1);
       }
 
+      lastAiStderr = stderrBuffer;
       resolve(code || 0);
     });
 
@@ -361,3 +379,4 @@ export function killAllChildProcesses(): void {
   }
   childProcesses.length = 0;
 }
+    let stderrBuffer = "";

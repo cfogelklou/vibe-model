@@ -26,10 +26,12 @@ import {
   findActiveJourney,
   listJourneys,
   addUserHint,
+  addApproval,
   getJourneyState,
   setJourneyState,
   getCurrentApproach,
   setPreviousState,
+  getJourneyMetaField,
 } from "./journey";
 import { mainLoop } from "./main-loop";
 import {
@@ -70,8 +72,22 @@ async function handleHint(hint: string): Promise<void> {
   const state = await getJourneyState(activeJourney);
   if (state === VModelState.WAITING_FOR_USER) {
     logInfo("Journey was waiting - resuming...");
-    await setJourneyState(activeJourney, VModelState.REQUIREMENTS);
+    const mode = await detectExecutionModeFromJourney(activeJourney);
+    await setJourneyState(activeJourney, mode === ExecutionMode.UX_MVP
+      ? VModelState.WAITING_FOR_USER
+      : VModelState.REQUIREMENTS);
   }
+}
+
+async function handleApprove(): Promise<void> {
+  const activeJourney = await findActiveJourney();
+  if (!activeJourney) {
+    logError("No active journey found");
+    throw new VModelError("No active journey found", 1);
+  }
+
+  await addApproval(activeJourney);
+  logSuccess("Mockup approved");
 }
 
 /**
@@ -303,6 +319,8 @@ async function main(): Promise<number> {
     .option("-g, --gemini", "Use Gemini as primary AI")
     .option("-m, --mvp", "Enable MVP mode (skip most testing)")
     .option("--go", "Enable GO mode for AI agents (avoid recursion)")
+    .option("--ux-mvp", "Enable UX MVP mode (iterative mockup prototyping)")
+    .option("--playwright", "Enable Playwright dumb-user UX evaluation in UX MVP mode")
     .option("--no-consult", "Disable Gemini consultation")
     .option("--project-dir <path>", "Specify project directory")
     .option("--config <path>", "Specify config file")
@@ -313,6 +331,7 @@ async function main(): Promise<number> {
         // Determine execution mode (--go takes precedence over --mvp)
         let executionMode = ExecutionMode.NORMAL;
         if (options.go) executionMode = ExecutionMode.GO;
+        else if (options.uxMvp) executionMode = ExecutionMode.UX_MVP;
         else if (options.mvp) executionMode = ExecutionMode.MVP;
 
         // Initialize configuration
@@ -324,6 +343,7 @@ async function main(): Promise<number> {
           noPush: options.noPush || false,
           commitInterval: parseInt(options.commitInterval, 10),
           executionMode,
+          playwrightEnabled: options.playwright || false,
         }, options.config);
 
         // Setup signal handlers
@@ -344,13 +364,25 @@ async function main(): Promise<number> {
             return;
           }
 
+          // If mode flags weren't passed on continuation, restore from journey metadata.
+          if (!options.go && !options.mvp && !options.uxMvp) {
+            const restoredMode = await detectExecutionModeFromJourney(activeJourney);
+            config.executionMode = restoredMode;
+          }
+          if (!options.playwright) {
+            config.playwrightEnabled = await detectPlaywrightFromJourney(activeJourney);
+          }
+
           await mainLoop(activeJourney);
           return;
         }
 
         // Create new journey
         logInfo(`Creating new journey for goal: ${goal}`);
-        const journeyFile = await createJourneyFile(goal);
+        const journeyFile = await createJourneyFile(goal, {
+          executionMode: executionMode,
+          playwrightEnabled: options.playwright || false,
+        });
 
         if (!journeyFile) {
           logError("Failed to create journey file");
@@ -396,6 +428,14 @@ async function main(): Promise<number> {
     });
 
   program
+    .command("approve")
+    .description("Approve current UX mockup and continue")
+    .action(async () => {
+      await initializeConfig();
+      await handleApprove();
+    });
+
+  program
     .command("pivot")
     .description("Force pivot to next approach")
     .action(async () => {
@@ -438,6 +478,19 @@ async function main(): Promise<number> {
   await program.parseAsync(process.argv);
 
   return 0;
+}
+
+async function detectExecutionModeFromJourney(journeyFile: string): Promise<ExecutionMode> {
+  const mode = (await getJourneyMetaField(journeyFile, "Execution Mode")).toLowerCase();
+  if (mode === ExecutionMode.GO) return ExecutionMode.GO;
+  if (mode === ExecutionMode.MVP) return ExecutionMode.MVP;
+  if (mode === ExecutionMode.UX_MVP) return ExecutionMode.UX_MVP;
+  return ExecutionMode.NORMAL;
+}
+
+async function detectPlaywrightFromJourney(journeyFile: string): Promise<boolean> {
+  const enabled = (await getJourneyMetaField(journeyFile, "Playwright Enabled")).toLowerCase();
+  return enabled === "true";
 }
 
 // Run main

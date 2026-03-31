@@ -157,9 +157,15 @@ export function parseEnvironmentVars(): Partial<Config> {
       env.executionMode = ExecutionMode.MVP;
     } else if (mode === "go") {
       env.executionMode = ExecutionMode.GO;
+    } else if (mode === "ux-mvp") {
+      env.executionMode = ExecutionMode.UX_MVP;
     } else if (mode === "normal") {
       env.executionMode = ExecutionMode.NORMAL;
     }
+  }
+
+  if (process.env.PLAYWRIGHT_ENABLED === "true" || process.env.PLAYWRIGHT_ENABLED === "false") {
+    env.playwrightEnabled = process.env.PLAYWRIGHT_ENABLED === "true";
   }
 
   return env;
@@ -177,6 +183,7 @@ export const defaultConfig: Config = {
   noPush: false,
   commitInterval: 1,
   executionMode: ExecutionMode.NORMAL,
+  playwrightEnabled: false,
 };
 
 /**

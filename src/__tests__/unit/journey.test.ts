@@ -16,6 +16,12 @@ import {
   getJourneyGoal,
   getJourneyProgress,
   getCurrentEpic,
+  initializePrototypingIteration,
+  getPrototypingIteration,
+  incrementPrototypingIteration,
+  addUserHint,
+  getLatestFeedback,
+  addApproval,
 } from "../../journey";
 
 // Mock config
@@ -47,6 +53,7 @@ describe("sanitizeJourneyName", () => {
 
 describe("getJourneyPath", () => {
   beforeEach(async () => {
+    await fs.mkdir(mockProjectDir, { recursive: true });
     await initializeConfig({ projectDir: mockProjectDir });
   });
 
@@ -115,10 +122,30 @@ describe("journey file operations", () => {
     expect(epic).toBe("TBD");
   });
 
+  it("should initialize and increment prototyping iteration", async () => {
+    await initializePrototypingIteration(testJourneyFile);
+    const start = await getPrototypingIteration(testJourneyFile);
+    expect(start).toBe(0);
+
+    const next = await incrementPrototypingIteration(testJourneyFile);
+    expect(next).toBe(1);
+    expect(await getPrototypingIteration(testJourneyFile)).toBe(1);
+  });
+
+  it("should return latest non-approval feedback", async () => {
+    await addUserHint(testJourneyFile, "make add button bigger");
+    await addApproval(testJourneyFile);
+    await addUserHint(testJourneyFile, "show completed tasks at bottom");
+
+    const latest = await getLatestFeedback(testJourneyFile);
+    expect(latest).toContain("show completed tasks at bottom");
+  });
+
   // Cleanup
   afterEach(async () => {
     try {
       await fs.rm(mockJourneyDir, { recursive: true, force: true });
+      await fs.rm(mockProjectDir, { recursive: true, force: true });
     } catch {
       // Ignore cleanup errors
     }

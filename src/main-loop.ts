@@ -12,7 +12,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
-import { VModelState, ExecutionMode } from "./types";
+import { VModelState, ExecutionMode, MAX_UX_ITERATIONS } from "./types";
 import { config } from "./config";
 import {
   getJourneyState,
@@ -22,12 +22,18 @@ import {
   setPreviousState,
   addLearning,
   appendSelfImprovementNote,
+  getPrototypingIteration,
+  incrementPrototypingIteration,
+  initializePrototypingIteration,
+  getLastProcessedFeedbackIteration,
+  getUnprocessedFeedback,
+  markFeedbackAsProcessed,
 } from "./journey";
 import { appendToFile } from "./file-utils";
 import { logPhase, logState, logInfo, logSuccess, logWarning, logError, logDebug } from "./logger";
 import { extractDesignContent, extractResearchContent } from "./design-spec";
 import { getStatePrompt } from "./prompts/index";
-import { runAIWithPrompt, consultGemini } from "./ai-provider";
+import { runAIWithPrompt, consultGemini, getLastAiStderr, isAiUsageLimitError } from "./ai-provider";
 import {
   transitionToNextEpic,
   checkContinueToNextEpic,
@@ -35,6 +41,7 @@ import {
 } from "./state-machine";
 import { commitChanges, pushChanges, hasUncommittedChanges, getCurrentBranch } from "./checkpoint";
 import { getCompletedUnarchivedEpics, markEpicComplete } from "./epic-archival";
+import { runDumbUserTest, writeDumbUserFeedback } from "./playwright-dumb-user";
 
 /**
  * Check if a state should be skipped in MVP mode
@@ -175,6 +182,10 @@ Current working directory: ${process.cwd()}
     // Re-raise SIGINT if user interrupted (exit code 130 = 128+SIGINT)
     if (exitCode === 130) {
       process.exit(130);
+    }
+
+    if (exitCode !== 0 && isAiUsageLimitError(getLastAiStderr())) {
+      throw new Error("AI_USAGE_LIMIT_REACHED");
     }
 
     return exitCode;
@@ -336,6 +347,60 @@ async function handleWaitingForUser(journeyFile: string): Promise<boolean> {
   return false; // Exit loop - waiting for user
 }
 
+async function handlePrototypingForUxMvp(journeyFile: string): Promise<void> {
+  const iteration = await getPrototypingIteration(journeyFile);
+  if (iteration === 0) {
+    await initializePrototypingIteration(journeyFile);
+  }
+
+  if (iteration >= MAX_UX_ITERATIONS) {
+    logWarning(`Max UX iterations (${MAX_UX_ITERATIONS}) reached, advancing to REQUIREMENTS_REVIEW`);
+    await setJourneyState(journeyFile, VModelState.REQUIREMENTS_REVIEW);
+    return;
+  }
+
+  await runIteration(journeyFile);
+
+  if (config.playwrightEnabled) {
+    const mockupPath = path.join(
+      config.projectDir,
+      "vibe-model",
+      "prototypes",
+      `mockup-v${iteration + 1}.html`
+    );
+    const result = await runDumbUserTest(mockupPath, await fs.readFile(journeyFile, "utf-8"));
+    await writeDumbUserFeedback(journeyFile, result);
+  }
+
+  await setJourneyState(journeyFile, VModelState.WAITING_FOR_USER);
+  logInfo(`Mockup v${iteration + 1} ready for review.`);
+  logInfo("Provide feedback with: vibe-model hint \"...\" or approve with: vibe-model approve");
+}
+
+async function handleWaitingForUxMvp(journeyFile: string): Promise<boolean> {
+  const content = await fs.readFile(journeyFile, "utf-8");
+  if (content.match(/^- \d{4}-\d{2}-\d{2}: APPROVED:/m)) {
+    logSuccess("Mockup approved, proceeding to REQUIREMENTS_REVIEW");
+    await setJourneyState(journeyFile, VModelState.REQUIREMENTS_REVIEW);
+    return true;
+  }
+
+  const currentIteration = await getPrototypingIteration(journeyFile);
+  const lastProcessedIteration = await getLastProcessedFeedbackIteration(journeyFile);
+  const newFeedback = await getUnprocessedFeedback(journeyFile, lastProcessedIteration);
+
+  if (newFeedback.length > 0) {
+    await markFeedbackAsProcessed(journeyFile, currentIteration);
+    await incrementPrototypingIteration(journeyFile);
+    await setJourneyState(journeyFile, VModelState.PROTOTYPING);
+    logInfo("Feedback received, returning to PROTOTYPING");
+    return true;
+  }
+
+  logInfo("Waiting for feedback or approval...");
+  return false;
+}
+
 /**
  * Handle ARCHIVING state
  */
@@ -371,6 +436,8 @@ export async function mainLoop(journeyFile: string): Promise<void> {
     ? 5  // GO mode: very few iterations
     : config.executionMode === ExecutionMode.MVP
     ? 20  // MVP mode: reduced iterations
+    : config.executionMode === ExecutionMode.UX_MVP
+    ? 30  // UX mode: bounded loop with user feedback
     : config.maxIterations;  // Normal mode: default (100)
 
   let iteration = 0;
@@ -426,7 +493,9 @@ export async function mainLoop(journeyFile: string): Promise<void> {
     // Handle special states
     switch (state) {
       case VModelState.WAITING_FOR_USER: {
-        const shouldContinue = await handleWaitingForUser(journeyFile);
+        const shouldContinue = config.executionMode === ExecutionMode.UX_MVP
+          ? await handleWaitingForUxMvp(journeyFile)
+          : await handleWaitingForUser(journeyFile);
         if (!shouldContinue) {
           return; // Exit loop - waiting for user input
         }
@@ -454,8 +523,24 @@ export async function mainLoop(journeyFile: string): Promise<void> {
         break;
 
       default: {
+        if (state === VModelState.PROTOTYPING && config.executionMode === ExecutionMode.UX_MVP) {
+          await handlePrototypingForUxMvp(journeyFile);
+          break;
+        }
+
         // Run iteration for all other states
-        await runIteration(journeyFile);
+        try {
+          await runIteration(journeyFile);
+        } catch (error) {
+          if (error instanceof Error && error.message === "AI_USAGE_LIMIT_REACHED") {
+            logError("AI usage limit reached. Exiting so you can retry later.");
+            await addLearning(journeyFile, "Paused: AI usage limit reached; user should rerun later.");
+            await setJourneyState(journeyFile, VModelState.WAITING_FOR_USER);
+            process.exitCode = 2;
+            return;
+          }
+          throw error;
+        }
 
         // Ensure any changes are committed and pushed
         // Wrap in try-catch to prevent loop from exiting on git errors
@@ -496,7 +581,10 @@ export async function mainLoop(journeyFile: string): Promise<void> {
   }
 
   if (iteration >= maxIterations) {
-    logWarning(`Maximum iterations reached (${maxIterations})`);
+    const finalState = await getJourneyState(journeyFile);
+    if (finalState !== VModelState.COMPLETE) {
+      logWarning(`Maximum iterations reached (${maxIterations})`);
+    }
   }
 }
 

@@ -49,7 +49,14 @@ export enum ExecutionMode {
   NORMAL = "normal",
   MVP = "mvp",
   GO = "go",
+  UX_MVP = "ux-mvp",
 }
+
+/**
+ * UX MVP mode constants
+ */
+export const MAX_UX_ITERATIONS = 5;
+export const PROTOTYPING_ITERATION_HEADER = "## Prototyping Iteration";
 
 /**
  * Journey metadata and progress tracking
@@ -98,6 +105,7 @@ export interface Config {
   noPush: boolean;
   commitInterval: number;
   executionMode: ExecutionMode;
+  playwrightEnabled: boolean;
 }
 
 /**

@@ -30,10 +30,13 @@ import { waitingForUserPrompt, type WaitingForUserVars } from "./waiting-for-use
 import { consolidatingPrompt, type ConsolidatingVars } from "./consolidating";
 import { designReviewsPrompt, extractPhaseFromReviewState, type DesignReviewsVars } from "./design-reviews";
 import { prototypingPrompt, type PrototypingVars } from "./prototyping";
+import { uxPrototypingPrompt, type UxPrototypingVars } from "./ux-prototyping";
 import { pivotingPrompt, type PivotingVars } from "./pivoting";
 import { reflectingPrompt, type ReflectingVars } from "./reflecting";
 import { archivingPrompt, type ArchivingVars } from "./archiving";
 import { reviewingPrompt, type ReviewingVars } from "./reviewing";
+import { getPrototypingIteration, getLatestFeedback } from "../../journey";
+import { ExecutionMode } from "../../types";
 
 /**
  * Base variables available to all states
@@ -62,6 +65,7 @@ export type StateVars =
   | ConsolidatingVars
   | DesignReviewsVars
   | PrototypingVars
+  | UxPrototypingVars
   | PivotingVars
   | ReflectingVars
   | ArchivingVars
@@ -310,14 +314,25 @@ export async function getStatePrompt(
     }
 
     case VModelState.PROTOTYPING:
-      prompt = prototypingPrompt({
-        ...baseVars,
-        JOURNEY_CONTENT: filteredJourney,
-        EPIC_NAME: epicName,
-        EPIC_NUMBER: epicNumber,
-        CURRENT_STORY: currentStory,
-        STORY_DESIGN: storyDesign,
-      });
+      if (config.executionMode === ExecutionMode.UX_MVP) {
+        const iteration = await getPrototypingIteration(journeyFile);
+        const previousFeedback = await getLatestFeedback(journeyFile);
+        prompt = uxPrototypingPrompt({
+          ...baseVars,
+          JOURNEY_CONTENT: filteredJourney,
+          ITERATION: iteration,
+          PREVIOUS_FEEDBACK: previousFeedback,
+        });
+      } else {
+        prompt = prototypingPrompt({
+          ...baseVars,
+          JOURNEY_CONTENT: filteredJourney,
+          EPIC_NAME: epicName,
+          EPIC_NUMBER: epicNumber,
+          CURRENT_STORY: currentStory,
+          STORY_DESIGN: storyDesign,
+        });
+      }
       break;
 
     case VModelState.PIVOTING:
@@ -395,6 +410,7 @@ export type {
   ConsolidatingVars,
   DesignReviewsVars,
   PrototypingVars,
+  UxPrototypingVars,
   PivotingVars,
   ReflectingVars,
   ArchivingVars,
