@@ -155,6 +155,7 @@ The CLI automatically resolves paths regardless of where you run it from.
 | `./bin/vibe-model` | Continue the active journey |
 | `./bin/vibe-model status` | Show status of all journeys |
 | `./bin/vibe-model hint "message"` | Add a user hint to the journey |
+| `./bin/vibe-model approve` | Approve current UX mockup (UX-MVP mode) |
 | `./bin/vibe-model pivot` | Force pivot to next approach |
 | `./bin/vibe-model reflect` | Force reflection phase |
 | `./bin/vibe-model archive` | Archive completed epics |
@@ -167,6 +168,10 @@ The CLI automatically resolves paths regardless of where you run it from.
 |--------|-------------|
 | `-v, --verbose` | Enable verbose logging |
 | `-g, --gemini` | Use Gemini as primary AI provider |
+| `-m, --mvp` | Enable MVP mode (skip most test phases) |
+| `--go` | Enable GO mode (fast self-test mode) |
+| `--ux-mvp` | Enable iterative UX mockup loop after REQUIREMENTS |
+| `--playwright` | Enable UX "dumb user" evaluator in UX-MVP mode |
 | `--no-consult` | Disable Gemini consultation during design |
 | `--project-dir <path>` | Specify project directory |
 | `--config <path>` | Specify config file |
@@ -506,6 +511,30 @@ Provide guidance to the agent during a journey:
 ```
 
 Hints are added to the journey file and incorporated into the next iteration.
+
+### UX-MVP Prototyping Mode
+
+Use UX-MVP to iterate on mockups before continuing the full V-Model:
+
+```bash
+./bin/vibe-model --ux-mvp --playwright -v "create todo app"
+```
+
+Typical flow:
+
+```bash
+./bin/vibe-model hint "increase button contrast and simplify layout"
+./bin/vibe-model
+./bin/vibe-model approve
+./bin/vibe-model
+```
+
+Behavior notes:
+- UX-MVP starts with `REQUIREMENTS -> PROTOTYPING`.
+- After each mockup, journey moves to `WAITING_FOR_USER`.
+- `approve` transitions the UX loop forward to normal review/design phases.
+- If no explicit mode flags are passed when continuing, vibe-model restores mode from journey metadata.
+- If provider quota/capacity limits are hit, vibe-model exits non-zero and parks at `WAITING_FOR_USER` with guidance (no infinite retry loop).
 
 ### Forced Pivot
 

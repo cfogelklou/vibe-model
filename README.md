@@ -76,6 +76,9 @@ vibe-model status
 # Add a hint to guide the agent
 vibe-model hint "try using FFT interpolation"
 
+# Approve current UX mockup in UX-MVP mode
+vibe-model approve
+
 # Force pivot to next approach
 vibe-model pivot
 
@@ -99,6 +102,8 @@ vibe-model list-checkpoints
 -g, --gemini              Use Gemini AI instead of Claude
 -m, --mvp                 Enable MVP mode (skip most testing for faster CI)
 --go                      Enable GO mode (for AI agents testing vibe-model - avoids recursion)
+--ux-mvp                  Enable UX MVP mode (iterative mockup prototyping loop)
+--playwright              Enable UX "dumb user" evaluation in UX-MVP mode
 --no-consult              Disable Gemini consultation
 --project-dir <path>      Specify project directory
 --config <path>           Specify config file
@@ -106,7 +111,23 @@ vibe-model list-checkpoints
 --commit-interval <n>     Commit every N iterations (default: 1)
 ```
 
-**Note:** `--go` takes precedence over `--mvp` if both are specified.
+**Mode precedence:** `--go` > `--ux-mvp` > `--mvp`.
+
+### UX-MVP mode quick flow
+
+```bash
+# Start UX loop
+vibe-model --ux-mvp --playwright -v "create todo app"
+
+# Give revision feedback while waiting
+vibe-model hint "make add and complete actions more obvious"
+
+# Approve mockup and continue V-model phases
+vibe-model approve
+vibe-model
+```
+
+When provider capacity/quota limits are hit, vibe-model now exits non-zero and parks the journey in `WAITING_FOR_USER` with guidance, instead of spinning in retries.
 
 ---
 

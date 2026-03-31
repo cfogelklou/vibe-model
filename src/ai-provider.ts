@@ -157,7 +157,7 @@ export function getLastAiStderr(): string {
  * Detect provider usage-limit/rate-limit style failures.
  */
 export function isAiUsageLimitError(text: string): boolean {
-  return /(usage limit|rate limit|quota|5 hour|hours? limit|try again later|credits? exhausted)/i.test(text);
+  return /(usage limit|rate limit|quota|5 hour|hours? limit|try again later|credits? exhausted|exhausted your capacity|quota will reset)/i.test(text);
 }
 
 /**
