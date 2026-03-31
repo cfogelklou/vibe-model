@@ -205,19 +205,22 @@ export async function createJourneyFile(goal: string): Promise<string> {
  */
 export async function getJourneyState(journeyFile: string): Promise<VModelState> {
   try {
-    const content = await readJourneyFile(journeyFile);
-    const match = content.match(/^- State:\s*(\w+)$/m);
+    // Accept both "- State:" and "- Current State:" for backwards compatibility
+    const stateStr =
+      (await getJourneyField(journeyFile, "Current State")) ||
+      (await getJourneyField(journeyFile, "State"));
 
-    if (match) {
-      const state = match[1].toUpperCase();
+    if (stateStr) {
+      const state = stateStr.toUpperCase();
       if (isValidState(state)) {
         return state as VModelState;
       }
       logWarning(`Unrecognized state: ${state}, defaulting to REQUIREMENTS`);
+    } else {
+      // If state field missing: default to REQUIREMENTS with warning
+      logWarning("State field missing from journey file, assuming REQUIREMENTS");
     }
 
-    // If state field missing: default to REQUIREMENTS with warning
-    logWarning("State field missing from journey file, assuming REQUIREMENTS");
     return VModelState.REQUIREMENTS;
   } catch (error) {
     throw new Error(`Failed to read journey state: ${error}`);
@@ -231,7 +234,13 @@ export async function setJourneyState(
   journeyFile: string,
   state: VModelState | string
 ): Promise<void> {
-  await sedInplace(journeyFile, /^- State: .*$/m, `- State: ${state}`);
+  // Handle both "- Current State:" and "- State:" field names
+  const content = await readJourneyFile(journeyFile);
+  if (/^- Current State: /m.test(content)) {
+    await sedInplace(journeyFile, /^- Current State: .*$/m, `- Current State: ${state}`);
+  } else {
+    await sedInplace(journeyFile, /^- State: .*$/m, `- State: ${state}`);
+  }
 }
 
 /**
@@ -445,7 +454,40 @@ export async function addAntiPattern(
  */
 export async function addUserHint(journeyFile: string, hint: string): Promise<void> {
   const cleanHint = stripAnsi(hint);
-  await appendToFile(journeyFile, `\n- ${new Date().toISOString().split("T")[0]}: ${cleanHint}`);
+  const timestamp = new Date().toISOString().split("T")[0];
+  const content = await readJourneyFile(journeyFile);
+
+  // Check if there's a placeholder "*(No user hints yet)*"
+  const placeholderMatch = content.match(/\*\(No user hints yet\)\*/);
+  if (placeholderMatch) {
+    // Replace placeholder with the new hint
+    await sedInplace(journeyFile, /\*\(No user hints yet\)\*/, `- ${timestamp}: ${cleanHint}`);
+    return;
+  }
+
+  // Find the User Hints section and add after it
+  const userHintsMatch = content.match(/^## User Hints\n/m);
+  if (userHintsMatch) {
+    // Find the line number of the User Hints header
+    const lineNum = await findLineNumber(journeyFile, /^## User Hints$/m);
+    if (lineNum > 0) {
+      // Insert after the header (and any existing hints)
+      // Find the next ## header after User Hints
+      const afterHints = content.substring(content.indexOf("## User Hints") + "## User Hints".length);
+      const nextSectionMatch = afterHints.match(/^## /m);
+      if (nextSectionMatch) {
+        // Insert before the next section
+        const insertPosition = content.indexOf("## User Hints") + "## User Hints".length + afterHints.indexOf("## ");
+        const before = content.substring(0, insertPosition);
+        const after = content.substring(insertPosition);
+        await fs.writeFile(journeyFile, `${before}\n- ${timestamp}: ${cleanHint}\n${after}`);
+        return;
+      }
+    }
+  }
+
+  // Fallback: append to end of file
+  await appendToFile(journeyFile, `\n- ${timestamp}: ${cleanHint}`);
 }
 
 /**

@@ -109,16 +109,29 @@ export async function runIteration(journeyFile: string): Promise<number> {
         // Glob pattern - search for matching files
         const dir = path.dirname(pattern);
         const basePattern = path.basename(pattern);
-        const prefix = basePattern.replace("*", "");
+        // Extract prefix (part before *) and suffix (part after *)
+        const starIndex = basePattern.indexOf("*");
+        const prefix = basePattern.substring(0, starIndex);
+        const suffix = basePattern.substring(starIndex + 1);
         try {
           const files = await fs.readdir(dir);
-          const match = files.find(f => f.startsWith(prefix) && f.endsWith(".epic.md"));
+          if (config.verbose) {
+            logDebug(`Searching for epic file in ${dir} with prefix "${prefix}" and suffix "${suffix}"`);
+            logDebug(`Files found: ${files.filter(f => f.endsWith(".epic.md")).join(", ")}`);
+          }
+          const match = files.find(f => f.startsWith(prefix) && f.endsWith(suffix));
           if (match) {
             epicFile = path.join(dir, match);
+            if (config.verbose) {
+              logDebug(`Found epic file: ${epicFile}`);
+            }
             break;
           }
-        } catch {
+        } catch (err) {
           // Directory doesn't exist or can't be read
+          if (config.verbose) {
+            logDebug(`Failed to read directory ${dir}: ${err}`);
+          }
         }
       } else {
         // Exact path
@@ -133,7 +146,7 @@ export async function runIteration(journeyFile: string): Promise<number> {
     }
 
     if (!epicFile) {
-      logWarning(`Epic file not found for ${currentEpic} - using main journey only`);
+      logWarning(`Epic file not found for ${currentEpic} (tried: ${possibleEpicFiles.join(", ")})`);
     }
   }
 
