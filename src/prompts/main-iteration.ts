@@ -41,7 +41,13 @@ You MUST edit the journey file directly to update state and progress.
 
 ## Your Task: V-Model Phase Execution
 
-**IMPORTANT: When transitioning to DESIGN_REVIEW, always update the "Previous Phase:" field in the Meta section to reflect the phase you just completed.**
+**IMPORTANT: When transitioning to a review state, always update the "Previous Phase:" field in the Meta section to reflect the phase you just completed.**
+
+**CRITICAL: Use phase-specific review states, NOT generic "DESIGN_REVIEW":**
+- After REQUIREMENTS → transition to \`REQUIREMENTS_REVIEW\`
+- After SYSTEM_DESIGN → transition to \`SYSTEM_DESIGN_REVIEW\`
+- After ARCH_DESIGN → transition to \`ARCH_DESIGN_REVIEW\`
+- After MODULE_DESIGN → transition to \`MODULE_DESIGN_REVIEW\`
 
 Format: In the Meta section at the top of the journey file, update the line:
 \`- Previous Phase: REQUIREMENTS\`
@@ -128,10 +134,13 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
 - If the spec file does not exist, you MUST ask the user clarifying questions to establish goals, metrics, and constraints.
 - Create or update \`{journey_name}.spec.md\` with User Requirements, System Requirements, and Acceptance Criteria.
 - **Transition to WAITING_FOR_USER** if you need the user to sign off on requirements.
-- Once signed off, update the Meta section: change "- Previous Phase: TBD" to "- Previous Phase: REQUIREMENTS", then transition to DESIGN_REVIEW.
+- Once signed off, update the Meta section: change "- Previous Phase: TBD" to "- Previous Phase: REQUIREMENTS", then transition to REQUIREMENTS_REVIEW.
 
-### If DESIGN_REVIEW:
-- This is an automatic state - do NOT write any content.
+### If REQUIREMENTS_REVIEW:
+### If SYSTEM_DESIGN_REVIEW:
+### If ARCH_DESIGN_REVIEW:
+### If MODULE_DESIGN_REVIEW:
+- These are automatic states - do NOT write any content.
 - The system will consult Gemini for design review (including research quality).
 - Wait for the system to process the review result.
 
@@ -144,7 +153,7 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
 - Define the high-level architecture.
 - Decompose the goal into **Epics**.
 - Update the Design Spec with the architecture and Epics list.
-- Update the Meta section: change "- Previous Phase: REQUIREMENTS" to "- Previous Phase: SYSTEM_DESIGN", then transition to DESIGN_REVIEW.
+- Update the Meta section: change "- Previous Phase: REQUIREMENTS" to "- Previous Phase: SYSTEM_DESIGN", then transition to SYSTEM_DESIGN_REVIEW.
 
 ### If ARCH_DESIGN:
 - **RESEARCH**: Before finalizing component design:
@@ -162,7 +171,7 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
   **Stories**: {N} stories planned
   **Details**: See \`{journey}.journey.E{N}.md\`
   \`\`\`
-- Update the Meta section: change "- Previous Phase: SYSTEM_DESIGN" to "- Previous Phase: ARCH_DESIGN", then transition to DESIGN_REVIEW for the first Story.
+- Update the Meta section: change "- Previous Phase: SYSTEM_DESIGN" to "- Previous Phase: ARCH_DESIGN", then transition to ARCH_DESIGN_REVIEW for the first Story.
 
 ### If MODULE_DESIGN:
 - **RESEARCH**: Before finalizing module design:
@@ -176,11 +185,11 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
   - Set Story phase to current V-Model phase (e.g., "MODULE_DESIGN")
   - Set Status to IN_PROGRESS when working, COMPLETE when done
   - Add test results after UNIT_TEST/INTEGRATION_TEST
-- Perform a Design Review. If passed, update the Meta section: change "- Previous Phase: ARCH_DESIGN" to "- Previous Phase: MODULE_DESIGN", then transition to DESIGN_REVIEW.
+- Perform a Design Review. If passed, update the Meta section: change "- Previous Phase: ARCH_DESIGN" to "- Previous Phase: MODULE_DESIGN", then transition to MODULE_DESIGN_REVIEW.
 
 **Implementation Progress Table Updates** - Update at these trigger points:
 - After completing each story design: Set Phase to "MODULE_DESIGN", Status to "IN_PROGRESS"
-- After passing DESIGN_REVIEW: Set Phase to "IMPLEMENTATION"
+- After passing MODULE_DESIGN_REVIEW: Set Phase to "IMPLEMENTATION"
 - After passing UNIT_TEST: Set Tests to "PASS" with count
 - After passing INTEGRATION_TEST: Set Status to "COMPLETE", move to next story
 `;
@@ -302,7 +311,7 @@ You are running in GO mode - this is a test execution.
 ## MVP Mode (Fast CI Execution)
 
 You are running in MVP mode with these constraints:
-- **Skip DESIGN_REVIEW** - Move directly to next phase after design
+- **Skip all *_REVIEW states** - Move directly to next phase after design
 - **Skip most testing** - After IMPLEMENTATION, go directly to SYSTEM_TEST, then COMPLETE
 - **Fast iteration** - Minimize time spent on each phase
 - **Move quickly** - Complete the journey as fast as possible

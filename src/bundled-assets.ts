@@ -9,19 +9,9 @@
  * These files are extracted to the working directory when needed.
  */
 
-import { readFileSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
-
-// Get the directory of this file (works in both dev and compiled scenarios)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 /**
  * vibe-model.md - The complete V-Model protocol specification
  * This file is bundled at build time and extracted to ./vibe-model/vibe-model.md on journey init
  */
-export const VIBE_MODEL_MD = readFileSync(
-  join(__dirname, "../vibe-model.md"),
-  "utf-8"
-);
+import VIBE_MODEL_MD from "../vibe-model.md" with { type: "text" };
+export { VIBE_MODEL_MD };

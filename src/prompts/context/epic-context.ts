@@ -131,7 +131,7 @@ function _extractEpicResearch(epicContent: string, phase: VModelState): string {
  * - IMPLEMENTATION: Current story section only
  * - TESTING: Current story + test results
  * - PROTOTYPING: Current story section only
- * - DESIGN_REVIEW: Epic file (if epic-related phase)
+ * - *_REVIEW: Epic file (if epic-related phase)
  * - WAITING_FOR_USER: None
  * - CONSOLIDATING: None
  * - PIVOTING: None
