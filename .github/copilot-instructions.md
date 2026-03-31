@@ -70,6 +70,9 @@ cd example/src                    # Navigate INTO the target project
 # Start a new journey
 ../../bin/vibe-model -g -v "your goal here"
 
+# Start a UX prototyping loop (iterative mockups)
+../../bin/vibe-model --ux-mvp --playwright -v "your goal here"
+
 # Continue active journey (from within your project)
 ../../bin/vibe-model
 
@@ -78,6 +81,9 @@ cd example/src                    # Navigate INTO the target project
 
 # Add a hint to unblock WAITING_FOR_USER
 ../../bin/vibe-model hint "proceed with the approach"
+
+# Approve current UX mockup (UX-MVP mode)
+../../bin/vibe-model approve
 
 # Force pivot to next approach
 ../../bin/vibe-model pivot
@@ -113,6 +119,17 @@ cd example/src                    # Navigate INTO the target project
 | `AI_PROVIDER` | `claude` | Primary AI (claude/gemini) |
 | `CONSULT_GEMINI` | `true` | Enable Gemini design review |
 | `MAX_ITERATIONS` | `100` | Maximum loop iterations |
+| `EXECUTION_MODE` | `normal` | Execution mode (normal/mvp/go/ux-mvp) |
+| `PLAYWRIGHT_ENABLED` | `false` | Enable UX evaluator in UX-MVP mode |
+
+---
+
+## Runtime Notes (Important)
+
+- `--go` takes precedence over `--ux-mvp`, which takes precedence over `--mvp`.
+- When continuing a journey without explicit mode flags, vibe-model restores mode from journey metadata.
+- In UX-MVP mode, loop flow is: `REQUIREMENTS -> PROTOTYPING -> WAITING_FOR_USER` (feedback/approve loop).
+- If provider quota/capacity/rate limits are detected, vibe-model exits non-zero and parks journey in `WAITING_FOR_USER` (no infinite retry loops).
 
 ---
 
