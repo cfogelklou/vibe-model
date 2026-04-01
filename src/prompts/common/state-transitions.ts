@@ -20,17 +20,16 @@ export function getStateTransitionInstructions(
   currentState: string,
   nextState: string
 ): string {
-  const fileName = fileType === "journey" ? "journey.md" : "epic file";
+  const fileName = fileType === "journey" ? "journey file" : "epic file";
 
   return `### State Transition
 
 When complete:
 1. Open the ${fileName}
 2. Find the Meta section (near the top)
-3. Update the line: \`- Current State: ${currentState}\`
-4. Change to: \`- Current State: ${nextState}\`
+3. Update the state line (\`- State:\` or \`- Current State:\`) from \`${currentState}\` to \`${nextState}\`
 
-Example: Change \`- Current State: ${currentState}\` to \`- Current State: ${nextState}\`
+Example: Change \`- State: ${currentState}\` to \`- State: ${nextState}\`
 
 This triggers automatic state transition on the next iteration.`;
 }

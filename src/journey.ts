@@ -534,16 +534,96 @@ export async function appendSelfImprovementNote(
     );
   }
 
+  const existingNotes = await fs.readFile(notesPath, "utf-8");
+  const improvementNote = buildImprovementNote(existingNotes, journeyName, startState, endState);
+
   const note = `
 ## ${timestamp}
 - Journey: ${journeyName}
 - Iteration: ${iteration}
 - Start State: ${startState}
 - End State: ${endState}
-- Improvement Note: Review this transition and refine prompts/strategy in the next execution if progress stalls.
+- Improvement Note: ${improvementNote}
 `;
 
   await appendToFile(notesPath, note);
+}
+
+interface ParsedImprovementEntry {
+  journey: string;
+  startState: string;
+  endState: string;
+}
+
+function parseImprovementEntries(notesContent: string): ParsedImprovementEntry[] {
+  const entries: ParsedImprovementEntry[] = [];
+  const pattern =
+    /## [^\n]+\n- Journey: (.+)\n- Iteration: .+\n- Start State: (.+)\n- End State: (.+)\n- Improvement Note: [\s\S]*?(?=\n## |\s*$)/g;
+
+  for (const match of notesContent.matchAll(pattern)) {
+    entries.push({
+      journey: match[1].trim(),
+      startState: match[2].trim(),
+      endState: match[3].trim(),
+    });
+  }
+
+  return entries;
+}
+
+function countConsecutiveStalls(
+  notesContent: string,
+  journeyName: string,
+  state: VModelState
+): number {
+  const entries = parseImprovementEntries(notesContent).filter(
+    (entry) => entry.journey === journeyName
+  );
+
+  let count = 0;
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i];
+    if (entry.startState === state && entry.endState === state) {
+      count++;
+      continue;
+    }
+    break;
+  }
+  return count;
+}
+
+function getStateSpecificSuggestion(state: VModelState): string {
+  switch (state) {
+    case VModelState.UNIT_TEST:
+      return "If tests pass, explicitly set journey state to INTEGRATION_TEST. If tests fail, record failing test names and set state to MODULE_DESIGN.";
+    case VModelState.INTEGRATION_TEST:
+      return "Require a deterministic branch: MODULE_DESIGN (more stories), WAITING_FOR_USER (next epic), or SYSTEM_TEST (all epics done).";
+    case VModelState.IMPLEMENTATION:
+      return "After build success, force state change to UNIT_TEST and include the command output summary used for the decision.";
+    case VModelState.MODULE_DESIGN:
+      return "Require a concrete design review result (approved or iterate) and set next state accordingly.";
+    default:
+      return "Add explicit pass/fail transition rules in the phase prompt and verify the journey state line was actually updated.";
+  }
+}
+
+function buildImprovementNote(
+  notesContent: string,
+  journeyName: string,
+  startState: VModelState,
+  endState: VModelState
+): string {
+  if (startState === endState) {
+    const priorConsecutive = countConsecutiveStalls(notesContent, journeyName, startState);
+    const consecutive = priorConsecutive + 1;
+    const severity =
+      consecutive >= 3
+        ? `Stall detected: ${consecutive} consecutive iterations remained in ${startState}.`
+        : `No transition observed: state remained ${startState}.`;
+    return `${severity} ${getStateSpecificSuggestion(startState)}`;
+  }
+
+  return `Transition progressed (${startState} -> ${endState}). Preserve the exact evidence used for this transition (tests/build outputs) so future runs can reproduce it deterministically.`;
 }
 
 /**

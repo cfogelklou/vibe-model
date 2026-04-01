@@ -22,6 +22,7 @@ import {
   addUserHint,
   getLatestFeedback,
   addApproval,
+  appendSelfImprovementNote,
 } from "../../journey";
 
 // Mock config
@@ -139,6 +140,47 @@ describe("journey file operations", () => {
 
     const latest = await getLatestFeedback(testJourneyFile);
     expect(latest).toContain("show completed tasks at bottom");
+  });
+
+  it("should write actionable stall guidance to self-improvement notes", async () => {
+    await appendSelfImprovementNote(
+      testJourneyFile,
+      1,
+      VModelState.UNIT_TEST,
+      VModelState.UNIT_TEST
+    );
+
+    const notesPath = path.join(mockProjectDir, "self-improvement-notes.md");
+    const notes = await fs.readFile(notesPath, "utf-8");
+
+    expect(notes).toContain("No transition observed: state remained UNIT_TEST.");
+    expect(notes).toContain("explicitly set journey state to INTEGRATION_TEST");
+  });
+
+  it("should escalate repeated stalls with consecutive count", async () => {
+    await appendSelfImprovementNote(
+      testJourneyFile,
+      1,
+      VModelState.UNIT_TEST,
+      VModelState.UNIT_TEST
+    );
+    await appendSelfImprovementNote(
+      testJourneyFile,
+      2,
+      VModelState.UNIT_TEST,
+      VModelState.UNIT_TEST
+    );
+    await appendSelfImprovementNote(
+      testJourneyFile,
+      3,
+      VModelState.UNIT_TEST,
+      VModelState.UNIT_TEST
+    );
+
+    const notesPath = path.join(mockProjectDir, "self-improvement-notes.md");
+    const notes = await fs.readFile(notesPath, "utf-8");
+
+    expect(notes).toContain("Stall detected: 3 consecutive iterations remained in UNIT_TEST.");
   });
 
   // Cleanup

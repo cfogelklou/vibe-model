@@ -15,6 +15,7 @@ import { VModelState } from "../../types";
  * Story information extracted from epic
  */
 interface StoryInfo {
+  number: string;
   title: string;
   section: string;
 }
@@ -24,13 +25,29 @@ interface StoryInfo {
  */
 function parseEpicStories(epicContent: string): StoryInfo[] {
   const stories: StoryInfo[] = [];
-  const storyRegex = /### Story S(\d+): ([^\n]+)\n([\s\S]+?)(?=\n### Story S|\n##[^#]|$)/g;
-  let match;
+  const lines = epicContent.split(/\r?\n/);
+  const headingRegex = /^###\s+Story\s+(?:S)?(\d+)\s*:?\s*(.+?)\s*$/;
+  const isSectionBoundary = (line: string): boolean =>
+    /^##\s(?!#)/.test(line) || headingRegex.test(line);
 
-  while ((match = storyRegex.exec(epicContent)) !== null) {
+  let i = 0;
+  while (i < lines.length) {
+    const headingMatch = lines[i].match(headingRegex);
+    if (!headingMatch) {
+      i += 1;
+      continue;
+    }
+
+    const start = i;
+    i += 1;
+    while (i < lines.length && !isSectionBoundary(lines[i])) {
+      i += 1;
+    }
+
     stories.push({
-      title: match[2],
-      section: match[0],
+      number: headingMatch[1],
+      title: headingMatch[2],
+      section: lines.slice(start, i).join("\n"),
     });
   }
 
@@ -38,9 +55,9 @@ function parseEpicStories(epicContent: string): StoryInfo[] {
 }
 
 /**
- * Extract current story from epic based on journey state
+ * Extract current story section from epic content.
  */
-function extractCurrentStory(epicContent: string): string {
+export function extractCurrentStorySection(epicContent: string): string {
   const stories = parseEpicStories(epicContent);
 
   if (stories.length === 0) {
@@ -53,10 +70,14 @@ function extractCurrentStory(epicContent: string): string {
     statusInProgressPattern.test(s.section)
   );
 
-  const storyToExtract = inProgressStory || stories[0];
+  return (inProgressStory || stories[0]).section;
+}
 
-  // Return just the matched section (storyToExtract.section already contains the heading)
-  return storyToExtract.section;
+/**
+ * Extract current story from epic based on journey state
+ */
+function extractCurrentStory(epicContent: string): string {
+  return extractCurrentStorySection(epicContent);
 }
 
 /**
