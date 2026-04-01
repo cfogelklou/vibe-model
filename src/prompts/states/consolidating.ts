@@ -103,7 +103,8 @@ You are in the **CONSOLIDATING** phase. The journey is complete - finalize docum
 ### State Transition:
 
 When consolidation is complete:
-- Update journey.md Meta section
+- Update journey.md Meta section:
+  - Set \`- Previous State: CONSOLIDATING\`
 - Transition to COMPLETE
 `;
 }

@@ -29,6 +29,7 @@ AI Provider: ${vars.AI_PROVIDER}
 ## Important File Paths
 
 **Journey File:** ${vars.JOURNEY_FILE}
+**Spec File:** ${vars.JOURNEY_NAME}.spec.md (if exists)
 **Working Directory:** (provided separately)
 
 ## Your Journey
@@ -76,7 +77,8 @@ You are in the **ACCEPTANCE_TEST** phase. Verify the system against the User Req
 - **If everything passes**: Transition to CONSOLIDATING
 - **If tests fail**:
   - Add learning to journey.md explaining the failure
-  - Transition back to REQUIREMENTS to address the issue
+  - If requirements are missing/incorrect: Transition back to REQUIREMENTS
+  - If implementation behavior is incorrect: Transition to SYSTEM_TEST or IMPLEMENTATION
 
 ### Important Rules:
 

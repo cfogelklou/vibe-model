@@ -41,7 +41,7 @@ You MUST edit the journey file directly to update state and progress.
 
 ## Your Task: V-Model Phase Execution
 
-**IMPORTANT: When transitioning to a review state, always update the "Previous Phase:" field in the Meta section to reflect the phase you just completed.**
+**IMPORTANT: When transitioning to a review state, always update the "Previous State:" field in the Meta section to reflect the phase you just completed.**
 
 **CRITICAL: Use phase-specific review states, NOT generic "DESIGN_REVIEW":**
 - After REQUIREMENTS → transition to \`REQUIREMENTS_REVIEW\`
@@ -50,7 +50,7 @@ You MUST edit the journey file directly to update state and progress.
 - After MODULE_DESIGN → transition to \`MODULE_DESIGN_REVIEW\`
 
 Format: In the Meta section at the top of the journey file, update the line:
-\`- Previous Phase: REQUIREMENTS\`
+\`- Previous State: REQUIREMENTS\`
 to match the phase you just completed (REQUIREMENTS, SYSTEM_DESIGN, ARCH_DESIGN, or MODULE_DESIGN).
 
 **CRITICAL: Always check the "## User Hints" section in the journey file and incorporate ALL user feedback into your design.** User hints represent explicit requirements or preferences that MUST be followed.
@@ -134,7 +134,7 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
 - If the spec file does not exist, you MUST ask the user clarifying questions to establish goals, metrics, and constraints.
 - Create or update \`{journey_name}.spec.md\` with User Requirements, System Requirements, and Acceptance Criteria.
 - **Transition to WAITING_FOR_USER** if you need the user to sign off on requirements.
-- Once signed off, update the Meta section: change "- Previous Phase: TBD" to "- Previous Phase: REQUIREMENTS", then transition to REQUIREMENTS_REVIEW.
+- Once signed off, update the Meta section: set "- Previous State: REQUIREMENTS", then transition to REQUIREMENTS_REVIEW.
 
 ### If REQUIREMENTS_REVIEW:
 ### If SYSTEM_DESIGN_REVIEW:
@@ -153,7 +153,7 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
 - Define the high-level architecture.
 - Decompose the goal into **Epics**.
 - Update the Design Spec with the architecture and Epics list.
-- Update the Meta section: change "- Previous Phase: REQUIREMENTS" to "- Previous Phase: SYSTEM_DESIGN", then transition to SYSTEM_DESIGN_REVIEW.
+- Update the Meta section: set "- Previous State: SYSTEM_DESIGN", then transition to SYSTEM_DESIGN_REVIEW.
 
 ### If ARCH_DESIGN:
 - **RESEARCH**: Before finalizing component design:
@@ -171,7 +171,7 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
   **Stories**: {N} stories planned
   **Details**: See \`{journey}.journey.E{N}.md\`
   \`\`\`
-- Update the Meta section: change "- Previous Phase: SYSTEM_DESIGN" to "- Previous Phase: ARCH_DESIGN", then transition to ARCH_DESIGN_REVIEW for the first Story.
+- Update the Meta section: set "- Previous State: ARCH_DESIGN", then transition to ARCH_DESIGN_REVIEW for the first Story.
 
 ### If MODULE_DESIGN:
 - **RESEARCH**: Before finalizing module design:
@@ -185,7 +185,7 @@ const REQUIREMENTS_PHASE = `### If REQUIREMENTS:
   - Set Story phase to current V-Model phase (e.g., "MODULE_DESIGN")
   - Set Status to IN_PROGRESS when working, COMPLETE when done
   - Add test results after UNIT_TEST/INTEGRATION_TEST
-- Perform a Design Review. If passed, update the Meta section: change "- Previous Phase: ARCH_DESIGN" to "- Previous Phase: MODULE_DESIGN", then transition to MODULE_DESIGN_REVIEW.
+- Perform a Design Review. If passed, update the Meta section: set "- Previous State: MODULE_DESIGN", then transition to MODULE_DESIGN_REVIEW.
 
 **Implementation Progress Table Updates** - Update at these trigger points:
 - After completing each story design: Set Phase to "MODULE_DESIGN", Status to "IN_PROGRESS"

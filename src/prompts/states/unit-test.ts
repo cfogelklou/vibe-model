@@ -60,8 +60,8 @@ You are in the **UNIT_TEST** phase for **Story: ${vars.CURRENT_STORY}**. Verify 
    - Document any failures
 
 3. **Update epic file Implementation Progress table**:
-   - If tests pass: Set Tests to "PASS" with test count
-   - If tests fail: Note the failure and transition back to MODULE_DESIGN
+    - If tests pass: Set Tests to "PASS" with test count
+    - If tests fail: Note the failure and choose the correct rollback state
 
 4. **Add test results to epic file**:
    - Document test coverage
@@ -75,8 +75,9 @@ You are in the **UNIT_TEST** phase for **Story: ${vars.CURRENT_STORY}**. Verify 
 - **If tests pass**: Transition to INTEGRATION_TEST
 - **If tests fail**:
   - Add learning to journey.md explaining the failure
-  - Transition back to MODULE_DESIGN to fix the design
-  - Note: Only transition back to IMPLEMENTATION if the issue is a simple bug
+  - If failure is a code bug: Transition back to IMPLEMENTATION
+  - If failure is a design flaw: Transition back to MODULE_DESIGN
+  - If failure is a test issue: Stay in UNIT_TEST and fix tests
 
 ### Important Rules:
 

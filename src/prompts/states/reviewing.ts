@@ -44,6 +44,11 @@ A new agent will review the work completed so far and provide objective feedback
 - If approved: Continue to the next phase
 - If changes requested: Address the feedback and re-review
 
+### User Feedback Integration:
+
+- **Check "## User Hints"** for user feedback and constraints before final recommendations
+- Include hint conflicts or unresolved user asks in the review output
+
 **Note**: This state is currently transitioning directly to REQUIREMENTS.
 Future enhancements may add REVIEWING transitions after IMPLEMENTATION
 (for code review) and after each design phase (for design review).

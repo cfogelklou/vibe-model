@@ -19,7 +19,7 @@ export interface ModuleDesignVars {
   EPIC_NAME: string; // Current epic name
   EPIC_NUMBER: string; // Current epic number (e.g., "E1")
   CURRENT_STORY: string; // Current story title
-  STORY_CONTENT: string; // Current story section from epic
+  STORY_DESIGN: string; // Current story section from epic
 }
 
 /**
@@ -75,13 +75,13 @@ You are in the **MODULE_DESIGN** phase for **Story: ${vars.CURRENT_STORY}**. Des
    - Verify acceptance criteria are defined
 
 6. **Update journey.md Meta section**:
-   - Set \`- Previous Phase: MODULE_DESIGN\`
+   - Set \`- Previous State: MODULE_DESIGN\`
    - Transition to MODULE_DESIGN_REVIEW
 
 ### Story Design Template:
 
 \`\`\`markdown
-### Story S${vars.STORY_CONTENT.match(/S(\d+)/)?.[1] || "N"}: ${vars.CURRENT_STORY}
+### Story: ${vars.CURRENT_STORY}
 **Description**: [Brief description]
 **Dependencies**: [List of dependent stories]
 **Status**: IN_PROGRESS
@@ -133,7 +133,7 @@ Update the epic file's Implementation Progress table at these trigger points:
 ### State Transition:
 
 When complete, update journey.md Meta section:
-- Set \`- Previous Phase: MODULE_DESIGN\`
+- Set \`- Previous State: MODULE_DESIGN\`
 - Transition to MODULE_DESIGN_REVIEW
 `;
 }

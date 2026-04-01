@@ -76,7 +76,7 @@ You are in the **ARCH_DESIGN** phase for **${vars.EPIC_NAME}**. Design the compo
 \`\`\`
 
 5. **Update journey.md Meta section**:
-   - Set \`- Previous Phase: ARCH_DESIGN\`
+   - Set \`- Previous State: ARCH_DESIGN\`
    - Transition to ARCH_DESIGN_REVIEW
 
 ### Epic File Structure:
@@ -124,7 +124,7 @@ You are in the **ARCH_DESIGN** phase for **${vars.EPIC_NAME}**. Design the compo
 ### State Transition:
 
 When complete, update journey.md Meta section:
-- Set \`- Previous Phase: ARCH_DESIGN\`
+- Set \`- Previous State: ARCH_DESIGN\`
 - Transition to ARCH_DESIGN_REVIEW
 `;
 }

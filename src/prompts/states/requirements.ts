@@ -63,7 +63,7 @@ You are in the **REQUIREMENTS** phase. Execute the Spec Initiation Protocol (see
 4. **If spec exists and is complete**:
    - Review "## User Hints" section and incorporate ALL user feedback
    - Update the Meta section:
-     * Change \`- Previous Phase: TBD\` to \`- Previous Phase: REQUIREMENTS\`
+     * Set \`- Previous State: REQUIREMENTS\`
    - Transition to REQUIREMENTS_REVIEW
 
 ### Important Rules:

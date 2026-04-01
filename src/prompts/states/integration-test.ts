@@ -85,7 +85,10 @@ You are in the **INTEGRATION_TEST** phase for **Story: ${vars.CURRENT_STORY}**. 
 - **If tests pass and epic is complete**:
   - If more epics exist: Transition to WAITING_FOR_USER
   - If all epics complete: Transition to SYSTEM_TEST
-- **If tests fail**: Transition back to ARCH_DESIGN (integration issue)
+- **If tests fail**:
+  - If failure is a code bug: Transition back to IMPLEMENTATION
+  - If failure is a module design flaw: Transition back to MODULE_DESIGN
+  - If failure is an architectural boundary issue: Transition back to ARCH_DESIGN
 
 ### Important Rules:
 

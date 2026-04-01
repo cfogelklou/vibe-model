@@ -29,6 +29,7 @@ AI Provider: ${vars.AI_PROVIDER}
 ## Important File Paths
 
 **Journey File:** ${vars.JOURNEY_FILE}
+**Spec File:** ${vars.JOURNEY_NAME}.spec.md (if exists)
 **Working Directory:** (provided separately)
 
 ## Your Journey

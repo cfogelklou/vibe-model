@@ -27,7 +27,8 @@ export function getStateTransitionInstructions(
 When complete:
 1. Open the ${fileName}
 2. Find the Meta section (near the top)
-3. Update the state line (\`- State:\` or \`- Current State:\`) from \`${currentState}\` to \`${nextState}\`
+3. Update \`- Previous State:\` to \`${currentState}\`
+4. Update the state line (\`- State:\` or \`- Current State:\`) from \`${currentState}\` to \`${nextState}\`
 
 Example: Change \`- State: ${currentState}\` to \`- State: ${nextState}\`
 

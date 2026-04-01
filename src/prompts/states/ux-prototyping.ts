@@ -25,7 +25,11 @@ Create or revise a UX mockup as a concrete reference for later V-Model design an
 ## Journey Context
 ${vars.JOURNEY_CONTENT}
 
-${feedbackSection}## Output Requirements
+${feedbackSection}## User Input & Feedback
+- **Check "## User Hints"** for explicit UX requirements and constraints
+- Incorporate user feedback from the latest iteration before generating changes
+
+## Output Requirements
 1. Create mockup file: \`vibe-model/prototypes/mockup-v${version}.html\`
 2. Include:
    - Clear visual layout aligned to requirements

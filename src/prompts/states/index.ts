@@ -202,7 +202,7 @@ export async function getStatePrompt(
         EPIC_NAME: epicName,
         EPIC_NUMBER: epicNumber,
         CURRENT_STORY: currentStory,
-        STORY_CONTENT: storyDesign,
+        STORY_DESIGN: storyDesign,
       });
       break;
 

@@ -69,7 +69,7 @@ You are in the **SYSTEM_DESIGN** phase. Define the high-level architecture and d
 5. **Update journey.md**:
    - Add architecture section
    - Create Epic Decomposition table
-   - Update Meta section: \`- Previous Phase: SYSTEM_DESIGN\`
+   - Update Meta section: \`- Previous State: SYSTEM_DESIGN\`
 
 6. **Transition to SYSTEM_DESIGN_REVIEW**
 
@@ -95,7 +95,7 @@ You are in the **SYSTEM_DESIGN** phase. Define the high-level architecture and d
 ### State Transition:
 
 When complete, update journey.md Meta section:
-- Set \`- Previous Phase: SYSTEM_DESIGN\`
+- Set \`- Previous State: SYSTEM_DESIGN\`
 - Transition to SYSTEM_DESIGN_REVIEW
 `;
 }
