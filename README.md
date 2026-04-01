@@ -134,21 +134,9 @@ When provider capacity/quota limits are hit, vibe-model now exits non-zero and p
 ## V-Model Workflow
 
 ```
-REQUIREMENTS ───────────────→ ACCEPTANCE_TEST
-     ↓                             ↑
-[DESIGN_REVIEW]                    |
-     ↓                             |
-  SYSTEM_DESIGN ──────────→ SYSTEM_TEST
-       ↓                         ↑
-  [DESIGN_REVIEW]                |
-       ↓                         |
-    ARCH_DESIGN ────────→ INTEGRATION_TEST
-         ↓                       ↑
-  [DESIGN_REVIEW]                |
-         ↓                       |
-    MODULE_DESIGN ───────→ UNIT_TEST
-          ↓                    ↑
-          └── IMPLEMENTATION ──┘
+REQUIREMENTS ─→ REQUIREMENTS_REVIEW ─→ SYSTEM_DESIGN ─→ SYSTEM_DESIGN_REVIEW ─→ ARCH_DESIGN
+                                                                                  ↓
+ACCEPTANCE_TEST ← SYSTEM_TEST ← INTEGRATION_TEST ← UNIT_TEST ← IMPLEMENTATION ← MODULE_DESIGN_REVIEW ← MODULE_DESIGN ← ARCH_DESIGN_REVIEW
 ```
 
 ---
@@ -158,9 +146,13 @@ REQUIREMENTS ───────────────→ ACCEPTANCE_TEST
 | State | Description |
 |:------|:-------------|
 | `REQUIREMENTS` | Formalizing User Requirements into System Requirements |
+| `REQUIREMENTS_REVIEW` | Automatic Gemini consultation for REQUIREMENTS quality |
 | `SYSTEM_DESIGN` | High-level architectural planning (Epics) |
+| `SYSTEM_DESIGN_REVIEW` | Automatic Gemini consultation for SYSTEM_DESIGN quality |
 | `ARCH_DESIGN` | Component-level design (Sub-systems/Interfaces) |
+| `ARCH_DESIGN_REVIEW` | Automatic Gemini consultation for ARCH_DESIGN quality |
 | `MODULE_DESIGN` | Low-level logic design for a single Story |
+| `MODULE_DESIGN_REVIEW` | Automatic Gemini consultation for MODULE_DESIGN quality |
 | `IMPLEMENTATION` | Coding the specific module/story |
 | `UNIT_TEST` | Verifying the specific module logic |
 | `INTEGRATION_TEST` | Verifying interaction with the system |
@@ -171,7 +163,6 @@ REQUIREMENTS ───────────────→ ACCEPTANCE_TEST
 | `CONSOLIDATING` | Cleaning up, syncing to memory.md, final verification |
 | `COMPLETE` | Goal achieved, journey finished |
 | `BLOCKED` | Blocked by external dependency or error |
-| `DESIGN_REVIEW` | Automatic state for Gemini consultation |
 | `REVIEWING` | Code quality review phase |
 | `ARCHIVING` | Archiving completed epics |
 | `PIVOTING` | Forced pivot to next approach |

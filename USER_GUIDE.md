@@ -277,9 +277,13 @@ Each journey file contains:
 | State | Description |
 |-------|-------------|
 | `REQUIREMENTS` | Formalizing User Requirements into System Requirements |
+| `REQUIREMENTS_REVIEW` | Automatic Gemini consultation for REQUIREMENTS quality |
 | `SYSTEM_DESIGN` | High-level architectural planning (Epics) |
+| `SYSTEM_DESIGN_REVIEW` | Automatic Gemini consultation for SYSTEM_DESIGN quality |
 | `ARCH_DESIGN` | Component-level design (Sub-systems/Interfaces) |
+| `ARCH_DESIGN_REVIEW` | Automatic Gemini consultation for ARCH_DESIGN quality |
 | `MODULE_DESIGN` | Low-level logic design for a single Story |
+| `MODULE_DESIGN_REVIEW` | Automatic Gemini consultation for MODULE_DESIGN quality |
 | `PROTOTYPING` | Optional experimental phase |
 | `IMPLEMENTATION` | Coding the specific module/story |
 | `UNIT_TEST` | Verifying the specific module logic |
@@ -292,7 +296,6 @@ Each journey file contains:
 | `BLOCKED` | Blocked by external dependency or error |
 | `PIVOTING` | Force pivot to next approach |
 | `REFLECTING` | Forced reflection phase |
-| `DESIGN_REVIEW` | Automatic Gemini consultation for design quality |
 
 ---
 
