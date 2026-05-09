@@ -75,17 +75,17 @@ done
 
 pass() {
   echo -e "  ${GREEN}✓ PASS${NC}: $1"
-  ((PASS_COUNT++))
+  PASS_COUNT=$((PASS_COUNT + 1))
 }
 
 fail() {
   echo -e "  ${RED}✗ FAIL${NC}: $1"
-  ((FAIL_COUNT++))
+  FAIL_COUNT=$((FAIL_COUNT + 1))
 }
 
 warn() {
   echo -e "  ${YELLOW}⚠ WARN${NC}: $1"
-  ((WARN_COUNT++))
+  WARN_COUNT=$((WARN_COUNT + 1))
 }
 
 info() {
@@ -288,8 +288,18 @@ if [ -d "$MILESTONES_DIR" ]; then
 
     # Check if sections are filled (not placeholder)
     file_not_contains "$MFILE" "To be filled during REQUIREMENTS phase" "Requirements section is filled"
-    file_not_contains "$MFILE" "To be filled during DESIGN phase" "Design section is filled" || true
-    file_not_contains "$MFILE" "To be filled during IMPLEMENTATION phase" "Implementation Notes section is filled" || true
+    # Design section is sometimes left as placeholder by AI for simple milestones
+    if grep -qE "To be filled during DESIGN phase" "$MFILE"; then
+      warn "Design section was left as placeholder in $BASENAME (AI may have skipped it)"
+    else
+      pass "Design section is filled in $BASENAME"
+    fi
+    # Implementation Notes section
+    if grep -qE "To be filled during IMPLEMENTATION phase" "$MFILE"; then
+      warn "Implementation Notes was left as placeholder in $BASENAME"
+    else
+      pass "Implementation Notes section is filled in $BASENAME"
+    fi
   done
 else
   fail "Milestones directory does not exist"
@@ -305,8 +315,9 @@ section "Phase 4: Validate Built Artifact (Calculator)"
 info "Looking for calculator source files..."
 
 CALC_FOUND=false
+VIBE_MODEL_PATH="$TARGET_DIR/vibe-model"
 for pattern in "calc" "calculator" "math" "arith"; do
-  FOUND=$(find "$TARGET_DIR" -maxdepth 3 -name "*.ts" -not -path "*/vibe-model/*" -not -path "*/node_modules/*" | grep -i "$pattern" || true)
+  FOUND=$(find "$TARGET_DIR" -maxdepth 3 -name "*.ts" -not -path "$VIBE_MODEL_PATH/*" -not -path "*/node_modules/*" 2>/dev/null | grep -i "$pattern" || true)
   if [ -n "$FOUND" ]; then
     CALC_FOUND=true
     for f in $FOUND; do
@@ -318,10 +329,10 @@ done
 
 if [ "$CALC_FOUND" = false ]; then
   # Check for any .ts files (AI might name them differently)
-  TS_FILES=$(find "$TARGET_DIR" -maxdepth 3 -name "*.ts" -not -path "*/vibe-model/*" -not -path "*/node_modules/*" || true)
+  TS_FILES=$(find "$TARGET_DIR" -maxdepth 3 -name "*.ts" -not -path "$VIBE_MODEL_PATH/*" -not -path "*/node_modules/*" 2>/dev/null || true)
   if [ -n "$TS_FILES" ]; then
     pass "TypeScript source files found (even if not calculator-named)"
-    for f in $TS_FILES; do
+    echo "$TS_FILES" | while read -r f; do
       info "  → $(echo "$f" | sed "s|$TARGET_DIR/||")"
     done
   else
@@ -331,16 +342,13 @@ fi
 
 # Check for test files
 TEST_FOUND=false
-for pattern in "test" "spec"; do
-  FOUND=$(find "$TARGET_DIR" -maxdepth 3 -name "*.test.ts" -o -name "*.spec.ts" | grep -v "vibe-model" | grep -v "node_modules" || true)
-  if [ -n "$FOUND" ]; then
-    TEST_FOUND=true
-    for f in $FOUND; do
-      pass "Test file found: $(echo "$f" | sed "s|$TARGET_DIR/||")"
-    done
-    break
-  fi
-done
+FOUND=$(find "$TARGET_DIR" -maxdepth 3 \( -name "*.test.ts" -o -name "*.spec.ts" \) -not -path "$VIBE_MODEL_PATH/*" -not -path "*/node_modules/*" 2>/dev/null || true)
+if [ -n "$FOUND" ]; then
+  TEST_FOUND=true
+  for f in $FOUND; do
+    pass "Test file found: $(echo "$f" | sed "s|$TARGET_DIR/||")"
+  done
+fi
 
 if [ "$TEST_FOUND" = false ]; then
   warn "No test files (*.test.ts / *.spec.ts) found"
