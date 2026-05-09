@@ -11,10 +11,13 @@
 
 import { spawn } from "child_process";
 import { promises as fs } from "fs";
+import path from "path";
+import os from "os";
 import { config } from "./config";
-import { logDebug, logInfo } from "./logger";
+import { logDebug, logInfo, logWarning } from "./logger";
 import { geminiReviewPrompt } from "./prompts/index";
-import type { ClaudeCapabilities, StreamEvent } from "./types";
+import type { ClaudeCapabilities, StreamEvent, ReviewResult } from "./types";
+import type { ReviewerType } from "./constants";
 
 // Track child processes for cleanup
 export const childProcesses: Array<ReturnType<typeof spawn>> = [];
@@ -346,6 +349,147 @@ export async function consultGemini(
   });
 
   return output;
+}
+
+/**
+ * Run a single specialist review using Claude --print.
+ *
+ * Writes the review prompt to a temp file, spawns `claude --print`,
+ * captures the output, and parses PASS/FAIL + findings.
+ */
+export async function runReview(
+  reviewerType: ReviewerType,
+  prompt: string,
+): Promise<ReviewResult> {
+  const capabilities = await detectClaudeCapabilities();
+
+  // Build command — always use --print for reviews (no interactive session)
+  const args = ["claude", "--print", "--dangerously-skip-permissions"];
+  if (config.verbose && capabilities.hasVerbose) {
+    args.push("--verbose");
+  }
+
+  // Write prompt to temp file and feed via stdin (same pattern as runAIWithPrompt)
+  const tempFile = path.join(
+    os.tmpdir(),
+    `vibe-model-review-${reviewerType}-${Date.now()}.md`,
+  );
+
+  await fs.writeFile(tempFile, prompt);
+
+  try {
+    return await new Promise<ReviewResult>((resolve, reject) => {
+      const proc = spawn(args[0], args.slice(1), {
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+
+      childProcesses.push(proc);
+
+      // Feed prompt via stdin
+      fs.readFile(tempFile, "utf-8")
+        .then((content) => {
+          proc.stdin?.write(content);
+          proc.stdin?.end();
+        })
+        .catch((error) => {
+          logDebug(`Failed to read review prompt file: ${error}`);
+          proc.kill();
+          reject(error);
+        });
+
+      let output = "";
+
+      proc.stdout?.on("data", (chunk) => {
+        output += chunk.toString();
+      });
+
+      proc.stderr?.on("data", (chunk) => {
+        // Pass through stderr for visibility in verbose mode
+        if (config.verbose) {
+          process.stderr.write(chunk);
+        }
+      });
+
+      proc.on("close", (code) => {
+        // Remove from tracking
+        const index = childProcesses.indexOf(proc);
+        if (index > -1) {
+          childProcesses.splice(index, 1);
+        }
+
+        if (code === 130) {
+          process.exit(130);
+        }
+
+        // Parse output for PASS/FAIL
+        const result = parseReviewOutput(reviewerType, output);
+        resolve(result);
+      });
+
+      proc.on("error", (error) => {
+        const index = childProcesses.indexOf(proc);
+        if (index > -1) {
+          childProcesses.splice(index, 1);
+        }
+
+        logWarning(`Review process error (${reviewerType}): ${error}`);
+        resolve({
+          pass: false,
+          reviewer: reviewerType,
+          findings: [`Review process failed: ${error}`],
+        });
+      });
+    });
+  } finally {
+    try {
+      await fs.unlink(tempFile);
+    } catch {
+      // Temp file cleanup failed, ignore
+    }
+  }
+}
+
+/**
+ * Parse the raw review output into a structured ReviewResult.
+ *
+ * Looks for "VERDICT: PASS" or "VERDICT: FAIL" in the output text,
+ * then extracts individual findings (BLOCKER/MAJOR/MINOR lines).
+ */
+function parseReviewOutput(
+  reviewerType: ReviewerType,
+  output: string,
+): ReviewResult {
+  const upper = output.toUpperCase();
+
+  const pass = upper.includes("VERDICT: PASS") || upper.includes("PASS");
+  const fail = upper.includes("VERDICT: FAIL") || upper.includes("FAIL");
+
+  // If neither is found, treat as a pass (conservative — don't block on unclear output)
+  const isPass = fail ? false : pass ? true : true;
+
+  // Extract findings from lines like "- [BLOCKER] ..." or "- [MAJOR] ..."
+  const findings: string[] = [];
+  const findingPattern = /^[-*]\s*\[(BLOCKER|MAJOR|MINOR)\]\s*(.+)$/gim;
+  let match: RegExpExecArray | null;
+  while ((match = findingPattern.exec(output)) !== null) {
+    findings.push(`[${match[1]}] ${match[2].trim()}`);
+  }
+
+  // If no structured findings found but the review failed, include the raw output snippet
+  if (!isPass && findings.length === 0) {
+    const snippet = output.slice(0, 500).trim();
+    if (snippet) {
+      findings.push(snippet);
+    } else {
+      findings.push("Review failed with no detailed findings.");
+    }
+  }
+
+  return {
+    pass: isPass,
+    reviewer: reviewerType,
+    findings,
+  };
 }
 
 /**

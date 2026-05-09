@@ -7,36 +7,26 @@
 /**
  * Type-safe prompt system for V-Model.
  * Public API for generating prompts with compile-time type checking.
- *
- * NEW: State-specific prompt system for reduced token usage and better determinism.
- *
- * @example
- * ```typescript
- * import { getStatePrompt } from './prompts/index.js';
- *
- * const { prompt, filteredJourney, filteredEpic } = await getStatePrompt(
- *   VModelState.REQUIREMENTS,
- *   journeyFile,
- *   journeyContent,
- *   epicFile
- * );
- * ```
  */
 
-// Export the new state-specific prompt system (primary API)
-export { getStatePrompt, type StateVars, type BaseStateVars } from './states/index';
+// Export the milestone context filter
+export { filterMilestoneContext } from './milestone-context';
 
-// Export context filters (for use by other modules)
-export { filterJourneyContext } from './context/journey-context';
-export { filterEpicContext, extractCurrentStoryTitle, getEpicSummary } from './context/epic-context';
-
-// Export the old monolithic prompt (deprecated, for backward compatibility)
-export { mainIterationPrompt } from './main-iteration';
+// Export Gemini review prompt (used by ai-provider.ts)
 export { geminiReviewPrompt } from './gemini-review';
 
-// Export types for consumers who need them
+// Export milestone state-specific prompt generators
+export { prdPhasePrompt } from './states/prd-phase';
+export { requirementsPhasePrompt } from './states/requirements-phase';
+export { designPhasePrompt } from './states/design-phase';
+export { implementationPhasePrompt } from './states/implementation-phase';
+export { unitTestPhasePrompt } from './states/unit-test-phase';
+export { integrationTestPhasePrompt } from './states/integration-test-phase';
+export { deliveryPhasePrompt } from './states/delivery-phase';
+export { getReviewerPrompt, type ReviewerPromptVars } from './states/review';
+
+// Export types
 export type {
-  MainIterationVars,
   GeminiReviewVars,
-  TemplateVariable,
+  MilestonePromptVars,
 } from './types';

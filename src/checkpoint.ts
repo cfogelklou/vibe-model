@@ -6,15 +6,15 @@
 
 /**
  * Checkpoint and git operations.
- * Handles git checkpoint creation, rollback, and git command execution from parent project.
+ * Handles git command execution and commit/push operations from parent project.
  */
 
 import { spawn } from "child_process";
-import { promises as fs, existsSync, statSync } from "fs";
+import { existsSync, statSync } from "fs";
 import path from "path";
 import { VModelError } from "./types";
 import { config } from "./config";
-import { logInfo, logSuccess, logWarning, logError } from "./logger";
+import { logInfo, logSuccess, logWarning } from "./logger";
 
 /**
  * Execute git command from parent project directory.
@@ -116,146 +116,6 @@ export async function hasUncommittedChanges(cwd?: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/**
- * Create git checkpoint (annotated tag)
- */
-export async function createCheckpoint(
-  journeyName: string,
-  milestoneNumber: number,
-  description: string
-): Promise<void> {
-  const tag = `journey-${journeyName}-milestone-${milestoneNumber}`;
-
-  // Check if tag already exists
-  try {
-    await gitCommand(["rev-parse", tag]);
-    logWarning(`Tag ${tag} already exists, skipping`);
-    return;
-  } catch {
-    // Tag doesn't exist, continue
-  }
-
-  // Assert we're in parent project directory
-  assertInParentProject(config.projectDir);
-
-  // Create annotated tag
-  try {
-    await gitCommand(
-      ["tag", "-a", tag, "-m", `Journey checkpoint: ${description}`, "HEAD"],
-      config.projectDir
-    );
-    logSuccess(`Created checkpoint: ${tag}`);
-  } catch (error) {
-    logWarning(`Failed to create checkpoint: ${error}`);
-  }
-}
-
-/**
- * Rollback to checkpoint
- */
-export async function rollbackToCheckpoint(
-  journeyFile: string,
-  checkpointId?: number
-): Promise<void> {
-  // Get checkpoints from journey file
-  const content = await fs.readFile(journeyFile, "utf-8");
-  const checkpointsSection = content.match(
-    /## Checkpoints\n([\s\S]+?)\n## /
-  );
-
-  if (!checkpointsSection) {
-    logError("No checkpoints section found in journey file");
-    return;
-  }
-
-  // Parse checkpoint table
-  const checkpoints: Array<{ id: number; tag: string }> = [];
-  for (const line of checkpointsSection[1].split("\n")) {
-    const match = line.match(/^\| (\d+) \| ([\w-]+) \|/);
-    if (match) {
-      checkpoints.push({ id: parseInt(match[1], 10), tag: match[2] });
-    }
-  }
-
-  // Determine which checkpoint to use
-  let targetCheckpoint: { id: number; tag: string } | undefined;
-
-  if (checkpointId !== undefined) {
-    targetCheckpoint = checkpoints.find((c) => c.id === checkpointId);
-  } else {
-    // Get the latest checkpoint (highest ID)
-    targetCheckpoint = checkpoints[checkpoints.length - 1];
-  }
-
-  if (!targetCheckpoint) {
-    logError(`Checkpoint ID ${checkpointId || "latest"} not found`);
-    return;
-  }
-
-  logWarning(`Rolling back to checkpoint: ${targetCheckpoint.tag}`);
-  logInfo(
-    "This will reset your working directory to the state at " +
-      targetCheckpoint.tag
-  );
-
-  // TODO: Add user confirmation prompt here
-  // For now, proceed with rollback
-
-  // Assert we're in parent project directory
-  assertInParentProject(config.projectDir);
-
-  try {
-    await gitCommand(["reset", "--hard", targetCheckpoint.tag], config.projectDir);
-    logSuccess(`Rolled back to ${targetCheckpoint.tag}`);
-  } catch (error) {
-    logError(`Rollback failed: ${error}`);
-  }
-}
-
-/**
- * List checkpoints for a journey
- */
-export async function listCheckpoints(journeyFile: string): Promise<
-  Array<{
-    id: number;
-    tag: string;
-    date: string;
-    description: string;
-  }>
-> {
-  const content = await fs.readFile(journeyFile, "utf-8");
-  const checkpointsSection = content.match(
-    /## Checkpoints\n([\s\S]+?)\n## /
-  );
-
-  if (!checkpointsSection) {
-    return [];
-  }
-
-  const checkpoints: Array<{
-    id: number;
-    tag: string;
-    date: string;
-    description: string;
-  }> = [];
-
-  for (const line of checkpointsSection[1].split("\n")) {
-    const match = line.match(
-      /^\| (\d+) \| ([\w-]+) \| (\d{4}-\d{2}-\d{2}) \| (.+?) \|/
-    );
-    if (match) {
-      checkpoints.push({
-        id: parseInt(match[1], 10),
-        tag: match[2],
-        date: match[3],
-        description: match[4].trim(),
-      });
-    }
-  }
-
-  return checkpoints;
 }
 
 /**

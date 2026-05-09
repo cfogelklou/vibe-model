@@ -14,7 +14,6 @@ import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { Config, AIProvider } from "./types";
-import { ExecutionMode } from "./types.js";
 
 // Get the directory where this script is located
 const __filename = fileURLToPath(import.meta.url);
@@ -151,15 +150,13 @@ export function parseEnvironmentVars(): Partial<Config> {
     env.verbose = true;
   }
 
-  if (process.env.EXECUTION_MODE) {
-    const mode = process.env.EXECUTION_MODE.toLowerCase();
-    if (mode === "mvp") {
-      env.executionMode = ExecutionMode.MVP;
-    } else if (mode === "go") {
-      env.executionMode = ExecutionMode.GO;
-    } else if (mode === "normal") {
-      env.executionMode = ExecutionMode.NORMAL;
-    }
+  // Milestone system env vars
+  if (process.env.HIL_MODE === "false") {
+    env.hilMode = false;
+    env.autonomous = true;
+  }
+  if (process.env.REVIEW_ENABLED === "true") {
+    env.reviewEnabled = true;
   }
 
   return env;
@@ -176,7 +173,9 @@ export const defaultConfig: Config = {
   verbose: false,
   noPush: false,
   commitInterval: 1,
-  executionMode: ExecutionMode.NORMAL,
+  hilMode: true,
+  reviewEnabled: false,
+  autonomous: false,
 };
 
 /**
