@@ -105,9 +105,11 @@ export async function readPRD(projectDir: string): Promise<PRDFile> {
 export function parseMilestonesTable(content: string): Milestone[] {
   const milestones: Milestone[] = [];
 
-  // Match table data rows: | <number> | <text> | <text> | <text> | <text> |
+  // Match table data rows: | <id> | <text> | <text> | <text> | <text> |
+  // The ID column may be a plain number ("1"), prefixed ("M1", "M-1"), or
+  // zero-padded ("01").  We extract the first sequence of digits.
   // The mode column may be empty.
-  const rowPattern = /^\|\s*(\d+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]*)\s*\|$/gm;
+  const rowPattern = /^\|\s*(?:M[-]?)?(\d+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]*)\s*\|$/gim;
 
   let match: RegExpExecArray | null;
   while ((match = rowPattern.exec(content)) !== null) {

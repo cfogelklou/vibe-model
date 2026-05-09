@@ -368,8 +368,7 @@ export async function milestoneLoop(prdPath: string): Promise<void> {
   if (prd.milestones.length === 0) {
     logInfo("PRD has no milestones — running PRD phase to generate them...");
 
-    // Create a temporary milestone file for the PRD phase.
-    // The AI will write the PRD content directly into prd.md.
+    // Create a temporary milestone file for the PRD phase prompt context.
     const prdMilestonePath = createMilestoneFile(
       projectDir,
       0, // sentinel ID for PRD phase
@@ -377,8 +376,26 @@ export async function milestoneLoop(prdPath: string): Promise<void> {
     );
     await setMilestoneState(prdMilestonePath, MilestoneState.PRD);
 
-    // Run the PRD phase — AI fills in tech stack, architecture, milestones table
-    await runStateLoop(prdPath, prdMilestonePath, prdContent);
+    // Generate and run the PRD phase prompt (single AI call)
+    const tempPrompt = await generatePrompt(
+      MilestoneState.PRD,
+      prdMilestonePath,
+      projectDir,
+      prdContent,
+    );
+
+    try {
+      const exitCode = await runAIWithPrompt(tempPrompt);
+      if (exitCode === 130) {
+        process.exit(130);
+      }
+    } finally {
+      try {
+        await fs.unlink(tempPrompt);
+      } catch {
+        // Temp file cleanup failed, ignore
+      }
+    }
 
     // Clean up the temporary PRD milestone file
     try {

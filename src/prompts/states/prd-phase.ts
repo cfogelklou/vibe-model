@@ -49,6 +49,7 @@ Generate a lean Product Requirements Document (prd.md) for this goal.
    - \`## Tech Stack\` — language, framework, build tool, test runner.
    - \`## Architecture Overview\` — the 3-5 sentence summary.
    - \`## Milestones\` — a table with columns: ID | Name | Description | Status | Mode
+     - **ID must be a plain integer** (1, 2, 3...) — do NOT prefix with letters like M1 or MS-1.
      - Status is always PENDING initially.
      - Mode is empty (defaults to project settings).
 
