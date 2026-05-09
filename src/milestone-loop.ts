@@ -360,8 +360,48 @@ async function runStateLoop(
  */
 export async function milestoneLoop(prdPath: string): Promise<void> {
   const projectDir = config.projectDir;
-  const prdContent = await fs.readFile(prdPath, "utf-8");
-  const prd = await readPRD(projectDir);
+  let prdContent = await fs.readFile(prdPath, "utf-8");
+  let prd = await readPRD(projectDir);
+
+  // If the PRD has no milestones yet, run the PRD phase first.
+  // This happens on fresh projects where createPRD() wrote an empty template.
+  if (prd.milestones.length === 0) {
+    logInfo("PRD has no milestones — running PRD phase to generate them...");
+
+    // Create a temporary milestone file for the PRD phase.
+    // The AI will write the PRD content directly into prd.md.
+    const prdMilestonePath = createMilestoneFile(
+      projectDir,
+      0, // sentinel ID for PRD phase
+      "prd-generation",
+    );
+    await setMilestoneState(prdMilestonePath, MilestoneState.PRD);
+
+    // Run the PRD phase — AI fills in tech stack, architecture, milestones table
+    await runStateLoop(prdPath, prdMilestonePath, prdContent);
+
+    // Clean up the temporary PRD milestone file
+    try {
+      await fs.unlink(prdMilestonePath);
+    } catch {
+      // ignore
+    }
+
+    // Commit the PRD changes
+    await commitChanges("milestone(prd): PRD generated with milestones");
+
+    // Re-read the PRD (AI should have filled in milestones)
+    prdContent = await fs.readFile(prdPath, "utf-8");
+    prd = await readPRD(projectDir);
+
+    if (prd.milestones.length === 0) {
+      logError("PRD phase completed but no milestones were generated. Check prd.md.");
+      return;
+    }
+
+    logSuccess(`PRD generated with ${prd.milestones.length} milestone(s)`);
+  }
+
   const activeMilestone = getActiveMilestone(prd);
 
   if (!activeMilestone) {
