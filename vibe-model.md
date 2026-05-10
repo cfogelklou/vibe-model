@@ -1094,6 +1094,152 @@ Add new commands by:
 
 ---
 
+## 15. PRD Review Protocol (Milestone-Based System)
+
+**Note**: This section applies to the milestone-based V-Model system. For legacy epic-based system, see Section 2.
+
+### 15.1 PRD Review Loop
+
+After PRD generation, the system runs an automated review loop before starting Milestone 1.
+
+**Purpose**: Ensure PRD quality before committing to milestone execution.
+
+**Protocol**:
+```
+PRD_GENERATED → PRD_REVIEW_LOOP → APPROVED → MILESTONE_1
+                  ↓
+              NEEDS_REVISION → FIX_PHASE → PRD_REVIEW_LOOP
+```
+
+### 15.2 Specialist Reviewers
+
+Three specialist reviewers evaluate the PRD in sequence:
+
+| Reviewer | Evaluation Criteria |
+|----------|-------------------|
+| **Architecture** | Tech stack appropriateness, architecture clarity, milestone decomposition logic, dependency ordering |
+| **Testability** | Milestones verifiable, first milestone includes testing infrastructure, acceptance criteria definable |
+| **UX** | User journey clarity, accessibility, error handling, overall UX quality |
+
+### 15.3 Scoring System
+
+- **+2**: Approve (no blockers or majors)
+- **-1**: Block (one or more blockers/majors)
+
+**Overall Approval**: All reviewers must score +2.
+
+### 15.4 Review Loop Algorithm
+
+```
+iteration = 0
+max_iterations = 5
+overall_status = "pending"
+
+WHILE iteration < max_iterations AND overall_status == "pending":
+    # Run reviews
+    FOR EACH reviewer IN [architecture, testability, ux]:
+        findings = run_review(reviewer, prd_content)
+        score = findings.all_blockers_or_majors ? -1 : +2
+        ADD findings TO review_results
+
+        IF score == -1:
+            BREAK  # Stop reviews early on failure
+
+    # Check approval
+    IF ALL scores == +2:
+        overall_status = "approved"
+        BREAK
+
+    # Check max iterations
+    IF iteration >= max_iterations:
+        overall_status = "deferred"
+        IF autonomous AND NOT force:
+            EXIT with error
+        ELSE IF autonomous AND force:
+            LOG warning: proceeding with unresolved issues
+            BREAK
+        ELSE:
+            # HIL mode - wait for human
+            SET milestone.state = WAITING_FOR_USER
+            RETURN
+
+    # Run fix phase
+    iteration++
+    run_prd_fix_phase(review_results, iteration)
+    COMMIT changes
+```
+
+### 15.5 PRD Fix Phase
+
+The AI author addresses review findings:
+
+1. **Implement valid suggestions** — update PRD accordingly
+2. **Add Review Response section** — document deferred/disagreed items
+3. **Commit changes** — preserve iteration history
+
+### 15.6 LeanUX MVP Requirement
+
+**Enforced**: Milestone 1 must be a minimal viable product that:
+- Implements core user interaction
+- Includes basic testing infrastructure
+- Is deployable and testable
+- Provides immediate user value
+
+Milestones are ordered by user value delivery. Earlier milestones provide working software to users as quickly as possible.
+
+---
+
+## 16. Milestone Dependency Context
+
+### 16.1 Context Injection
+
+Each milestone (after the first) receives context from previously completed milestones.
+
+**Injected Context**:
+- **PRD Context**: Original goal, tech stack, architecture overview
+- **Previous Deliverables**: What was built in earlier milestones (from delivery summaries)
+- **Upcoming Milestones**: What's planned next (for dependency awareness)
+- **Milestone Position**: Current/total/isLast flags
+
+### 16.2 Delivery Summary Caching
+
+After each milestone completes, a delivery summary is extracted and cached.
+
+**Location**: `vibe-model/delivery-summaries/{N}-{name}-delivery-summary.md`
+
+**Extraction Strategy** (multi-strategy regex):
+1. `## Deliverables:` section with list items
+2. `- Deliverable:` format lines
+3. Fallback: entire `## Delivery` section
+
+### 16.3 Delivery Summary Format
+
+```markdown
+# Delivery Summary: Milestone {N} - {Name}
+
+**Timestamp**: {ISO 8601 timestamp}
+
+## Deliverables
+- Deliverable: {description}
+- Deliverable: {description}
+...
+
+## Key Learnings
+- {learning}
+- {learning}
+...
+```
+
+### 16.4 Loading for Context
+
+Delivery summaries are loaded when generating prompts for milestone phases (REQUIREMENTS through DELIVERY).
+
+**Filtering**: Only summaries from milestones with ID < current_milestone_id are loaded.
+
+**Sorting**: Summaries are sorted by milestone ID ascending.
+
+---
+
 **For user-facing documentation**, see [USER_GUIDE.md](USER_GUIDE.md).
 
 **For quick reference**, see [CLAUDE.md](CLAUDE.md).

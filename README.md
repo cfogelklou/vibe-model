@@ -36,6 +36,14 @@ You: "Build a workout app with AI-generated exercises"
             │  (one-shot)  │  and a milestones table of deliverable chunks
             └──────┬───────┘
                    │
+                   ▼
+            ┌──────────────┐
+            │ PRD Review   │  Specialist reviewers (UX, Architecture, Testability)
+            │   Loop       │  evaluate PRD quality. Max 5 iterations of fixes.
+            │ (author vs   │  LeanUX MVP enforced: Milestone 1 must be deployable.
+            │  reviewers)  │
+            └──────┬───────┘
+                   │
       ┌────────────┼────────────────────────────────┐
       ▼            ▼                                ▼
 ┌──────────┐ ┌──────────┐                    ┌──────────────┐
@@ -54,7 +62,7 @@ You: "Build a workout app with AI-generated exercises"
                    ✅ Working app
 ```
 
-Each state transition gets its own git commit. Each milestone produces a testable increment. You can watch it build, pause to review, or let it run fully autonomously.
+Each state transition gets its own git commit. Each milestone produces a testable increment. Delivery summaries are cached after each milestone and injected into subsequent milestones for context. You can watch it build, pause to review, or let it run fully autonomously.
 
 ---
 
@@ -118,7 +126,9 @@ Start with a clear, specific goal. The more concrete you are, the better the PRD
 
 **What happens next:**
 
-1. **PRD Phase** (~$0.15, ~30 seconds) — The AI reads your goal, picks the tech stack (React Native + Expo + SQLite), writes a 3-5 sentence architecture overview, and decomposes the work into milestones.
+1. **PRD Phase** (~$0.15-0.50, ~30-90 seconds) — The AI reads your goal, picks the tech stack (React Native + Expo + SQLite), writes a 3-5 sentence architecture overview, and decomposes the work into milestones.
+
+2. **PRD Review Loop** (~$0.30-1.50, ~1-3 minutes) — Specialist reviewers (UX, Architecture, Testability) evaluate the PRD. The AI author addresses findings. Max 5 iterations. LeanUX MVP is enforced: Milestone 1 must be a minimal viable product with testing infrastructure.
 
    Example PRD output:
    ```
@@ -132,7 +142,7 @@ Start with a clear, specific goal. The more concrete you are, the better the PRD
    | 6  | UI polish | Material Design, animations, edge cases | PENDING | |
    ```
 
-2. **Milestone Loop** — For each milestone, vibe-model runs through 6 phases:
+3. **Milestone Loop** — For each milestone, vibe-model runs through 6 phases:
    - **REQUIREMENTS** — AI researches best practices, writes numbered testable requirements (R1, R2, R3...)
    - **DESIGN** — AI creates technical design + natural-language test specifications (TS-1, TS-2...)
    - **IMPLEMENTATION** — AI writes the actual code + unit tests
@@ -252,6 +262,11 @@ Here's a realistic file structure after running the workout app goal:
 workout-app/
 ├── vibe-model/
 │   ├── prd.md                              # PRD with 6 milestones
+│   ├── prd-review.md                       # PRD review findings (after PRD phase)
+│   ├── delivery-summaries/                 # Cached delivery summaries
+│   │   ├── 01-project-scaffold-delivery-summary.md
+│   │   ├── 02-exercise-database-delivery-summary.md
+│   │   └── ...
 │   └── milestones/
 │       ├── 01-project-scaffold.md          # Each tracks full lifecycle
 │       ├── 02-exercise-database.md
@@ -303,7 +318,7 @@ Build the entire app in one run. Best for prototypes and MVPs.
 vibe-model --autonomous "Build a full workout app with React Native, SQLite, and AI exercise generation"
 ```
 
-**Cost**: ~$5-15 depending on complexity. **Time**: 30-90 minutes.
+**Cost**: ~$8-25 depending on complexity (includes PRD review). **Time**: 45-120 minutes.
 
 ### Pattern 2: Incremental (one milestone at a time)
 
@@ -475,6 +490,48 @@ Build a workout app with AI exercise generation...
 
 ## Architecture Overview
 Three-layer architecture: data layer (exercise database + SQLite)...
+```
+
+### PRD Review (`vibe-model/prd-review.md`)
+
+Generated after PRD phase. Contains specialist review findings:
+
+```markdown
+# PRD Review - Iteration 1
+
+**Overall Status:** ✅ APPROVED
+
+## ARCHITECTURE Review ✅
+**Score:** +2
+No findings.
+
+## TESTABILITY Review ✅
+**Score:** +2
+- [MINOR] Consider adding integration test strategy for SQLite layer
+
+## UX Review ✅
+**Score:** +2
+No findings.
+```
+
+### Delivery Summaries (`vibe-model/delivery-summaries/`)
+
+Cached after each milestone delivery. Injected into subsequent milestones for context:
+
+```markdown
+# Delivery Summary: Milestone 2 - Exercise Database
+
+**Timestamp:** 2025-01-15T10:30:00Z
+
+## Deliverables
+- Deliverable: Exercise data models with TypeScript interfaces
+- Deliverable: Seed data with 50+ exercises across 4 categories
+- Deliverable: SQLite layer with CRUD operations
+- Deliverable: Unit tests for all database operations (32 passing)
+
+## Key Learnings
+- SQLite async operations require proper error handling
+- Seed data loading should be idempotent
 ```
 
 ### Milestone Files (`vibe-model/milestones/01-*.md`)

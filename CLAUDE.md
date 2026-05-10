@@ -1,8 +1,8 @@
 # AI V-Model - Quick Reference
 
-**Quick reference for Claude Code agents using the V-Model submodule.**
+**Quick reference for AI agents using the V-Model submodule.**
 
-**This is the SINGLE SOURCE OF TRUTH for all AI agents.** When this file is updated, run `./scripts/copy-ai-instructions.sh` to synchronize changes to GEMINI.md, .github/copilot-instructions.md, and AGENTS.md.
+**This is the SINGLE SOURCE OF TRUTH for all AI agents.** When this file is updated, run `./scripts/copy-ai-instructions.sh` to synchronize changes to GEMINI.md, .github/copilot-instructions.md, and CLAUDE.md.
 
 **For comprehensive user documentation**, see [USER_GUIDE.md](USER_GUIDE.md).
 
@@ -88,21 +88,19 @@ cd example/src                    # Navigate INTO the target project
 
 ---
 
-## V-Model States
+## V-Model States (Milestone-Based System)
 
 | State | Description |
 |:------|:-------------|
-| `REQUIREMENTS` | Formalizing User Requirements into System Requirements |
-| `SYSTEM_DESIGN` | High-level architectural planning (Epics) |
-| `ARCH_DESIGN` | Component-level design (Sub-systems/Interfaces) |
-| `MODULE_DESIGN` | Low-level logic design for a single Story |
-| `IMPLEMENTATION` | Coding the specific module/story |
-| `UNIT_TEST` | Verifying the specific module logic |
-| `INTEGRATION_TEST` | Verifying interaction with the system |
-| `SYSTEM_TEST` | Verifying against original Spec |
-| `ACCEPTANCE_TEST` | Final validation against User Requirements |
-| `WAITING_FOR_USER` | Awaiting clarification or sign-off |
-| `COMPLETE` | Goal achieved, journey finished |
+| `PRD` | PRD generation — tech stack, architecture, milestones |
+| `REQUIREMENTS` | Formalize requirements for current milestone |
+| `DESIGN` | Technical design for current milestone |
+| `IMPLEMENTATION` | Code implementation for current milestone |
+| `UNIT_TEST` | Unit testing for current milestone |
+| `INTEGRATION_TEST` | Integration testing for current milestone |
+| `DELIVERY` | Delivery summary and milestone completion |
+| `COMPLETE` | Milestone complete (or all milestones complete) |
+| `WAITING_FOR_USER` | Awaiting human input or sign-off |
 
 ---
 
@@ -121,23 +119,31 @@ cd example/src                    # Navigate INTO the target project
 ```
 your-project/
 ├── vibe-model/                    # V-Model outputs (created by CLI)
-│   ├── journey/                # Journey tracking files
-│   ├── prototypes/             # Experimental code
-│   └── memory.md               # Knowledge persistence
-└── vibe-model/                 # This submodule
-    ├── src/                    # TypeScript source
-    │   ├── index.ts            # CLI entry point
-    │   ├── config.ts           # Configuration
-    │   ├── journey.ts          # Journey operations
-    │   ├── state-machine.ts    # State transitions
-    │   └── ...                 # Other modules
+│   ├── prd.md                     # PRD with milestones table
+│   ├── prd-review.md              # PRD review findings
+│   ├── delivery-summaries/        # Cached delivery summaries
+│   │   ├── 01-*-delivery-summary.md
+│   │   └── ...
+│   └── milestones/                # Milestone tracking files
+│       ├── 01-*.md
+│       └── ...
+└── vibe-model/                    # This submodule
+    ├── src/                       # TypeScript source
+    │   ├── index.ts               # CLI entry point
+    │   ├── config.ts              # Configuration
+    │   ├── types.ts               # Type definitions
+    │   ├── milestone-loop.ts      # Milestone orchestration
+    │   ├── prd.ts                 # PRD operations
+    │   ├── milestone.ts           # Milestone operations
+    │   ├── ai-provider.ts         # Claude/Gemini execution
+    │   └── ...                    # Other modules
     ├── bin/
     │   └── vibe-model             # Executable CLI
-    ├── prompts/                # AI prompt templates
-    ├── package.json            # Dependencies
-    ├── USER_GUIDE.md           # Complete user manual
+    ├── prompts/                   # AI prompt templates
+    ├── package.json               # Dependencies
+    ├── USER_GUIDE.md              # Complete user manual
     ├── vibe-model.md              # Protocol specification
-    └── CLAUDE.md               # This file
+    └── AGENTS.md                  # This file
 ```
 
 ---

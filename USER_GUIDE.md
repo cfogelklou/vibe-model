@@ -204,14 +204,18 @@ PRD (one-shot)
 
 1. **PRD Phase**: AI generates a lean PRD with tech stack, architecture overview, and a milestones table. Each milestone is independently deliverable and runs through the full V-Model lifecycle.
 
-2. **Milestone Loop**: For each milestone:
+2. **PRD Review Loop**: Specialist reviewers (UX, Architecture, Testability) evaluate the PRD quality. The AI author addresses findings in up to 5 iterations. LeanUX MVP is enforced: Milestone 1 must be a minimal viable product with testing infrastructure.
+
+3. **Milestone Loop**: For each milestone:
    - Create a milestone tracking file
    - Run through REQUIREMENTS → DESIGN → IMPLEMENTATION → UNIT_TEST → INTEGRATION_TEST → DELIVERY
    - Each state runs a single AI call with a phase-specific prompt
+   - Receive PRD context (goal, tech stack, architecture) and milestone dependencies (previous deliverables, upcoming milestones)
    - Auto-commit to git after each state transition
    - If `--review` is enabled, sub-agent reviews run after each state
+   - After DELIVERY, cache delivery summary for context injection
 
-3. **Completion**: When all milestones are COMPLETE, the project is done.
+4. **Completion**: When all milestones are COMPLETE, the project is done.
 
 ---
 
@@ -256,6 +260,84 @@ Optional per-milestone override:
 - Empty: Use project default
 - `hil`: Force human-in-the-loop for this milestone
 - `autonomous`: Skip HIL for this milestone
+
+---
+
+## PRD Review
+
+After PRD generation, vibe-model runs an automated review loop:
+
+### Review Process
+
+1. **Run Reviews**: Three specialist reviewers evaluate the PRD:
+   - **Architecture**: Tech stack appropriateness, architecture clarity, milestone decomposition logic
+   - **Testability**: Milestones verifiable, first milestone includes testing infrastructure, clear acceptance criteria
+   - **UX**: User journey clarity, accessibility, error handling
+
+2. **Score**: Each reviewer scores +2 (approve) or -1 (block)
+
+3. **Approve or Fix**:
+   - All +2? → PRD approved, proceed to Milestone 1
+   - Any -1? → AI author addresses findings, loop repeats
+   - Max 5 iterations, then defer to human (unless `--autonomous` with `--force`)
+
+### PRD Review File
+
+Review findings are written to `vibe-model/prd-review.md`:
+
+```markdown
+# PRD Review - Iteration 1
+
+**Overall Status:** ❌ NEEDS REVISION
+
+**Timestamp:** 2025-01-15T10:30:00Z
+
+## ARCHITECTURE Review ❌
+**Score:** -1
+
+### Findings
+- [BLOCKER] Milestone dependencies unclear — milestone 3 depends on milestone 2 but ordering doesn't reflect this
+- [MAJOR] Tech stack missing testing framework specification
+
+## TESTABILITY Review ✅
+**Score:** +2
+
+No findings.
+
+## UX Review ❌
+**Score:** -1
+
+### Findings
+- [MAJOR] Error handling strategy not defined
+- [MINOR] Consider edge cases for user input validation
+```
+
+### LeanUX MVP Requirement
+
+Vibe-model enforces LeanUX principles: **Milestone 1 must be a minimal viable product** that:
+- Implements core user interaction
+- Includes basic testing infrastructure
+- Is deployable and testable
+- Provides immediate user value
+
+Milestones are ordered by user value delivery — earlier milestones provide working software to users as quickly as possible.
+
+### Resolving PRD Review Issues
+
+If PRD review defers to human (max iterations reached):
+
+```bash
+# Review the findings
+cat vibe-model/prd-review.md
+
+# Edit the PRD if needed
+vim vibe-model/prd.md
+
+# Continue when ready
+vibe-model continue
+```
+
+In autonomous mode with `--force`, vibe-model proceeds with unresolved issues (not recommended for production).
 
 ---
 
@@ -312,6 +394,57 @@ The milestone loop filters sections sent to the AI based on the current state:
 | UNIT_TEST | Status + Implementation Notes + Test Specifications |
 | INTEGRATION_TEST | Status + Design + Unit Test Results |
 | DELIVERY | All sections (full summary) |
+
+### Milestone Dependencies
+
+Each milestone (after the first) receives context from previously completed milestones:
+
+- **PRD Context**: Original goal, tech stack, architecture overview
+- **Previous Deliverables**: What was built in earlier milestones
+- **Upcoming Milestones**: What's planned next (for dependency awareness)
+
+This context helps the AI maintain consistency and avoid re-implementing existing work.
+
+---
+
+## Delivery Summaries
+
+After each milestone completes, a delivery summary is cached:
+
+### Location
+
+`vibe-model/delivery-summaries/{N}-{name}-delivery-summary.md`
+
+### Content
+
+```markdown
+# Delivery Summary: Milestone 2 - Exercise Database
+
+**Timestamp:** 2025-01-15T10:30:00Z
+
+## Deliverables
+- Deliverable: Exercise data models with TypeScript interfaces
+- Deliverable: Seed data with 50+ exercises across 4 categories
+- Deliverable: SQLite layer with CRUD operations
+- Deliverable: Unit tests for all database operations (32 passing)
+
+## Key Learnings
+- SQLite async operations require proper error handling
+- Seed data loading should be idempotent
+```
+
+### Purpose
+
+- **Traceability**: Track what each milestone delivered
+- **Context Injection**: Previous milestones' deliverables are available to subsequent milestones
+- **Knowledge Transfer**: Learnings inform future work
+
+### Extraction
+
+Delivery summaries are extracted automatically using multi-strategy regex:
+1. `## Deliverables:` section with list items
+2. `- Deliverable:` format lines
+3. Fallback: entire `## Delivery` section
 
 ---
 
@@ -493,6 +626,57 @@ git config user.email "you@example.com"
 
 Vibe-model auto-commits after each state transition. If git is not configured, commits silently fail (non-fatal).
 
+### PRD Review Issues
+
+#### PRD Review Exceeds Max Iterations
+
+**Cause**: Reviewers and author cannot agree on PRD quality.
+
+**Debug**:
+```bash
+cat vibe-model/prd-review.md  # Check review findings
+```
+
+**Fix**:
+- **HIL mode**: Review findings manually, edit PRD if needed, run `vibe-model continue`
+- **Autonomous mode**: Add `--force` flag to proceed with unresolved issues (not recommended)
+
+#### Milestone 1 Not an MVP
+
+**Cause**: AI didn't follow LeanUX principles.
+
+**Debug**:
+```bash
+cat vibe-model/prd.md  # Check milestone 1 description
+```
+
+**Fix**: The PRD prompt enforces LeanUX, but if the AI ignores it, add a hint before running:
+```bash
+vibe-model hint "Milestone 1 must be a minimal viable product that I can deploy and test immediately"
+```
+
+#### Delivery Summary Missing
+
+**Cause**: Milestone didn't complete DELIVERY phase, or extraction failed.
+
+**Debug**:
+```bash
+ls vibe-model/delivery-summaries/  # Check what's cached
+```
+
+**Fix**: If extraction failed, check the milestone file's `## Delivery` section format. Should contain deliverables as list items.
+
+#### PRD Context Not Injected
+
+**Cause**: PRD file missing required sections.
+
+**Debug**:
+```bash
+grep -E "^(Goal|Tech Stack| Architecture Overview):" vibe-model/prd.md
+```
+
+**Fix**: Ensure PRD has these sections populated. The PRD phase prompt should generate them.
+
 ### Claude CLI Not Found
 
 ```bash
@@ -523,6 +707,10 @@ bun run lint       # Check for lint errors
 your-project/
 ├── vibe-model/
 │   ├── prd.md                        # PRD with milestones table
+│   ├── prd-review.md                 # PRD review findings (after PRD phase)
+│   ├── delivery-summaries/           # Cached delivery summaries
+│   │   ├── 01-project-setup-delivery-summary.md
+│   │   └── ...
 │   └── milestones/
 │       ├── 01-project-setup.md       # Milestone tracking files
 │       ├── 02-core-logic.md
