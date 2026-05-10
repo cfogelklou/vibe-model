@@ -42,7 +42,8 @@ Generate a lean Product Requirements Document (prd.md) for this goal.
    - Key design decisions and rationale.
 
 3. **Decompose the goal into milestones**:
-   - Prefer fewer milestones. Simple projects (single CLI, single library) should be 1-3 milestones.
+   - Use at least 2 milestones.
+   - Prefer fewer milestones. Simple projects (single CLI, single library) should be 2-3 milestones.
    - Only use many milestones (5+) for truly complex, multi-component systems.
    - Each milestone must be independently deliverable and produce a testable increment.
    - Each milestone will run through the full V-Model lifecycle (REQUIREMENTS → DESIGN → IMPLEMENTATION → UNIT_TEST → INTEGRATION_TEST → DELIVERY).
