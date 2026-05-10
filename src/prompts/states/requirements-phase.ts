@@ -10,6 +10,7 @@
 
 import type { MilestonePromptVars } from "../types";
 import { RESEARCH_PHASE_INSTRUCTIONS } from "../common/research-phase";
+import { getLifecycleOverview } from "../common/lifecycle-context";
 
 /**
  * Generate REQUIREMENTS phase prompt.
@@ -20,6 +21,8 @@ export function requirementsPhasePrompt(vars: MilestonePromptVars): string {
   return `You are an autonomous development agent working through a milestone lifecycle.
 AI Provider: ${vars.AI_PROVIDER}
 
+${getLifecycleOverview("REQUIREMENTS", "PRD", "DESIGN")}
+
 ## Milestone File
 
 ${vars.MILESTONE_FILE}
@@ -27,6 +30,14 @@ ${vars.MILESTONE_FILE}
 ## Context
 
 ${vars.MILESTONE_CONTENT}
+
+${vars.PRD_CONTEXT ? `
+## Original Goal & Context
+
+${vars.PRD_CONTEXT}
+
+---
+` : ""}
 
 ${RESEARCH_PHASE_INSTRUCTIONS}
 

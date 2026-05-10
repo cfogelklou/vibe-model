@@ -9,6 +9,7 @@
  */
 
 import type { MilestonePromptVars } from "../types";
+import { getLifecycleOverview } from "../common/lifecycle-context";
 
 /**
  * Generate IMPLEMENTATION phase prompt.
@@ -19,6 +20,8 @@ export function implementationPhasePrompt(vars: MilestonePromptVars): string {
   return `You are an autonomous development agent working through a milestone lifecycle.
 AI Provider: ${vars.AI_PROVIDER}
 
+${getLifecycleOverview("IMPLEMENTATION", "DESIGN", "UNIT_TEST")}
+
 ## Milestone File
 
 ${vars.MILESTONE_FILE}
@@ -26,6 +29,26 @@ ${vars.MILESTONE_FILE}
 ## Context
 
 ${vars.MILESTONE_CONTENT}
+
+${vars.PRD_CONTEXT ? `
+## Original Goal & Context
+
+${vars.PRD_CONTEXT}
+
+---
+` : ""}
+
+${vars.MILESTONE_DEPENDENCIES ? `
+## Milestone Dependencies
+
+**Previous milestones completed:**
+${vars.MILESTONE_DEPENDENCIES.previous.length > 0 ? vars.MILESTONE_DEPENDENCIES.previous.map(m => `- ${m}`).join('\n') : "None (this is the first milestone)"}
+
+**Upcoming milestones:**
+${vars.MILESTONE_DEPENDENCIES.next.length > 0 ? vars.MILESTONE_DEPENDENCIES.next.map(m => `- ${m}`).join('\n') : "None (this is the last milestone)"}
+
+---
+` : ""}
 
 ## Your Task: IMPLEMENTATION Phase
 
@@ -36,6 +59,13 @@ Implement the code for milestone **#${vars.MILESTONE_ID}: ${vars.MILESTONE_NAME}
 1. **Review the Design and Test Specifications**:
    - Understand the required components, interfaces, and data flows.
    - Note the test specifications that must be satisfiable after implementation.
+
+### Traceability Reminder
+
+Each test you write MUST map to a Test Specification (TS-N):
+- Before writing code, verify: "Which TS-N does this satisfy?"
+- Comment each test with: "// Satisfies TS-N: [description]"
+- If you discover a TS-N is ambiguous, note it in Implementation Notes
 
 2. **Implement the code**:
    - Follow the approved design exactly.

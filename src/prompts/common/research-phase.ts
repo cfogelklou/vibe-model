@@ -10,7 +10,7 @@
  */
 
 /**
- * Research phase instructions for design phases
+ * Research phase instructions for milestone phases
  */
 export const RESEARCH_PHASE_INSTRUCTIONS = `## Research Phase
 
@@ -35,10 +35,9 @@ Before finalizing any design, conduct research:
    - Command: \`echo "your question" | gemini --yolo\`
    - **Workflow**:
      * Output appears in terminal - read it and incorporate insights
-     * Add key findings to journey/epic Research Notes section
+     * Add key findings to the milestone file's Research Notes section
      * No need to save the output separately - research notes are the record
    - Note: \`gemini\` is the Gemini CLI tool; \`--yolo\` bypasses confirmation prompts
-   - See vibe-model.md section 7.2 for more details on external AI consultation
 
 3. **Codebase Research**:
    - Search for existing implementations of similar functionality
@@ -46,16 +45,8 @@ Before finalizing any design, conduct research:
    - Review test_data/ for relevant test cases
 
 4. **Document Findings**:
-   - Add key findings to journey file under "## Research Notes"
+   - Add key findings to the milestone file's "## Research Notes" section
    - Cite sources (URLs, file paths, memory entries)
-
-**IMPORTANT**: When working on an epic, write research notes to the epic file, not journey.md:
-- ARCH_DESIGN research → epic file's "### ARCH_DESIGN Phase Research" section
-- MODULE_DESIGN research → epic file's "### MODULE_DESIGN Phase Research" section
-
-**Journey-level research** (affects entire journey) still goes to journey.md:
-- REQUIREMENTS phase research
-- SYSTEM_DESIGN phase research
 `;
 
 /**
@@ -83,33 +74,3 @@ When dealing with complex research or implementation, you can spawn multiple sub
 - If tasks have dependencies, note: "Execute A before B, then C and D can run in parallel"
 - The orchestrator (you or vibe-model tool) will handle delegation
 `;
-
-/**
- * Get research instructions for a specific phase
- */
-export function getResearchInstructions(phase: "REQUIREMENTS" | "SYSTEM_DESIGN" | "ARCH_DESIGN" | "MODULE_DESIGN"): string {
-  const phaseInstructions: Record<string, string> = {
-    REQUIREMENTS: `**RESEARCH**: Before finalizing requirements:
-  - Web search for similar systems/libraries
-  - Consult memory.md for past learnings
-  - Use external AI (gemini --yolo) for complex tradeoffs (see research section above)
-- Document research in "## Research Notes > ### REQUIREMENTS Phase Research"`,
-    SYSTEM_DESIGN: `**RESEARCH**: Before finalizing architecture:
-  - Web search for architectural patterns for the domain
-  - Search codebase for similar implementations
-  - Use external AI (gemini --yolo): "What architectural tradeoffs exist?"
-- Document research in "## Research Notes > ### SYSTEM_DESIGN Phase Research"`,
-    ARCH_DESIGN: `**RESEARCH**: Before finalizing component design:
-  - Search for existing interfaces/APIs in codebase
-  - Web search for component design patterns
-  - Use external AI (gemini --yolo) for interface decisions
-- **Write epic-specific research to epic file's Research Notes section**`,
-    MODULE_DESIGN: `**RESEARCH**: Before finalizing module design:
-  - Search codebase for similar functions/classes
-  - Web search for algorithm implementations
-  - Use external AI (gemini --yolo) for edge cases
-- **Write story-specific research to epic file's Research Notes > MODULE_DESIGN section**`,
-  };
-
-  return phaseInstructions[phase] || "";
-}

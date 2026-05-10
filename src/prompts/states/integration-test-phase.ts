@@ -9,6 +9,7 @@
  */
 
 import type { MilestonePromptVars } from "../types";
+import { getLifecycleOverview } from "../common/lifecycle-context";
 
 /**
  * Generate INTEGRATION_TEST phase prompt.
@@ -19,6 +20,8 @@ export function integrationTestPhasePrompt(vars: MilestonePromptVars): string {
   return `You are an autonomous development agent working through a milestone lifecycle.
 AI Provider: ${vars.AI_PROVIDER}
 
+${getLifecycleOverview("INTEGRATION_TEST", "UNIT_TEST", "DELIVERY")}
+
 ## Milestone File
 
 ${vars.MILESTONE_FILE}
@@ -26,6 +29,18 @@ ${vars.MILESTONE_FILE}
 ## Context
 
 ${vars.MILESTONE_CONTENT}
+
+${vars.MILESTONE_DEPENDENCIES ? `
+## Milestone Dependencies
+
+**Previous milestones completed:**
+${vars.MILESTONE_DEPENDENCIES.previous.length > 0 ? vars.MILESTONE_DEPENDENCIES.previous.map(m => `- ${m}`).join('\n') : "None (this is the first milestone)"}
+
+**Upcoming milestones:**
+${vars.MILESTONE_DEPENDENCIES.next.length > 0 ? vars.MILESTONE_DEPENDENCIES.next.map(m => `- ${m}`).join('\n') : "None (this is the last milestone)"}
+
+---
+` : ""}
 
 ## Your Task: INTEGRATION_TEST Phase
 

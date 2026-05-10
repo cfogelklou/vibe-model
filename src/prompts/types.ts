@@ -39,4 +39,22 @@ export interface MilestonePromptVars {
   MILESTONE_CONTENT: string;
   /** PRD content (for PRD phase only) */
   PRD_CONTENT?: string;
+  /** Original goal, tech stack, and architecture (for milestone phases) */
+  PRD_CONTEXT?: string;
+  /** Previous and next milestone context */
+  MILESTONE_DEPENDENCIES?: {
+    /** List of completed milestones with their deliverables */
+    previous: string[];
+    /** List of upcoming milestones */
+    next: string[];
+  };
+  /** Milestone position in the PRD */
+  MILESTONE_POSITION?: {
+    /** Current milestone number */
+    current: number;
+    /** Total number of milestones */
+    total: number;
+    /** Whether this is the final milestone */
+    isLast: boolean;
+  };
 }

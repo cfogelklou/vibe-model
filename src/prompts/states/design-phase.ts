@@ -10,6 +10,7 @@
 
 import type { MilestonePromptVars } from "../types";
 import { RESEARCH_PHASE_INSTRUCTIONS } from "../common/research-phase";
+import { getLifecycleOverview } from "../common/lifecycle-context";
 
 /**
  * Generate DESIGN phase prompt.
@@ -20,6 +21,8 @@ export function designPhasePrompt(vars: MilestonePromptVars): string {
   return `You are an autonomous development agent working through a milestone lifecycle.
 AI Provider: ${vars.AI_PROVIDER}
 
+${getLifecycleOverview("DESIGN", "REQUIREMENTS", "IMPLEMENTATION")}
+
 ## Milestone File
 
 ${vars.MILESTONE_FILE}
@@ -27,6 +30,26 @@ ${vars.MILESTONE_FILE}
 ## Context
 
 ${vars.MILESTONE_CONTENT}
+
+${vars.PRD_CONTEXT ? `
+## Original Goal & Context
+
+${vars.PRD_CONTEXT}
+
+---
+` : ""}
+
+${vars.MILESTONE_DEPENDENCIES ? `
+## Milestone Dependencies
+
+**Previous milestones completed:**
+${vars.MILESTONE_DEPENDENCIES.previous.length > 0 ? vars.MILESTONE_DEPENDENCIES.previous.map(m => `- ${m}`).join('\n') : "None (this is the first milestone)"}
+
+**Upcoming milestones:**
+${vars.MILESTONE_DEPENDENCIES.next.length > 0 ? vars.MILESTONE_DEPENDENCIES.next.map(m => `- ${m}`).join('\n') : "None (this is the last milestone)"}
+
+---
+` : ""}
 
 ${RESEARCH_PHASE_INSTRUCTIONS}
 

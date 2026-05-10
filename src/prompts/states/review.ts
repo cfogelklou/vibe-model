@@ -11,6 +11,7 @@
 
 import type { MilestonePromptVars } from "../types";
 import { REVIEWER_PROMPTS, type ReviewerType } from "../../constants";
+import { getLifecycleOverview } from "../common/lifecycle-context";
 
 /**
  * Variables for reviewer prompts.
@@ -29,6 +30,8 @@ export function getReviewerPrompt(vars: ReviewerPromptVars): string {
   const systemPrompt = REVIEWER_PROMPTS[vars.REVIEWER_TYPE];
 
   return `${systemPrompt}
+
+${getLifecycleOverview("REVIEW", "Previous Phase", "Next Phase")}
 
 ## Milestone Under Review
 

@@ -9,6 +9,7 @@
  */
 
 import type { MilestonePromptVars } from "../types";
+import { getLifecycleOverview } from "../common/lifecycle-context";
 
 /**
  * Generate PRD phase prompt.
@@ -18,6 +19,8 @@ import type { MilestonePromptVars } from "../types";
 export function prdPhasePrompt(vars: MilestonePromptVars): string {
   return `You are an autonomous development agent working through a milestone lifecycle.
 AI Provider: ${vars.AI_PROVIDER}
+
+${getLifecycleOverview("PRD", null, "REQUIREMENTS")}
 
 ## Goal
 
@@ -56,7 +59,7 @@ Generate a lean Product Requirements Document (prd.md) for this goal.
 ### Rules:
 
 - Keep the PRD lean — no implementation details, no acceptance criteria here.
-- Each milestone should be completable in one agent session.
+- Each milestone will go through full V-Model phases (REQUIREMENTS → DESIGN → IMPLEMENTATION → TEST).
 - Milestones are ordered; later ones may depend on earlier ones.
 
 ### State Transition:

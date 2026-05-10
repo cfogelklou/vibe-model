@@ -9,6 +9,7 @@
  */
 
 import type { MilestonePromptVars } from "../types";
+import { getLifecycleOverview } from "../common/lifecycle-context";
 
 /**
  * Generate DELIVERY phase prompt.
@@ -19,6 +20,8 @@ export function deliveryPhasePrompt(vars: MilestonePromptVars): string {
   return `You are an autonomous development agent working through a milestone lifecycle.
 AI Provider: ${vars.AI_PROVIDER}
 
+${getLifecycleOverview("DELIVERY", "INTEGRATION_TEST", "COMPLETE")}
+
 ## Milestone File
 
 ${vars.MILESTONE_FILE}
@@ -26,6 +29,17 @@ ${vars.MILESTONE_FILE}
 ## Context
 
 ${vars.MILESTONE_CONTENT}
+
+${vars.MILESTONE_POSITION ? `
+## Project Status
+
+**Milestone position:** ${vars.MILESTONE_POSITION.current} of ${vars.MILESTONE_POSITION.total}
+**Remaining milestones:** ${vars.MILESTONE_POSITION.total - vars.MILESTONE_POSITION.current}
+
+${vars.MILESTONE_POSITION.isLast ? "⚠️ This is the FINAL milestone. Ensure complete system delivery." : "Additional milestones will build on this work."}
+
+---
+` : ""}
 
 ## Your Task: DELIVERY Phase
 

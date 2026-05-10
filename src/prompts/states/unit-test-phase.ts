@@ -9,6 +9,7 @@
  */
 
 import type { MilestonePromptVars } from "../types";
+import { getLifecycleOverview } from "../common/lifecycle-context";
 
 /**
  * Generate UNIT_TEST phase prompt.
@@ -18,6 +19,8 @@ import type { MilestonePromptVars } from "../types";
 export function unitTestPhasePrompt(vars: MilestonePromptVars): string {
   return `You are an autonomous development agent working through a milestone lifecycle.
 AI Provider: ${vars.AI_PROVIDER}
+
+${getLifecycleOverview("UNIT_TEST", "IMPLEMENTATION", "INTEGRATION_TEST")}
 
 ## Milestone File
 
@@ -39,6 +42,7 @@ Run and verify unit tests for milestone **#${vars.MILESTONE_ID}: ${vars.MILESTON
 
 2. **Analyze results against Test Specifications**:
    - Verify each Test Specification (TS-N) is covered by at least one passing test.
+   - Build a traceability matrix: TS-N → Test Name → Pass/Fail.
    - For any failing tests, determine root cause:
      - **Test bug**: Fix the test.
      - **Implementation bug**: Fix the code.
@@ -52,7 +56,7 @@ Run and verify unit tests for milestone **#${vars.MILESTONE_ID}: ${vars.MILESTON
 4. **Document results**:
    - In the Unit Test Results section, record:
      - Total tests run, passed, failed.
-     - Coverage of Test Specifications (which TS-N each test covers).
+     - **Traceability matrix**: TS-N → Test Name → Pass/Fail.
      - Any edge cases discovered during testing.
 
 ### Rules:
