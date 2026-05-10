@@ -44,7 +44,7 @@ Generate a lean Product Requirements Document (prd.md) for this goal.
 3. **Decompose the goal into milestones**:
    - Decompose into as many milestones as needed. Complex projects may have 50+.
    - Each milestone must be independently deliverable and produce a testable increment.
-   - Each milestone should be completable in one agent session.
+   - Each milestone will run through the full V-Model lifecycle (REQUIREMENTS → DESIGN → IMPLEMENTATION → UNIT_TEST → INTEGRATION_TEST → DELIVERY).
    - Order by dependency (earlier milestones are foundations).
    - Use concise names and one-line descriptions.
 
