@@ -242,12 +242,12 @@ if file_exists "$PRD_FILE"; then
   # Check milestones table has data rows
   file_contains "$PRD_FILE" '^\| [0-9]+' "Milestones table has data rows"
 
-  # Count milestones (should be 2-8)
+  # Count milestones (should have at least 2)
   MILESTONE_COUNT=$(grep -cE '^\| [0-9]+ ' "$PRD_FILE" || true)
-  if [ "$MILESTONE_COUNT" -ge 2 ] && [ "$MILESTONE_COUNT" -le 8 ]; then
+  if [ "$MILESTONE_COUNT" -ge 2 ]; then
     pass "Milestone count is reasonable ($MILESTONE_COUNT milestones)"
   else
-    warn "Unexpected milestone count: $MILESTONE_COUNT (expected 2-8)"
+    warn "Unexpected milestone count: $MILESTONE_COUNT (expected at least 2)"
   fi
 fi
 

@@ -42,8 +42,9 @@ Generate a lean Product Requirements Document (prd.md) for this goal.
    - Key design decisions and rationale.
 
 3. **Decompose the goal into milestones**:
-   - 3-8 milestones, each independently deliverable.
-   - Each milestone produces a testable increment.
+   - Decompose into as many milestones as needed. Complex projects may have 50+.
+   - Each milestone must be independently deliverable and produce a testable increment.
+   - Each milestone should be completable in one agent session.
    - Order by dependency (earlier milestones are foundations).
    - Use concise names and one-line descriptions.
 

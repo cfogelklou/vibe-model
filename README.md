@@ -33,7 +33,7 @@ You: "Build a workout app with AI-generated exercises"
                     ▼
             ┌──────────────┐
             │  PRD Phase   │  AI writes a lean PRD: tech stack, architecture,
-            │  (one-shot)  │  and a milestones table (3-8 deliverable chunks)
+            │  (one-shot)  │  and a milestones table of deliverable chunks
             └──────┬───────┘
                    │
       ┌────────────┼────────────────────────────────┐
@@ -118,7 +118,7 @@ Start with a clear, specific goal. The more concrete you are, the better the PRD
 
 **What happens next:**
 
-1. **PRD Phase** (~$0.15, ~30 seconds) — The AI reads your goal, picks the tech stack (React Native + Expo + SQLite), writes a 3-5 sentence architecture overview, and decomposes the work into 3-8 milestones.
+1. **PRD Phase** (~$0.15, ~30 seconds) — The AI reads your goal, picks the tech stack (React Native + Expo + SQLite), writes a 3-5 sentence architecture overview, and decomposes the work into milestones.
 
    Example PRD output:
    ```

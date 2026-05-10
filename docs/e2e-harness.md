@@ -21,7 +21,7 @@ Automated end-to-end validation that vibe-model works correctly: creates a clean
 | Phase | Checks |
 |-------|--------|
 | **Build** | `bun run build` succeeds |
-| **PRD** | File exists with Goal, Tech Stack, Architecture Overview, Milestones table; sections are filled in; 2-8 milestones |
+| **PRD** | File exists with Goal, Tech Stack, Architecture Overview, Milestones table; sections are filled in; at least 2 milestones |
 | **Milestone files** | All files exist with required sections (Status, Requirements, Design, Implementation Notes, Unit Test Results, Learnings); Requirements sections are filled |
 | **Built artifact** | Source files and test files exist; `package.json` has test script; `bun test` passes; the artifact actually works |
 | **Git history** | Commits with "milestone" in message exist |

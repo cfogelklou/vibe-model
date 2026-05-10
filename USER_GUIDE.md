@@ -202,7 +202,7 @@ PRD (one-shot)
 
 ### How It Works
 
-1. **PRD Phase**: AI generates a lean PRD with tech stack, architecture overview, and a milestones table (3-8 milestones, each independently deliverable).
+1. **PRD Phase**: AI generates a lean PRD with tech stack, architecture overview, and a milestones table. Each milestone is independently deliverable and completable in one agent session.
 
 2. **Milestone Loop**: For each milestone:
    - Create a milestone tracking file
