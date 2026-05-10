@@ -12,14 +12,12 @@
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
-import { MilestoneState } from "./types";
-import type { SubAgentReview, MilestoneFile } from "./types";
+import { MilestoneState, type SubAgentReview } from "./types";
 import { config } from "./config";
 import {
   readPRD,
   getActiveMilestone,
   setMilestoneStatus,
-  getPRDPath,
 } from "./prd";
 import {
   createMilestoneFile,
@@ -40,8 +38,7 @@ import {
 import { runAIWithPrompt, runReview } from "./ai-provider";
 import { commitChanges } from "./checkpoint";
 import { filterMilestoneContext } from "./prompts/milestone-context";
-import { REVIEWER_TYPES } from "./constants";
-import type { ReviewerType } from "./constants";
+import { REVIEWER_TYPES, type ReviewerType } from "./constants";
 import type { MilestonePromptVars } from "./prompts/types";
 import { getReviewerPrompt } from "./prompts/states/review";
 import { prdPhasePrompt } from "./prompts/states/prd-phase";
@@ -285,7 +282,7 @@ async function runStateLoop(
           .map((r) => `${r.reviewer}: ${r.findings.join("; ")}`)
           .join(" | ");
 
-        const milestone = await readMilestoneFile(milestonePath);
+        const _milestone = await readMilestoneFile(milestonePath);
         const { addLearning } = await import("./milestone");
         await addLearning(
           milestonePath,
@@ -539,7 +536,6 @@ export async function continueMilestone(prdPath: string): Promise<void> {
   await setPendingTransition(milestonePath, MilestoneState.WAITING_FOR_USER); // Sentinel clear
 
   // Re-write the Pending Transition line to NONE
-  const { updateSection } = await import("./milestone");
   const content = await fs.readFile(milestonePath, "utf-8");
   const updated = content.replace(
     /^- Pending Transition: .*$/m,
