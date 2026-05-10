@@ -1,6 +1,6 @@
 # AI V-Model User Guide
 
-**Complete user manual for the autonomous R&D agent using V-Model development lifecycle.**
+**Complete user manual for the autonomous R&D agent using milestone-based development lifecycle.**
 
 ---
 
@@ -11,38 +11,38 @@
 - [Basic Usage](#basic-usage)
 - [Commands](#commands)
 - [Configuration](#configuration)
-- [Journey Files](#journey-files)
-- [Design Specs](#design-specs)
-- [Memory System](#memory-system)
-- [Prototyping](#prototyping)
-- [Checkpoint System](#checkpoint-system)
-- [Compile & Debug](#compile--debug)
-- [Advanced Features](#advanced-features)
+- [Milestone Lifecycle](#milestone-lifecycle)
+- [PRD Files](#prd-files)
+- [Milestone Files](#milestone-files)
+- [Sub-Agent Reviews](#sub-agent-reviews)
+- [Human-in-the-Loop](#human-in-the-loop)
+- [E2E Testing](#e2e-testing)
+- [Debugging with AI](#debugging-with-ai)
 - [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Quick Start
 
-### Two Ways to Start a Journey
-
-**Option 1: Formal Q&A (recommended for complex goals)**
-
-Start a conversational spec-gathering session before the loop:
-
 ```bash
-claude
-> Let's determine specifications for my goal according to ./vibe-model/vibe-model.md
-```
+# 1. Install Bun
+curl -fsSL https://bun.sh/install | bash
 
-The AI follows the Spec Initiation Protocol, asks clarifying questions, creates a `.spec.md` file, and waits for your sign-off.
+# 2. Build vibe-model
+cd vibe-model && bun install && bun run build
 
-**Option 2: Direct Loop (faster, for simpler goals)**
+# 3. Create a target project
+mkdir /tmp/my-project && cd /tmp/my-project
+git init && git config user.name "You" && git config user.email "you@example.com"
+echo "# My Project" > README.md && git add . && git commit -m "init"
 
-Jump straight into the loop - questions happen during REQUIREMENTS phase:
+# 4. Run vibe-model
+/path/to/vibe-model/bin/vibe-model --autonomous "Build a CLI calculator in TypeScript using Bun"
 
-```bash
-./vibe-model/bin/vibe-model "your goal here"
+# 5. Check results
+ls vibe-model/prd.md
+ls vibe-model/milestones/
+vibe-model status
 ```
 
 ---
@@ -51,98 +51,62 @@ Jump straight into the loop - questions happen during REQUIREMENTS phase:
 
 ### Prerequisites
 
-Install Bun from https://bun.sh/install
+- **Bun** runtime (https://bun.sh)
+- **Git**
+- **Claude Code CLI** or **Gemini CLI** (installed and authenticated)
 
-### Building the Executable
+### Building
 
 ```bash
-# Clone or download the vibe-model repository
 cd vibe-model
-
-# Install dependencies
 bun install
-
-# Build the standalone executable for your platform
-bun run compile
-
-# The binary will be created at: dist/vibe-model
+bun run build      # Output: bin/vibe-model
 ```
 
-### Adding to Your PATH
-
-After building, add the compiled binary to your PATH:
+### Verify Installation
 
 ```bash
-# Copy the binary to a directory in your PATH
-# Example:
-sudo cp dist/vibe-model /usr/local/bin/
-
-# Or create a symlink
-ln -s $(pwd)/dist/vibe-model /usr/local/bin/vibe-model
-
-# Verify installation
-vibe-model --version
+./bin/vibe-model --help
 ```
-
-### Directory Structure
-
-When integrated, the tool creates this structure:
-
-```
-your-project/                    # Parent project (git repository)
-├── vibe-model/                    # V-Model outputs (created by script)
-│   ├── journey/                # Journey tracking files
-│   ├── prototypes/             # Experimental code (Python, etc.)
-│   └── memory.md               # Knowledge persistence
-└── vibe-model/                 # Vibe-model source code
-    ├── src/                    # TypeScript source code
-    ├── bin/                    # Development CLI scripts
-    ├── dist/                   # Compiled binaries (after bun run compile)
-    ├── prompts/                # AI prompt templates
-    ├── package.json            # Dependencies
-    ├── USER_GUIDE.md           # This file
-    ├── vibe-model.md           # Protocol specification
-    └── CLAUDE.md               # Quick reference for Claude Code
-```
-
-**Important**:
-- The `vibe-model/` directory (for outputs) is created in the **parent project root**
-- Prototyping directory `vibe-model/prototypes/` is user-managed for experimental code
-- The standalone binary in `dist/vibe-model` can be run from any directory
 
 ---
 
 ## Basic Usage
 
-### Running the CLI
-
-**Recommended**: Run from the parent project root for clarity:
+### Starting a New Project
 
 ```bash
-# From parent project root
-./vibe-model/bin/vibe-model "reduce latency to under 10ms"
+cd /path/to/your/project
+
+# Autonomous mode (no human-in-the-loop pauses)
+vibe-model --autonomous "your goal here"
+
+# HIL mode (pauses between states for review)
+vibe-model "your goal here"
+
+# Verbose mode (shows AI prompts and costs)
+vibe-model -v --autonomous "your goal here"
 ```
 
-Alternative (also works):
+### Continuing After Interruption
+
+If vibe-model is interrupted (Ctrl+C, timeout, crash), it can resume:
 
 ```bash
-# From vibe-model directory
-cd vibe-model && ./bin/vibe-model "reduce latency to under 10ms"
+# Resume from current state
+vibe-model --autonomous
+
+# Or explicitly continue from WAITING_FOR_USER
+vibe-model continue
 ```
 
-The CLI automatically resolves paths regardless of where you run it from.
-
-### Starting a New Journey
+### Checking Status
 
 ```bash
-# Start a new journey
-./vibe-model/bin/vibe-model "reduce latency to under 10ms"
-
-# With options
-./vibe-model/bin/vibe-model -g "implement feature X"      # Use Gemini
-./vibe-model/bin/vibe-model --no-consult "fix bug Y"      # Disable Gemini consultation
-./vibe-model/bin/vibe-model -v "add feature Z"            # Verbose logging
+vibe-model status
 ```
+
+Shows the PRD goal, tech stack, architecture, milestones table, and active milestone state.
 
 ---
 
@@ -150,28 +114,25 @@ The CLI automatically resolves paths regardless of where you run it from.
 
 | Command | Description |
 |--------|-------------|
-| `./bin/vibe-model "goal"` | Start a new journey with the given goal |
-| `./bin/vibe-model` | Continue the active journey |
-| `./bin/vibe-model status` | Show status of all journeys |
-| `./bin/vibe-model hint "message"` | Add a user hint to the journey |
-| `./bin/vibe-model pivot` | Force pivot to next approach |
-| `./bin/vibe-model reflect` | Force reflection phase |
-| `./bin/vibe-model archive` | Archive completed epics |
-| `./bin/vibe-model rollback [N]` | Rollback to checkpoint N (default: last) |
-| `./bin/vibe-model list-checkpoints` | List all checkpoints for current journey |
+| `vibe-model "goal"` | Start a new project with this goal |
+| `vibe-model` | Continue the active milestone loop |
+| `vibe-model continue` | Resume from WAITING_FOR_USER state |
+| `vibe-model status` | Show PRD and milestone status |
+| `vibe-model hint "msg"` | Add a hint to the active milestone |
 
-### Command Options
+### CLI Options
 
 | Option | Description |
 |--------|-------------|
-| `-v, --verbose` | Enable verbose logging |
+| `-v, --verbose` | Enable verbose logging (shows AI prompts) |
 | `-g, --gemini` | Use Gemini as primary AI provider |
-| `--no-consult` | Disable Gemini consultation during design |
+| `--autonomous` | Skip all human-in-the-loop pauses |
+| `--review` | Enable sub-agent reviews after each phase |
+| `--no-consult` | Disable Gemini consultation |
 | `--project-dir <path>` | Specify project directory |
 | `--config <path>` | Specify config file |
-| `--no-push` | Disable auto-push after iterations |
+| `--no-push` | Disable auto-push |
 | `--commit-interval <n>` | Commit every N iterations (default: 1) |
-| `-h, --help` | Show help message |
 
 ---
 
@@ -179,603 +140,427 @@ The CLI automatically resolves paths regardless of where you run it from.
 
 ### Environment Variables
 
-Use environment variables to configure behavior:
-
 ```bash
 export AI_PROVIDER="claude"        # Primary AI provider (claude|gemini)
 export MAX_ITERATIONS="100"        # Maximum loop iterations
 export CONSULT_GEMINI="true"       # Enable Gemini design review
-./vibe-model/bin/vibe-model "add feature X"
+export HIL_MODE="false"            # Disable human-in-the-loop (= --autonomous)
+export REVIEW_ENABLED="true"       # Enable sub-agent reviews (= --review)
+export VERBOSE="true"              # Verbose output (= -v)
 ```
 
 ### Config File (.vibe-modelrc)
 
-Create a `.vibe-modelrc` file in your project directory or home directory:
+Create `.vibe-modelrc` in your project directory or home directory:
 
 ```json
 {
   "aiProvider": "claude",
   "maxIterations": 100,
   "consultGemini": true,
-  "projectDir": "./my-project",
+  "hilMode": true,
+  "reviewEnabled": false,
+  "autonomous": false,
   "verbose": false,
   "noPush": false,
   "commitInterval": 1
 }
 ```
 
-**Configuration Priority**: CLI arguments → Environment variables → Config file → Defaults
+### Configuration Priority
 
-### AI Provider Configuration
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AI_PROVIDER` | `claude` | Primary AI provider (claude/gemini) |
-| `CONSULT_GEMINI` | `true` | Enable Gemini consultation during design |
-| `CLAUDE_MODEL` | `claude-opus-4-6` | Claude model to use |
-| `CLAUDE_API_BASE` | `https://api.anthropic.com` | Claude API endpoint |
-
-### Project Metadata
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PROJECT_NAME` | `my-project` | Project name for journey tracking |
-| `KEY_FILES` | `CLAUDE.md README.md` | Key documentation files |
-
-### Dead-End Detection
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MAX_STALE_ITERATIONS` | `3` | Maximum iterations without progress before pivot |
-| `MIN_PROGRESS_PERCENT` | `5` | Minimum progress percentage to avoid "stale" status |
-
-### Loop Limits
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MAX_ITERATIONS` | `100` | Maximum total iterations before giving up |
-
-### Checkpoint System
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CHECKPOINT_PREFIX` | `journey` | Prefix for git checkpoint tags |
+CLI arguments → Environment variables → Config file → Defaults
 
 ---
 
-## Journey Files
+## Milestone Lifecycle
 
-Journey files track the progress of each R&D effort. They are stored in `{PROJ_ROOT}/vibe-model/journey/`.
+### States
 
-### Journey File Format
+| State | Description | Progress |
+|:------|:-------------|:---------|
+| `PRD` | Generate PRD with milestones (one-shot) | 0% |
+| `REQUIREMENTS` | Formalize requirements for the milestone | 10% |
+| `DESIGN` | Technical design and test specifications | 25% |
+| `IMPLEMENTATION` | Code the milestone | 50% |
+| `UNIT_TEST` | Verify module-level logic | 70% |
+| `INTEGRATION_TEST` | Verify cross-component behavior | 85% |
+| `DELIVERY` | Create PR, finalize documentation | 95% |
+| `COMPLETE` | Milestone done | 100% |
+| `WAITING_FOR_USER` | Paused for human input | — |
 
-Each journey file contains:
-
-- **Meta**: Goal, state, current epic, progress tracking
-- **Approaches**: List of attempted approaches with status
-- **Guardrails**: Quality constraints (linting, testing, performance)
-- **Baseline Metrics**: Starting point for comparisons
-- **User Hints**: Feedback and guidance from the user
-- **Research Notes**: Phase-specific research findings
-- **Epic Progress**: Tracking of epics and stories
-- **Generated Artifacts**: Files created during the journey
-- **Learnings Log**: Timestamped progress updates
-- **Dead Ends**: Abandoned approaches and reasons
-- **Anti-Patterns**: Patterns to avoid (semantic constraints)
-- **Pending Questions**: Questions waiting for user input
-- **Design Spec**: Link to the design specification
-- **Checkpoints**: Git checkpoint history
-
-### Journey States
-
-| State | Description |
-|-------|-------------|
-| `REQUIREMENTS` | Formalizing User Requirements into System Requirements |
-| `SYSTEM_DESIGN` | High-level architectural planning (Epics) |
-| `ARCH_DESIGN` | Component-level design (Sub-systems/Interfaces) |
-| `MODULE_DESIGN` | Low-level logic design for a single Story |
-| `PROTOTYPING` | Optional experimental phase |
-| `IMPLEMENTATION` | Coding the specific module/story |
-| `UNIT_TEST` | Verifying the specific module logic |
-| `INTEGRATION_TEST` | Verifying interaction with the system |
-| `SYSTEM_TEST` | Verifying against original Spec |
-| `ACCEPTANCE_TEST` | Final validation against User Requirements |
-| `CONSOLIDATING` | Cleaning up, syncing to memory.md, final verification |
-| `WAITING_FOR_USER` | Awaiting clarification or sign-off |
-| `COMPLETE` | Goal achieved, journey finished |
-| `BLOCKED` | Blocked by external dependency or error |
-| `PIVOTING` | Force pivot to next approach |
-| `REFLECTING` | Forced reflection phase |
-| `DESIGN_REVIEW` | Automatic Gemini consultation for design quality |
-
----
-
-## Design Specs
-
-Design specs are formal specifications created during the REQUIREMENTS phase. They are stored as `{JOURNEY_NAME}.spec.md` in the journey directory.
-
-### Spec File Format
-
-Each design spec contains:
-
-- **User Requirements**: Human-readable goals and value proposition
-- **System Requirements**: Technical, measurable specifications
-- **Acceptance Criteria**: Exact tests or benchmarks that must pass
-- **Epics**: High-level milestones needed to reach the goal
-- **Architecture**: High-level system design
-- **Implementation Plan**: Phases from research to consolidation
-- **Success Criteria**: Checklist for completion
-- **Changes Made**: List of actual changes (updated during CONSOLIDATING)
-- **Documentation Updates**: Documentation changes (updated during CONSOLIDATING)
-- **References**: Links to relevant docs, papers, or code
-
----
-
-## Memory System
-
-Memory is stored in **markdown format** at `{PROJ_ROOT}/vibe-model/memory.md`:
+### Transition Flow
 
 ```
-your-project/
-└── vibe-model/
-    └── memory.md    # Persistent knowledge storage
+PRD (one-shot)
+  → REQUIREMENTS → DESIGN → IMPLEMENTATION → UNIT_TEST → INTEGRATION_TEST → DELIVERY
+  → (next milestone: REQUIREMENTS → ... → DELIVERY)
+  → ... → COMPLETE
 ```
 
-### Memory Format
+`WAITING_FOR_USER` can pause at any transition when HIL mode is active.
+
+### How It Works
+
+1. **PRD Phase**: AI generates a lean PRD with tech stack, architecture overview, and a milestones table (3-8 milestones, each independently deliverable).
+
+2. **Milestone Loop**: For each milestone:
+   - Create a milestone tracking file
+   - Run through REQUIREMENTS → DESIGN → IMPLEMENTATION → UNIT_TEST → INTEGRATION_TEST → DELIVERY
+   - Each state runs a single AI call with a phase-specific prompt
+   - Auto-commit to git after each state transition
+   - If `--review` is enabled, sub-agent reviews run after each state
+
+3. **Completion**: When all milestones are COMPLETE, the project is done.
+
+---
+
+## PRD Files
+
+The PRD (`vibe-model/prd.md`) is a lean document generated by the AI:
 
 ```markdown
-# Project Memory
+# PRD: {goal title}
 
-## Anti-Patterns
-- **Approach X**: Failed because [reason]
-- **Using Y for Z**: Causes performance issues
+## Goal
+{goal}
 
-## Successful Patterns
-- **Pattern A**: Works well for [use case]
-- **Library B**: Good performance, easy integration
+## Tech Stack
+{language, framework, build tool, test runner}
 
-## Configuration Notes
-- Optimal FFT size for this project: 4096
-- Thread pool size: 4 works best on ARM
+## Architecture Overview
+{3-5 sentence summary}
 
-## Research Findings
-- [2026-03-15] Discovered that X doesn't work with Y
+## Milestones
+| ID | Name | Description | Status | Mode |
+|----|------|-------------|--------|------|
+| 1  | ...  | ...         | PENDING|      |
+| 2  | ...  | ...         | PENDING|      |
 ```
 
-### Memory Usage
+### Milestone ID Format
 
-- **Automatic**: The agent reads memory at journey start
-- **Updates**: Agent adds learnings during journey
-- **Format**: Plain markdown, human-editable
+IDs must be **plain integers** (1, 2, 3...). The parser handles prefixed formats (M1, M-1) as a fallback.
+
+### Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `PENDING` | Not started yet |
+| `IN_PROGRESS` | Currently being worked on |
+| `COMPLETE` | Finished and delivered |
+
+### Mode Column
+
+Optional per-milestone override:
+- Empty: Use project default
+- `hil`: Force human-in-the-loop for this milestone
+- `autonomous`: Skip HIL for this milestone
 
 ---
 
-## Prototyping
+## Milestone Files
 
-The V-Model agent can use Python or other languages for rapid prototyping before production implementation.
+Each milestone has a tracking file at `vibe-model/milestones/{NN}-{name}.md`:
 
-### Prototyping Directory
+```markdown
+# Milestone {id}: {name}
 
-**Location**: `{PROJ_ROOT}/vibe-model/prototypes/`
+## Status
+- State: REQUIREMENTS
+- Progress: 0%
+- Started: {timestamp}
+- Pending Transition: NONE
 
-```bash
-# Create prototype in vibe-model/prototypes/
-# Agent will create files like: vibe-model/prototypes/fft_experiment.py
+## Requirements
+{R1, R2, R3... — numbered, testable requirements}
+
+## Design
+{Technical approach, components, interfaces}
+
+### Test Specifications
+{NL test cases: TS-1, TS-2...}
+
+## Research Notes
+{Findings from web search, codebase exploration}
+
+## Implementation Notes
+{Files created/modified, deviations from design}
+
+## Unit Test Results
+{Tests run, passed, failed, coverage of TS-N}
+
+## Integration Test Results
+{Cross-component verification, regressions}
+
+## Delivery
+{PR link, deliverables, caveats}
+
+## Learnings
+{Patterns, pitfalls, performance notes}
 ```
 
-### Prototype Workflow
+### Context Filtering
 
-```bash
-# 1. Create prototype in vibe-model/prototypes/
-# Agent will create files like: vibe-model/prototypes/fft_experiment.py
+The milestone loop filters sections sent to the AI based on the current state:
 
-# 2. Run prototype
-python vibe-model/prototypes/fft_experiment.py
-```
-
-### .gitignore
-
-The CLI automatically creates `vibe-model/.gitignore` to exclude generated artifacts:
-
-```
-# V-Model artifact exclusions
-# Journey files and specs should be committed
-# These entries exclude only generated/cache artifacts
-
-prototypes/__pycache__/
-prototypes/*.pyc
-prototypes/node_modules/
-```
-
-**Note**: Journey files (`.journey.md`) and spec files (`.spec.md`) are **committed** as they are part of your project's documentation. Only cache files and build artifacts are ignored.
+| State | Sections Included |
+|-------|------------------|
+| REQUIREMENTS | Status + Requirements + Research Notes |
+| DESIGN | Status + Requirements + Design + Research Notes |
+| IMPLEMENTATION | Status + Design + Test Specifications |
+| UNIT_TEST | Status + Implementation Notes + Test Specifications |
+| INTEGRATION_TEST | Status + Design + Unit Test Results |
+| DELIVERY | All sections (full summary) |
 
 ---
 
-## Checkpoint System
+## Sub-Agent Reviews
 
-The V-Model uses git tags as checkpoints for safe rollback.
+When enabled with `--review`, vibe-model runs four sequential specialist reviews after each phase:
 
-### Creating Checkpoints
+| Reviewer | Focus |
+|----------|-------|
+| **Architecture** | Separation of concerns, abstractions, scalability |
+| **Code** | Correctness, error handling, security, readability |
+| **Testability** | Test spec clarity, unit/integration coverage |
+| **UX** | User-facing behavior, accessibility, error messages |
 
-Checkpoints are automatically created at key milestones during the journey. Each checkpoint includes:
-
-- **ID**: Sequential number (0, 1, 2, ...)
-- **Tag**: Git tag in format `journey-{name}-milestone-{N}`
-- **Date**: UTC timestamp
-- **Description**: Human-readable milestone description
-
-### Rolling Back
-
-```bash
-# Rollback to last checkpoint
-./vibe-model/bin/vibe-model rollback
-
-# Rollback to specific checkpoint ID
-./vibe-model/bin/vibe-model rollback 3
-
-# List all checkpoints
-./vibe-model/bin/vibe-model list-checkpoints
-```
-
-**Warning**: Rollback uses `git reset --hard` and will discard uncommitted changes.
+Each review is a separate `claude --print` call with a specialist prompt. Reviews stop on first failure. If a review fails in HIL mode, the milestone pauses for human intervention.
 
 ---
 
-## Compile & Debug
+## Human-in-the-Loop
 
-### Building Standalone Executable
+### Default Behavior (HIL Mode)
 
-```bash
-# Compile standalone executable (includes Bun runtime)
-cd vibe-model
-bun run compile
+By default, vibe-model pauses at each state transition:
 
-# Output: dist/vibe-model (56MB, works on macOS arm64/x64, Linux, Windows)
-# Can be copied to any system without requiring Bun installation
+```
+REQUIREMENTS → [pause] → DESIGN → [pause] → IMPLEMENTATION → ...
 ```
 
-### Development Tools
+At each pause:
+- The milestone state is set to `WAITING_FOR_USER`
+- The pending transition is recorded
+- Resume with `vibe-model continue`
+
+### Autonomous Mode
+
+With `--autonomous`, all pauses are skipped:
 
 ```bash
-# Type checking
-bun run typecheck
-
-# Run tests
-bun test
-
-# Linting
-bun run lint
-bun run lint:fix
-
-# Build for production
-bun run build
+vibe-model --autonomous "your goal"
 ```
 
-### Debug Mode
+### Per-Milestone Override
+
+Set the Mode column in the PRD milestones table to `autonomous` or `hil` to override the project default for specific milestones.
+
+---
+
+## E2E Testing
+
+### Automated Test Harness
 
 ```bash
-# Verbose mode for debugging
-./vibe-model/bin/vibe-model -v "your goal"
+# Full E2E test (creates project, runs vibe-model, validates everything)
+./scripts/e2e-test.sh
 
-# Enable verbose environment variable
-export VERBOSE=true
-./vibe-model/bin/vibe-model "your goal"
+# Validate existing output (skip the run)
+./scripts/e2e-test.sh --skip-run
+
+# Verbose mode
+./scripts/e2e-test.sh --verbose
+```
+
+### What the E2E Harness Validates
+
+1. **PRD**: Exists with goal, tech stack, architecture overview, milestones table
+2. **Milestone files**: All sections present, requirements filled in
+3. **Built artifact**: Source files exist, tests pass, the thing actually works
+4. **Git history**: Proper commit messages at each state transition
+5. **Status command**: Shows correct milestone status
+
+### Manual E2E Test
+
+```bash
+# Clean test project
+mkdir -p /tmp/e2e-test && cd /tmp/e2e-test
+git init && git config user.name "Test" && git config user.email "t@t.com"
+echo "# Test" > README.md && git add . && git commit -m "init"
+
+# Run
+/path/to/vibe-model/bin/vibe-model --autonomous -v "Build a CLI calculator in TypeScript using Bun"
+
+# Validate
+cat vibe-model/prd.md          # Check PRD
+ls vibe-model/milestones/       # Check milestone files
+bun test                        # Run tests
+echo "add 2 3" | bun run cli.ts # Test the calculator
+```
+
+---
+
+## Debugging with AI
+
+When vibe-model doesn't behave correctly, you can use an AI coding agent (Claude Code, Pi, etc.) to diagnose and fix issues.
+
+### Using Verbose Mode
+
+Always use `-v` when debugging. It shows:
+- Full AI prompts (with context filtering)
+- AI command being executed
+- Token count and cost per call
+- State transitions
+
+```bash
+vibe-model -v --autonomous "goal" 2>&1 | tee debug.log
 ```
 
 ### Common Issues
 
-**TypeScript errors**:
+#### "All milestones complete!" immediately
+
+**Cause**: PRD template has empty milestones table → loop exits before running AI.
+
+**Debug**:
 ```bash
-bun run typecheck
+cat vibe-model/prd.md  # Check if milestones table is empty
 ```
 
-**Test failures**:
+**Fix**: Check `src/milestone-loop.ts` — the PRD phase should trigger when `milestones.length === 0`.
+
+#### Milestone IDs not parsed
+
+**Cause**: AI used `M1` instead of `1` in the PRD table.
+
+**Debug**:
 ```bash
-bun test
+grep '^\|' vibe-model/prd.md  # Check ID format
 ```
 
-**Lint errors**:
+**Fix**: Parser in `src/prd.ts` handles `M`/`M-` prefixes. PRD prompt says "plain integer".
+
+#### Process interrupted mid-milestone
+
+**Debug**:
 ```bash
-bun run lint
-bun run lint:fix
+vibe-model status  # Check current state
+head -5 vibe-model/milestones/*.md  # Check milestone state
 ```
 
----
+**Fix**: Run `vibe-model --autonomous` to resume.
 
-## Advanced Features
+#### AI not filling in sections
 
-### User Hints
+**Debug**: Check verbose output for what context the AI received.
 
-Provide guidance to the agent during a journey:
+**Fix**: Strengthen prompts in `src/prompts/states/`.
 
-```bash
-./vibe-model/bin/vibe-model hint "Try using FFT interpolation"
-```
-
-Hints are added to the journey file and incorporated into the next iteration.
-
-### Forced Pivot
-
-When the current approach is stuck, force a pivot to the next approach:
+### Fixing Issues
 
 ```bash
-./vibe-model/bin/vibe-model pivot
+# 1. Edit the source
+vim src/milestone-loop.ts
+
+# 2. Rebuild
+bun run typecheck && bun run build
+
+# 3. Clean test
+rm -rf e2e-test-project
+./scripts/e2e-test.sh
 ```
-
-This sets the journey state to `PIVOTING`, causing the agent to abandon the current approach and try a new one.
-
-### Forced Reflection
-
-Trigger a reflection phase to analyze progress:
-
-```bash
-./vibe-model/bin/vibe-model reflect
-```
-
-This sets the journey state to `REFLECTING`, causing the agent to analyze what has been learned and adjust strategy.
-
-### Epic Archival
-
-Archive completed epics to reduce journey file size:
-
-```bash
-./vibe-model/bin/vibe-model archive
-```
-
-This moves completed epic details to separate files, keeping the main journey file focused on current work.
-
-### Dead-End Detection
-
-The agent automatically detects dead ends using:
-
-- **MAX_STALE_ITERATIONS**: Maximum iterations without progress (default: 3)
-- **MIN_PROGRESS_PERCENT**: Minimum progress to avoid "stale" status (default: 5%)
-
-When a dead end is detected, the agent:
-1. Logs the dead end in the journey file
-2. Extracts learnings to memory.md
-3. Pivots to the next approach
-
-### Guardrails
-
-Guardrails are quality constraints enforced during the journey:
-
-**Performance Constraints**:
-- CPU Budget
-- Latency limits
-- Memory limits
-
-**Quality Assurance**:
-- Linters (clang-tidy, eslint, shellcheck)
-- Static type checkers (mypy, flow)
-- Dynamic checkers (ASan, UBSan, Valgrind)
-- Code coverage targets
-
-**Dependency Guidelines**:
-- Allowed/prohibited libraries
-- Version constraints
-- License compatibility
-
-### Spec Initiation Protocol
-
-Before starting a journey, the agent executes a Q&A protocol:
-
-1. **Metric-Driven Goals**: Current baseline and target values
-2. **Scope and Boundaries**: What's in scope and what must not be touched
-3. **Constraint Identification**: Memory, threading, standards requirements
-4. **Verification Strategy**: How to prove the goal is achieved
-5. **Anti-Pattern Mining**: Failed approaches and known gotchas
-
-After gathering this information, the agent creates a spec file and waits for user sign-off before proceeding.
 
 ---
 
 ## Troubleshooting
 
-### CLI Can't Find Parent Project
-
-Make sure you're running from the correct directory:
+### CLI Can't Find Project
 
 ```bash
-# From parent project root (recommended)
-./vibe-model/bin/vibe-model "goal"
-
-# Or specify project directory explicitly
-./vibe-model/bin/vibe-model --project-dir /path/to/project "goal"
+# Specify project directory explicitly
+vibe-model --project-dir /path/to/project "goal"
 ```
 
-### Journey Files in Wrong Location
+### Git Commits Failing
 
-Check that `vibe-model/` directory exists in parent project root:
+Ensure git is configured:
+```bash
+git config user.name "Your Name"
+git config user.email "you@example.com"
+```
+
+Vibe-model auto-commits after each state transition. If git is not configured, commits silently fail (non-fatal).
+
+### Claude CLI Not Found
 
 ```bash
-ls ../vibe-model/
-```
-
-If missing, the CLI will create it automatically.
-
-### Tests Not Running
-
-Configure your test commands in `.vibe-modelrc`:
-
-```json
-{
-  "aiProvider": "claude"
-}
+which claude  # Should return a path
+claude --version  # Should return a version
 ```
 
 ### Gemini Consultation Issues
 
-To disable Gemini consultation during design phases:
+```bash
+# Disable Gemini consultation
+vibe-model --no-consult "goal"
+```
+
+### Build Failures
 
 ```bash
-./vibe-model/bin/vibe-model --no-consult "your goal"
-```
-
-Or set the environment variable:
-
-```bash
-export CONSULT_GEMINI=false
-./vibe-model/bin/vibe-model "your goal"
-```
-
-Or in `.vibe-modelrc`:
-```json
-{
-  "consultGemini": false
-}
-```
-
-### Verbose Logging
-
-Enable verbose output for debugging:
-
-```bash
-./vibe-model/bin/vibe-model -v "your goal"
-```
-
-Or set the environment variable:
-
-```bash
-export VERBOSE=true
-./vibe-model/bin/vibe-model "your goal"
-```
-
-Or in `.vibe-modelrc`:
-```json
-{
-  "verbose": true
-}
-```
-
-### Using Gemini as Primary AI
-
-Use Gemini instead of Claude for the main loop:
-
-```bash
-./vibe-model/bin/vibe-model -g "your goal"
-```
-
-Or set the environment variable:
-
-```bash
-export AI_PROVIDER=gemini
-./vibe-model/bin/vibe-model "your goal"
-```
-
-Or in `.vibe-modelrc`:
-```json
-{
-  "aiProvider": "gemini"
-}
-```
-
-### Bun Installation Issues
-
-If Bun is not installed, visit https://bun.sh/install for installation instructions.
-
-### Binary Not Found
-
-If the vibe-model binary is not found after building:
-
-```bash
-# Rebuild the executable
-cd vibe-model
-bun run compile
-
-# Verify the binary exists
-ls -la dist/vibe-model
-
-# Add to PATH (temporary)
-export PATH="$(pwd)/dist:$PATH"
-
-# Add to PATH (permanent - add to ~/.zshrc or ~/.bashrc)
-echo 'export PATH="/path/to/vibe-model/dist:$PATH"' >> ~/.zshrc
-```
-
-### Git Workflow
-
-All code changes, V-Model outputs, and journey files are committed to the **parent project repository**.
-
-```bash
-# Run V-Model loop from parent project root
-./vibe-model/bin/vibe-model "improve performance"
-
-# When ready to commit (from parent project root):
-git add vibe-model/journey/your-journey.md
-git add src/changed_file.ts
-git commit -m "feat: improve performance"
+bun run typecheck  # Check for type errors
+bun run build      # Rebuild
+bun run lint       # Check for lint errors
 ```
 
 ---
 
-## Cross-Platform Considerations
+## Directory Structure
 
-### Platform-Specific Notes
-
-**Windows (PowerShell/CMD)**
-
-- Use the compiled `vibe-model.exe` from the `dist` directory
-- Git Bash or WSL recommended for best compatibility
-- Some build/test commands may need Windows-specific syntax:
-  ```json
-  {
-    "buildCommand": "npm run build",
-    "testCommand": "npm test",
-    "allTestsCommand": "npm run test:all"
-  }
-  ```
-
-**macOS and Linux**
-
-- Direct CLI execution works as documented
-- Bash/zsh shell syntax assumed in examples
-- GNU/BSD sed differences handled automatically by file-utils.ts
-
-### Path Handling
-
-The V-Model CLI automatically handles path resolution across platforms:
-
-- **Unix (macOS/Linux)**: Uses `/` path separator
-- **Windows**: Converts to `\` path separator automatically
-- **Mixed environments**: Automatic detection and conversion
-
-### Line Endings
-
-- Journey files use platform-native line endings
-- Git auto-conversion recommended: `git config --global core.autocrlf true`
-- `.gitattributes` in the project ensures consistency
-
-### Executable Permissions
-
-**macOS/Linux**: The compiled binary should already be executable. If not:
-```bash
-chmod +x vibe-model/dist/vibe-model
 ```
+your-project/
+├── vibe-model/
+│   ├── prd.md                        # PRD with milestones table
+│   └── milestones/
+│       ├── 01-project-setup.md       # Milestone tracking files
+│       ├── 02-core-logic.md
+│       └── ...
+└── (source code created by AI agent)
 
-**Windows**: Executable permissions not required (handled by file extension)
+vibe-model/  (this repository)
+├── src/
+│   ├── index.ts                      # CLI entry point
+│   ├── config.ts                     # Configuration
+│   ├── types.ts                      # MilestoneState enum, interfaces
+│   ├── constants.ts                  # Path constants, templates
+│   ├── prd.ts                        # PRD file operations
+│   ├── milestone.ts                  # Milestone file operations
+│   ├── milestone-state-machine.ts    # State transitions
+│   ├── milestone-loop.ts             # Main orchestration loop
+│   ├── ai-provider.ts                # Claude/Gemini execution
+│   ├── checkpoint.ts                 # Git commit operations
+│   └── prompts/
+│       ├── milestone-context.ts      # Section filtering
+│       └── states/                   # Phase-specific prompts
+├── bin/
+│   └── vibe-model                    # Executable CLI
+├── scripts/
+│   ├── e2e-test.sh                   # E2E test harness
+│   ├── sanity_checks.sh              # Pre-commit checks
+│   └── copy-ai-instructions.sh       # Sync AI instruction files
+├── USER_GUIDE.md                     # This file
+├── AGENTS.md                         # AI agent quick reference
+├── vibe-model.md                     # Protocol specification
+└── README.md                         # Project overview
+```
 
 ---
 
 ## Additional Resources
 
-- **[Protocol Specification](vibe-model.md)** - Complete V-Model protocol definition
-- **[Claude Code Quick Reference](CLAUDE.md)** - Quick reference for AI agents
-- **[README](README.md)** - Project overview and links
-- **[TypeScript Implementation](README_TS.md)** - TypeScript architecture details
-
----
-
-## When to Use V-Model
-
-**Use V-Model when**:
-- Complex R&D tasks with uncertain solutions
-- Tasks requiring formal verification
-- Architecture changes affecting multiple components
-- Performance optimization with specific targets
-
-**Use simpler approaches when**:
-- Simple bug fixes
-- Well-defined feature additions
-- Documentation updates
-- Routine maintenance
+- **[AGENTS.md](AGENTS.md)** - Quick reference for AI agents (synced to CLAUDE.md, GEMINI.md)
+- **[vibe-model.md](vibe-model.md)** - Protocol specification
+- **[README.md](README.md)** - Project overview
+- **[docs/e2e-harness.md](docs/e2e-harness.md)** - E2E test design document

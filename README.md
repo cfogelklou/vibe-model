@@ -1,369 +1,157 @@
 # AI V-Model
 
-> **Autonomous R&D agent using the V-Model development lifecycle with formal verification.**
+> **Autonomous R&D agent using a milestone-based development lifecycle.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI Status](https://img.shields.io/github/actions/workflow/status/cfogelklou/vibe-model/.github%2Fworkflows%2Fci.yml?branch=bun)](https://github.com/cfogelklou/vibe-model/actions/workflows/ci.yml)
 
-An autonomous R&D agent using the V-Model protocol. Works with any project (C++, JavaScript, PWA, etc.) using Claude Code or Gemini.
-
-Implemented in TypeScript for better maintainability, type safety, and cross-platform compatibility.
+An autonomous R&D agent that decomposes goals into milestones and builds them using Claude Code or Gemini. Implemented in TypeScript for type safety and cross-platform compatibility.
 
 ---
 
 ## Features
 
-- **Goal-driven development**: Works toward ambitious goals without pre-defined plans
-- **Formal V-Model lifecycle**: Requirements → Design → Implementation → Verification
-- **Design review**: Automatic Gemini consultation for design quality
+- **Goal-driven development**: Describe what you want, the AI builds it
+- **Milestone decomposition**: Goals split into 3-8 independently deliverable milestones
+- **Milestone lifecycle**: PRD → REQUIREMENTS → DESIGN → IMPLEMENTATION → TESTING → DELIVERY
+- **Sub-agent reviews**: Optional architecture, code, testability, and UX reviews
+- **Human-in-the-loop**: Pause between phases for review, or run fully autonomous
 - **Research integration**: Web search, codebase exploration, external consultation
-- **Safe rollback**: Git checkpointing at key milestones
-- **Memory persistence**: Learnings persist across sessions
-- **Dead-end detection**: Automatic pivot when approaches stagnate
-- **Quality guardrails**: Linting, static analysis, performance thresholds
-- **Type-safe implementation**: TypeScript with strict mode for reliability
-- **Cross-platform support**: Works on macOS, Linux, and Windows
+- **Git auto-commit**: Checkpoint after every state transition
+- **Type-safe TypeScript**: Strict mode, portable file operations
+- **Cross-platform**: macOS, Linux, Windows
 
 ---
 
 ## Quick Start
 
-### Installation
-
 ```bash
 # 1. Install Bun
 curl -fsSL https://bun.sh/install | bash
 
-# 2. Clone or download this repository
-git clone https://github.com/cfogelklou/vibe-model.git
-cd vibe-model
+# 2. Build vibe-model
+cd vibe-model && bun install && bun run build
 
-# 3. Install dependencies
-bun install
+# 3. Create a target project
+mkdir /tmp/my-project && cd /tmp/my-project
+git init && echo "# My Project" > README.md
+git add . && git commit -m "init"
 
-# 4. Build the binary for your platform
-bun run build
-
-# 5. Add the compiled binary to your PATH
-# For example, on macOS/Linux:
-export PATH="$PATH:$(pwd)/bin"
-# Or copy it to a directory in your PATH:
-cp bin/vibe-model /usr/local/bin/
-
-# 6. Start a new journey
-vibe-model "your goal here"
-```
-
-**Note**: You can also run the binary directly from the `bin/` directory without adding it to your PATH:
-```bash
-./bin/vibe-model "your goal here"
+# 4. Run vibe-model
+/path/to/vibe-model/bin/vibe-model --autonomous "Build a CLI calculator in TypeScript using Bun"
 ```
 
 ---
 
-## Basic Usage
+## Usage
 
 ```bash
-# Start a new journey
-vibe-model "reduce latency to under 10ms"
+# Start a new project (autonomous mode)
+vibe-model --autonomous "your goal here"
 
-# Continue active journey
-vibe-model
+# Start with human-in-the-loop pauses
+vibe-model "your goal here"
 
-# Check status of all journeys
+# Continue after interruption
+vibe-model --autonomous
+
+# Check status
 vibe-model status
 
-# Add a hint to guide the agent
-vibe-model hint "try using FFT interpolation"
-
-# Force pivot to next approach
-vibe-model pivot
-
-# Force reflection phase
-vibe-model reflect
-
-# Archive completed epics
-vibe-model archive
-
-# Rollback to last checkpoint
-vibe-model rollback [checkpoint_id]
-
-# List all checkpoints
-vibe-model list-checkpoints
+# Add a hint
+vibe-model hint "use requestAnimationFrame"
 ```
 
 ### CLI Options
 
-```bash
--v, --verbose             Enable verbose output
--g, --gemini              Use Gemini AI instead of Claude
--m, --mvp                 Enable MVP mode (skip most testing for faster CI)
---go                      Enable GO mode (for AI agents testing vibe-model - avoids recursion)
---no-consult              Disable Gemini consultation
---project-dir <path>      Specify project directory
---config <path>           Specify config file
---no-push                 Disable auto-push after iterations
---commit-interval <n>     Commit every N iterations (default: 1)
-```
-
-**Note:** `--go` takes precedence over `--mvp` if both are specified.
+| Option | Description |
+|--------|-------------|
+| `-v, --verbose` | Show AI prompts and costs |
+| `-g, --gemini` | Use Gemini instead of Claude |
+| `--autonomous` | Skip human-in-the-loop pauses |
+| `--review` | Enable sub-agent reviews |
+| `--no-consult` | Disable Gemini consultation |
+| `--project-dir <path>` | Specify project directory |
 
 ---
 
-## V-Model Workflow
+## Milestone Lifecycle
 
 ```
-REQUIREMENTS ───────────────→ ACCEPTANCE_TEST
-     ↓                             ↑
-[DESIGN_REVIEW]                    |
-     ↓                             |
-  SYSTEM_DESIGN ──────────→ SYSTEM_TEST
-       ↓                         ↑
-  [DESIGN_REVIEW]                |
-       ↓                         |
-    ARCH_DESIGN ────────→ INTEGRATION_TEST
-         ↓                       ↑
-  [DESIGN_REVIEW]                |
-         ↓                       |
-    MODULE_DESIGN ───────→ UNIT_TEST
-          ↓                    ↑
-          └── IMPLEMENTATION ──┘
+PRD (generate milestones)
+  │
+  ├── Milestone 1: REQUIREMENTS → DESIGN → IMPLEMENTATION → UNIT_TEST → INTEGRATION_TEST → DELIVERY
+  ├── Milestone 2: REQUIREMENTS → DESIGN → IMPLEMENTATION → UNIT_TEST → INTEGRATION_TEST → DELIVERY
+  └── ...
+      │
+      └── COMPLETE
 ```
+
+Each milestone produces a testable increment. The AI generates requirements, designs, implements code, runs tests, and delivers — all autonomously.
 
 ---
 
-## V-Model States
+## File Structure
 
-| State | Description |
-|:------|:-------------|
-| `REQUIREMENTS` | Formalizing User Requirements into System Requirements |
-| `SYSTEM_DESIGN` | High-level architectural planning (Epics) |
-| `ARCH_DESIGN` | Component-level design (Sub-systems/Interfaces) |
-| `MODULE_DESIGN` | Low-level logic design for a single Story |
-| `IMPLEMENTATION` | Coding the specific module/story |
-| `UNIT_TEST` | Verifying the specific module logic |
-| `INTEGRATION_TEST` | Verifying interaction with the system |
-| `SYSTEM_TEST` | Verifying against original Spec |
-| `ACCEPTANCE_TEST` | Final validation against User Requirements |
-| `PROTOTYPING` | Optional experimental phase |
-| `WAITING_FOR_USER` | Awaiting clarification or sign-off |
-| `CONSOLIDATING` | Cleaning up, syncing to memory.md, final verification |
-| `COMPLETE` | Goal achieved, journey finished |
-| `BLOCKED` | Blocked by external dependency or error |
-| `DESIGN_REVIEW` | Automatic state for Gemini consultation |
-| `REVIEWING` | Code quality review phase |
-| `ARCHIVING` | Archiving completed epics |
-| `PIVOTING` | Forced pivot to next approach |
-| `REFLECTING` | Forced reflection phase |
+```
+your-project/
+├── vibe-model/
+│   ├── prd.md                     # PRD with milestones table
+│   └── milestones/
+│       ├── 01-project-setup.md    # Milestone tracking
+│       ├── 02-core-logic.md
+│       └── ...
+└── (source code created by AI)
+```
 
 ---
 
 ## Configuration
 
-Configure via environment variables or `.vibe-modelrc` config file:
-
-### Environment Variables
-
 ```bash
-export AI_PROVIDER="claude"        # Primary AI provider (claude|gemini)
-export MAX_ITERATIONS="100"        # Maximum loop iterations
-export CONSULT_GEMINI="true"       # Enable Gemini design review
-./vibe-model/bin/vibe-model "add feature X"
-```
+# Environment variables
+export AI_PROVIDER="claude"       # claude or gemini
+export HIL_MODE="false"           # autonomous mode
+export REVIEW_ENABLED="true"      # sub-agent reviews
 
-### Config File (.vibe-modelrc)
-
-Create a `.vibe-modelrc` file in your project directory or home directory:
-
-```json
+# Or .vibe-modelrc file
 {
   "aiProvider": "claude",
-  "maxIterations": 100,
-  "consultGemini": true,
-  "projectDir": "./my-project",
-  "verbose": false,
-  "noPush": false,
-  "commitInterval": 1
+  "autonomous": true,
+  "reviewEnabled": false
 }
 ```
 
-**Configuration Priority**: CLI arguments → Environment variables → Config file → Defaults
+Priority: CLI args → Environment → Config file → Defaults
 
 ---
 
-## Directory Structure
+## E2E Testing
 
+```bash
+# Run the full E2E test harness
+./scripts/e2e-test.sh
+
+# Validate existing output only
+./scripts/e2e-test.sh --skip-run
 ```
-your-project/
-├── vibe-model/                 # V-Model outputs (created by script)
-│   ├── journey/                # Journey tracking files
-│   ├── prototypes/             # Experimental code (user-managed)
-│   └── memory.md               # Knowledge persistence
-└── vibe-model/                 # This repository
-    ├── package.json            # Bun project config
-    ├── tsconfig.json           # TypeScript config
-    ├── src/
-    │   ├── index.ts            # Main entry point (CLI)
-    │   ├── <etc.>
-    │   └── __tests__/unit/     # Unit tests
-    ├── bin/
-    │   └── vibe-model          # Executable script, after bun run compile
-    ├── prompts/                # AI prompt templates
-    ├── USER_GUIDE.md           # Complete user manual
-    ├── vibe-model.md           # Protocol specification
-    ├── CLAUDE.md               # Quick reference
-    └── README.md               # This file
-```
-
----
-
-## Architecture
-
-### Key Modules
-
-- **types.ts**: Core types (VModelState, Journey, Epic, Checkpoint, VModelError)
-- **config.ts**: Flexible path resolution, config loading, environment parsing
-- **logger.ts**: ANSI color logging with verbose mode support
-- **file-utils.ts**: Portable file operations (sed, insert, append, strip ANSI)
-- **journey.ts**: Journey file CRUD, state management, learning tracking
-- **design-spec.ts**: Design spec operations, prompt template resolution
-- **epic-archival.ts**: Epic file creation/updates, archival logic
-- **checkpoint.ts**: Git checkpoint operations, rollback, safety checks
-- **ai-provider.ts**: Claude/Gemini CLI execution, stream JSON parsing
-- **state-machine.ts**: State transitions, epic transitions, previous phase tracking
-- **main-loop.ts**: Main iteration loop, state-specific handlers
-- **index.ts**: CLI entry point with commander.js
-
-### Technical Features
-
-**Stream JSON Parsing**
-- Robust streaming JSON parser for Claude CLI `--output-format stream-json`
-- Handles partial messages and delta chunks
-- Proper chunk reassembly at buffer boundaries
-- Multi-line JSON object support
-- Tool use extraction
-
-**Portable File Operations**
-- Cross-platform file operations that work on macOS (BSD sed) and Linux (GNU sed)
-- `sedInplace()`: Portable in-place sed replacement
-- `insertAfterLine()`: Insert text after line N
-- `insertBeforeLine()`: Insert text before line N
-- `appendToFile()`: Append with ANSI code stripping
-- `stripAnsi()`: Remove ANSI escape sequences
-
-**Flexible Path Resolution**
-- Works in same directory as project
-- Automatic detection with `--project-dir` override support
-
-**Signal Handling**
-- SIGINT (Ctrl+C): Exit code 130
-- SIGTERM: Exit code 143
-- SIGHUP: Exit code 129
-- Child process cleanup
-- Temp file removal
-
----
-
-## GitHub Actions Integration
-
-You can integrate V-Model into your CI/CD pipeline using GitHub Actions:
-
-```yaml
-name: V-Model Journey
-on:
-  workflow_dispatch:
-    inputs:
-      goal:
-        description: 'Development goal'
-        required: true
-        default: 'improve performance'
-
-jobs:
-  vmodel-journey:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Bun
-        run: curl -fsSL https://bun.sh/install | bash
-
-      - name: Install V-Model dependencies
-        run: cd vibe-model && bun install
-
-      - name: Build V-Model binary
-        run: cd vibe-model && bun run build
-
-      - name: Run V-Model journey
-        run: ./vibe-model/bin/vibe-model "${{ github.event.inputs.goal }}"
-        env:
-          AI_PROVIDER: claude
-          MAX_ITERATIONS: 50
-```
-
----
-
-## When to Use V-Model
-
-**Use V-Model when**:
-- Complex R&D tasks with uncertain solutions
-- Tasks requiring formal verification
-- Architecture changes affecting multiple components
-- Performance optimization with specific targets
-
-**Use simpler approaches when**:
-- Simple bug fixes
-- Well-defined feature additions
-- Documentation updates
-- Routine maintenance
 
 ---
 
 ## Development
 
-### Running Tests
-
 ```bash
-# Run all tests
-bun test
-
-# Run unit tests only
-bun test src/__tests__/unit
-
-# Run specific test file
-bun test src/__tests__/unit/utils.test.ts
-```
-
-### Building
-
-```bash
-# Build for production
-bun run build
-
-# Output will be in bin/index.js
-```
-
-### Type Checking
-
-```bash
-# Run TypeScript compiler
-bun --type-check
-```
-
-### Linting
-
-```bash
-# Run ESLint
-bun run lint
-
-# Fix linting issues
-bun run lint:fix
+bun run typecheck   # TypeScript type checking
+bun run build       # Build bin/vibe-model
+bun run lint        # ESLint
+bun test            # Run tests
+./scripts/sanity_checks.sh  # All checks
 ```
 
 ---
 
 ## Requirements
 
-- **Bun runtime** (https://bun.sh)
+- **Bun** (https://bun.sh)
 - **Git**
 - **Claude Code CLI** or **Gemini CLI**
 
@@ -371,27 +159,15 @@ bun run lint:fix
 
 ## Documentation
 
-| Document | Audience | Description |
-|----------|----------|-------------|
-| **[USER_GUIDE.md](USER_GUIDE.md)** | Users | Complete user manual with commands, configuration, troubleshooting |
-| **[vibe-model.md](vibe-model.md)** | AI Agents | Formal V-Model protocol specification |
-| **[CLAUDE.md](CLAUDE.md)** | AI Agents | Quick reference for Claude Code agents |
-| **[README.md](README.md)** | All | Project overview and architecture |
-
----
-
-## Contributing
-
-Contributions are welcome! When contributing to vibe-model, keep all modifications **project-agnostic** to ensure the tool remains portable and reusable across all projects that depend on it.
+| Document | Description |
+|----------|-------------|
+| **[USER_GUIDE.md](USER_GUIDE.md)** | Complete user manual |
+| **[AGENTS.md](AGENTS.md)** | AI agent quick reference |
+| **[vibe-model.md](vibe-model.md)** | Protocol specification |
+| **[docs/e2e-harness.md](docs/e2e-harness.md)** | E2E test design |
 
 ---
 
 ## License
 
 MIT License - See [LICENSE](LICENSE) for details.
-
----
-
-## Links
-
-- **GitHub Repository**: https://github.com/cfogelklou/vibe-model
