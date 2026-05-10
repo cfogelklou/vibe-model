@@ -73,11 +73,8 @@ Generate a lean Product Requirements Document (prd.md) for this goal.
 
 Milestones are ordered by user value delivery. Earlier milestones provide working software to users as quickly as possible.
 
-### State Transition:
+### Output:
 
-When prd.md is written, create the first milestone file:
-- Set \`- State: REQUIREMENTS\`
-- Set \`- Progress: 0%\`
-- Leave all content sections empty.
+Write **only** the prd.md file. Do NOT create any milestone files — the orchestrator will create them automatically from the milestones table.
 `;
 }
