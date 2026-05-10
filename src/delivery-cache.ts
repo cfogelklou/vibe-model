@@ -12,9 +12,7 @@
 import { promises as fs, mkdirSync } from "fs";
 import path from "path";
 import type { DeliverySummary } from "./types";
-import { VIBE_MODEL_DIR, sanitizeName } from "./constants";
-
-const DELIVERY_CACHE_DIR = "delivery-summaries";
+import { VIBE_MODEL_DIR, sanitizeName, DELIVERY_CACHE_DIR } from "./constants";
 
 /**
  * Returns the full path to a delivery summary file.

@@ -22,7 +22,6 @@ import { PRD_REVIEWERS, type ReviewerType } from "./constants";
  */
 export async function runPRDReview(
   projectDir: string,
-  prdContent: string,
   iteration: number
 ): Promise<PRDReview> {
   const results: PRDReviewResult[] = [];
@@ -34,9 +33,7 @@ export async function runPRDReview(
 
     const prompt = await generatePRDReviewPrompt(
       projectDir,
-      
       reviewerType as "architecture" | "testability" | "ux",
-      prdContent,
       iteration
     );
 
@@ -72,7 +69,6 @@ export async function runPRDReview(
 async function generatePRDReviewPrompt(
   projectDir: string,
   reviewerType: "architecture" | "testability" | "ux",
-  prdContent: string,
   iteration: number
 ): Promise<string> {
   const prd = await readPRD(projectDir);

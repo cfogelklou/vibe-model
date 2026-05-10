@@ -7,7 +7,6 @@
 /**
  * Milestone-based state machine and transition logic.
  * This is the new lifecycle system that replaces the legacy VModelState state machine.
- * The legacy state-machine.ts remains until Phase 7.
  */
 
 import { MilestoneState, type Config, type PRDFile } from "./types";

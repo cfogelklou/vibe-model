@@ -453,7 +453,8 @@ export async function runReview(
  * Parse the raw review output into a structured ReviewResult.
  *
  * Looks for "VERDICT: PASS" or "VERDICT: FAIL" in the output text,
- * then extracts individual findings (BLOCKER/MAJOR/MINOR lines).
+ * or "SCORE: +2" (pass) / "SCORE: -1" (fail) for PRD reviews.
+ * Then extracts individual findings (BLOCKER/MAJOR/MINOR lines).
  */
 function parseReviewOutput(
   reviewerType: ReviewerType,
@@ -461,11 +462,22 @@ function parseReviewOutput(
 ): ReviewResult {
   const upper = output.toUpperCase();
 
-  const pass = upper.includes("VERDICT: PASS") || upper.includes("PASS");
-  const fail = upper.includes("VERDICT: FAIL") || upper.includes("FAIL");
+  // Check for VERDICT markers
+  const hasVerdictPass = upper.includes("VERDICT: PASS");
+  const hasVerdictFail = upper.includes("VERDICT: FAIL");
 
-  // If neither is found, treat as a pass (conservative — don't block on unclear output)
-  const isPass = fail ? false : pass ? true : true;
+  // Check for SCORE markers (used by PRD reviews)
+  const hasScorePass = upper.includes("SCORE: +2") || upper.includes("SCORE:+2");
+  const hasScoreFail = upper.includes("SCORE: -1") || upper.includes("SCORE:-1");
+
+  // Legacy fallback: look for PASS/FAIL words (broad, can cause false positives)
+  const hasPassWord = upper.includes("PASS");
+  const hasFailWord = upper.includes("FAIL");
+
+  // Determine pass/fail: explicit markers take priority, score markers next, then words
+  const hasPassMarker = hasVerdictPass || hasScorePass;
+  const hasFailMarker = hasVerdictFail || hasScoreFail;
+  const isPass = hasFailMarker ? false : hasPassMarker ? true : hasFailWord ? false : hasPassWord ? true : true;
 
   // Extract findings from lines like "- [BLOCKER] ..." or "- [MAJOR] ..."
   const findings: string[] = [];

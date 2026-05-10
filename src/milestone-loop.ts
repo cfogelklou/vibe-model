@@ -387,10 +387,8 @@ async function runPRDReviewLoop(
     logInfo(`PRD review iteration ${reviewState.iteration + 1}...`);
 
     // Run review
-    const prdContent = await fs.readFile(prdPath, "utf-8");
     const review = await runPRDReview(
       projectDir,
-      prdContent,
       reviewState.iteration + 1
     );
 

@@ -80,7 +80,7 @@ export function createMilestoneFile(
 ## Design
 *(To be filled during DESIGN phase)*
 
-### Test Specifications
+## Test Specifications
 *(NL test cases written during DESIGN)*
 
 ## Research Notes
@@ -145,7 +145,7 @@ export async function readMilestoneFile(filePath: string): Promise<MilestoneFile
   // Extract sections by name
   const requirements = extractSectionContent(content, "Requirements");
   const design = extractSectionContent(content, "Design");
-  const testSpecifications = extractSubSectionContent(content, "Test Specifications");
+  const testSpecifications = extractSectionContent(content, "Test Specifications");
   const researchNotes = extractSectionContent(content, "Research Notes");
   const implementationNotes = extractSectionContent(content, "Implementation Notes");
   const unitTestResults = extractSectionContent(content, "Unit Test Results");
@@ -202,15 +202,17 @@ export async function setMilestoneState(
 
 /**
  * Updates the Pending Transition line in the Status section.
+ * Pass null to clear the pending transition (writes "NONE").
  */
 export async function setPendingTransition(
   filePath: string,
-  state: MilestoneState
+  state: MilestoneState | null
 ): Promise<void> {
+  const value = state === null ? "NONE" : state;
   await sedInplace(
     filePath,
     /^- Pending Transition: .*$/m,
-    `- Pending Transition: ${state}`
+    `- Pending Transition: ${value}`
   );
 }
 
@@ -310,19 +312,6 @@ export async function addLearning(
 function extractSectionContent(content: string, sectionName: string): string {
   const regex = new RegExp(
     `^## ${escapeRegex(sectionName)}$\\n([\\s\\S]*?)(?=^## |$)`,
-    "m"
-  );
-  const match = regex.exec(content);
-  return match ? match[1].trim() : "";
-}
-
-/**
- * Extracts the text content of a sub-section `### {name}` (stops at the
- * next `## ` or `### ` heading, or end-of-file).
- */
-function extractSubSectionContent(content: string, sectionName: string): string {
-  const regex = new RegExp(
-    `^### ${escapeRegex(sectionName)}$\\n([\\s\\S]*?)(?=^## |^### |$)`,
     "m"
   );
   const match = regex.exec(content);

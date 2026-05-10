@@ -154,9 +154,10 @@ export async function setMilestoneStatus(
 ): Promise<void> {
   const prdPath = getPRDPath(projectDir);
   // Build a regex that matches the exact row for this milestone ID.
+  // Supports formats: | 1 |, | 01 |, | M1 | (with optional M prefix and zero-padding)
   // We replace only the status column (4th column).
   const rowRegex = new RegExp(
-    `^(\\|\\s*${id}\\s*\\|\\s*[^|]+\\|\\s*[^|]+\\|\\s*)[^|]+(\\|.*)$`,
+    `^(\\|\\s*(?:M?)0*${id}\\s*\\|\\s*[^|]+\\|\\s*[^|]+\\|\\s*)[^|]+(\\|.*)$`,
     "m"
   );
   await sedInplace(prdPath, rowRegex, `$1${status} $2`);

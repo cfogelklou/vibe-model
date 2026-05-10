@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to copy CLAUDE.md to GEMINI.md, .github/copilot-instructions.md, and AGENTS.md
+# Script to copy AGENTS.md to GEMINI.md, .github/copilot-instructions.md, and CLAUDE.md
 # This ensures all AI instruction files stay in sync
 #
 # If .github/copilot-instructions-addendum.md exists, it will be appended
