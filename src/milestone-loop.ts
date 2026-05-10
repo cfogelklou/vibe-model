@@ -419,13 +419,13 @@ async function runPRDReviewLoop(
         return;
       }
 
-      // Autonomous mode: hard fail unless --force flag
-      if (config.force !== true) {
-        logError("Max iterations reached in autonomous mode. PRD review failed.");
-        process.exit(1);
+      // Autonomous mode: proceed anyway with a warning
+      if (!config.autonomous) {
+        logInfo("Please review prd-review.md and run 'continue' when ready.");
+        return;
       }
 
-      logWarning("Max iterations reached but --force set. Proceeding with unresolved issues.");
+      logWarning("Max iterations reached in autonomous mode. Proceeding with current PRD.");
       break;
     }
 

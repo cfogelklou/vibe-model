@@ -128,8 +128,10 @@ This is review iteration ${iteration}.
 1. Evaluate the PRD against your review criteria (see system prompt above).
 2. List specific findings with severity (BLOCKER, MAJOR, MINOR).
 3. Return your verdict with score:
-   - SCORE: +2 (approve, no blockers/majors)
-   - SCORE: -1 (block, one or more blockers/majors)
+   - SCORE: +2 (approve — no blockers or majors. Minor findings are acceptable and do not block approval.)
+   - SCORE: -1 (block — one or more BLOCKER or MAJOR issues that must be fixed before proceeding)
+
+   **IMPORTANT**: If all findings are MINOR severity, you MUST score +2 (approve). Only BLOCKER or MAJOR findings justify a -1 score.
 
 ### Output Format:
 

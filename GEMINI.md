@@ -180,6 +180,58 @@ This ensures the submodule remains portable and reusable across all projects tha
 
 ---
 
+## Prompt Engineering Guidelines
+
+All AI prompts live in `src/prompts/states/`. When modifying them:
+
+### 1. Orchestrator owns file creation, not the AI
+
+Never tell the AI agent to create, rename, or delete milestone files, PRD files, or any file whose path is derived from PRD data. The orchestrator (`milestone-loop.ts`) creates files programmatically from the PRD table. If the AI also creates them, you get duplicates with mismatched names.
+
+```diff
+- When prd.md is written, create the first milestone file
++ Write **only** the prd.md file. Do NOT create any milestone files.
+```
+
+### 2. Never put the AI in a loop it can't exit
+
+Review loops (PRD review, sub-agent review) must have:
+- A hard iteration cap (e.g., `maxIterations: 5`)
+- A degradation path: approve-with-warnings, defer-to-human, or `--force` bypass
+- Clear, achievable acceptance criteria — not subjective standards like "thoroughly reviewed"
+
+The PRD review loop should approve a PRD that is *good enough*, not *perfect*. A 5-iteration loop that never approves is a bug in the review prompt, not the PRD.
+
+### 3. Keep prompts scoped to one phase
+
+Each phase prompt should only instruct the AI to do work for that phase:
+- REQUIREMENTS: define what, not how
+- DESIGN: specify how, don't implement
+- IMPLEMENTATION: write code, don't change requirements
+- UNIT_TEST: verify isolated logic, don't redesign
+- INTEGRATION_TEST: verify cross-component behavior
+- DELIVERY: package and summarize, don't add features
+
+Cross-phase instructions confuse the AI and produce bloated outputs.
+
+### 4. Prefer programmatic context over prompt instructions
+
+If the AI needs information (previous milestones, PRD goal, tech stack), inject it via `MilestonePromptVars` — don't tell the AI to "check prd.md" or "look at previous milestones." Programmatic injection is reliable; instruction-based discovery is not.
+
+```typescript
+// Good: injected by orchestrator
+vars.PRD_CONTEXT = `## Original Goal\n${prd.goal}`;
+
+// Bad: AI has to find and read the file itself
+// "Read prd.md to understand the project goal"
+```
+
+### 5. Test prompts with simple goals first
+
+A prompt that fails on "build a calculator" will fail on everything. Test with the E2E harness before testing with complex goals.
+
+---
+
 ## Pre-Completion Sanity Checks
 
 **Before marking any AI-driven development on the AI tools themselves as complete, ALWAYS run:**
