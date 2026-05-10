@@ -46,9 +46,9 @@ export async function extractDeliverySummary(
 
   const content = await fs.readFile(milestonePath, "utf-8");
 
-  // Strategy 1: Extract "## Deliverables:" section
+  // Strategy 1: Extract "## Delivery" section for bullet items
   const deliverablesMatch = content.match(
-    /## Deliverables\s*\n((?:\s*[-*]\s+.+\n?)+)/i
+    /## Delivery\s*\n((?:\s*[-*]\s+.+\n?)+)/i
   );
   let deliverables: string[] = [];
   if (deliverablesMatch) {
