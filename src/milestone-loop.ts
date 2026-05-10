@@ -452,6 +452,56 @@ async function runPRDReviewLoop(
 }
 
 // ---------------------------------------------------------------------------
+// Milestone completion handler (shared by milestoneLoop and continueMilestone)
+// ---------------------------------------------------------------------------
+
+/**
+ * After the state loop finishes, check milestone state and handle completion.
+ * Caches delivery summary after DELIVERY phase and recurses to next milestone.
+ */
+async function handleMilestoneCompletion(
+  projectDir: string,
+  prdPath: string,
+  activeMilestone: { id: number; name: string; modeOverride?: string | null },
+  milestonePath: string,
+): Promise<void> {
+  const finalState = await getMilestoneState(milestonePath);
+
+  // Cache delivery summary after DELIVERY phase (even if not COMPLETE yet)
+  if (finalState === MilestoneState.DELIVERY || finalState === MilestoneState.COMPLETE) {
+    try {
+      await cacheDeliverySummary(projectDir, activeMilestone.id, activeMilestone.name);
+      logInfo(`Delivery summary cached for milestone #${activeMilestone.id}`);
+    } catch (err) {
+      logWarning(`Failed to cache delivery summary: ${err}`);
+    }
+  }
+
+  if (!isTerminalState(finalState)) {
+    // Not COMPLETE — state loop paused (HIL) or timed out
+    logInfo(`Milestone #${activeMilestone.id} ended at ${finalState}`);
+    return;
+  }
+
+  logSuccess(`Milestone #${activeMilestone.id} complete!`);
+
+  await commitChanges(
+    `milestone(complete): milestone #${activeMilestone.id} — ${activeMilestone.name}`,
+  );
+
+  await setMilestoneStatus(projectDir, activeMilestone.id, "COMPLETE");
+
+  const updatedPrd = await readPRD(projectDir);
+  if (isLastMilestone(updatedPrd)) {
+    logSuccess("All milestones complete — project done!");
+    return;
+  }
+
+  logInfo("Advancing to next milestone...");
+  await milestoneLoop(prdPath);
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -574,39 +624,8 @@ export async function milestoneLoop(prdPath: string): Promise<void> {
   // Run the state loop
   await runStateLoop(prdPath, milestonePath, prdContent, modeOverride);
 
-  // After the state loop, check if the milestone is COMPLETE
-  const finalState = await getMilestoneState(milestonePath);
-  if (isTerminalState(finalState)) {
-    logSuccess(`Milestone #${activeMilestone.id} complete!`);
-
-    // Cache delivery summary BEFORE setting COMPLETE state
-    if (finalState === MilestoneState.DELIVERY) {
-      await cacheDeliverySummary(projectDir, activeMilestone.id, activeMilestone.name);
-      logInfo(`Delivery summary cached for milestone #${activeMilestone.id}`);
-    }
-
-    await commitChanges(
-      `milestone(complete): milestone #${activeMilestone.id} — ${activeMilestone.name}`,
-    );
-
-    // Update PRD status
-    await setMilestoneStatus(
-      projectDir,
-      activeMilestone.id,
-      "COMPLETE",
-    );
-
-    // Check if there are more milestones
-    const updatedPrd = await readPRD(projectDir);
-    if (isLastMilestone(updatedPrd)) {
-      logSuccess("All milestones complete — project done!");
-      return;
-    }
-
-    // Recurse to start the next milestone
-    logInfo("Advancing to next milestone...");
-    await milestoneLoop(prdPath);
-  }
+  // After the state loop, cache delivery summary and handle completion
+  await handleMilestoneCompletion(projectDir, prdPath, activeMilestone, milestonePath);
 }
 
 /**
@@ -670,30 +689,7 @@ export async function continueMilestone(prdPath: string): Promise<void> {
   // Run the state loop from the new state
   await runStateLoop(prdPath, milestonePath, prdContent, modeOverride);
 
-  // After the state loop, check if the milestone is COMPLETE
-  const finalState = await getMilestoneState(milestonePath);
-  if (isTerminalState(finalState)) {
-    logSuccess(`Milestone #${activeMilestone.id} complete!`);
-
-    // Cache delivery summary BEFORE setting COMPLETE state
-    if (finalState === MilestoneState.DELIVERY) {
-      await cacheDeliverySummary(projectDir, activeMilestone.id, activeMilestone.name);
-      logInfo(`Delivery summary cached for milestone #${activeMilestone.id}`);
-    }
-
-    await commitChanges(
-      `milestone(complete): milestone #${activeMilestone.id} — ${activeMilestone.name}`,
-    );
-
-    await setMilestoneStatus(projectDir, activeMilestone.id, "COMPLETE");
-
-    const updatedPrd = await readPRD(projectDir);
-    if (isLastMilestone(updatedPrd)) {
-      logSuccess("All milestones complete — project done!");
-      return;
-    }
-
-    logInfo("Advancing to next milestone...");
-    await milestoneLoop(prdPath);
-  }
+  // After the state loop, cache delivery summary and handle completion
+  await handleMilestoneCompletion(projectDir, prdPath, activeMilestone, milestonePath);
 }
+
