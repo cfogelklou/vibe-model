@@ -27,6 +27,7 @@ export interface Config {
   hilMode: boolean;
   reviewEnabled: boolean;
   autonomous: boolean;
+  force?: boolean;
 }
 
 /**
@@ -102,6 +103,45 @@ export interface ReviewResult {
 export interface SubAgentReview {
   results: ReviewResult[];
   overallPass: boolean;
+}
+
+/**
+ * PRD review iteration state.
+ */
+export interface PRDReviewState {
+  iteration: number;
+  maxIterations: number;
+  reviewResults: PRDReviewResult[];
+  overallStatus: "pending" | "approved" | "deferred";
+}
+
+/**
+ * Result from a single PRD reviewer.
+ */
+export interface PRDReviewResult {
+  reviewer: "architecture" | "testability" | "ux";
+  score: number; // +2 for approve, -1 for block
+  findings: string[];
+}
+
+/**
+ * Aggregated PRD review results.
+ */
+export interface PRDReview {
+  results: PRDReviewResult[];
+  overallApproved: boolean;
+  iteration: number;
+}
+
+/**
+ * Delivery summary cache entry.
+ */
+export interface DeliverySummary {
+  milestoneId: number;
+  milestoneName: string;
+  deliverables: string[];
+  timestamp: string;
+  keyLearnings: string[];
 }
 
 /**

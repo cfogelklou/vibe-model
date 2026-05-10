@@ -63,6 +63,16 @@ Generate a lean Product Requirements Document (prd.md) for this goal.
 - Each milestone will go through full V-Model phases (REQUIREMENTS → DESIGN → IMPLEMENTATION → TEST).
 - Milestones are ordered; later ones may depend on earlier ones.
 
+### LeanUX MVP Requirement:
+
+**IMPORTANT:** vibe-model follows LeanUX principles. Milestone 1 must be a minimal viable product that:
+  - Implements core user interaction
+  - Includes basic testing infrastructure
+  - Is deployable and testable
+  - Provides immediate user value
+
+Milestones are ordered by user value delivery. Earlier milestones provide working software to users as quickly as possible.
+
 ### State Transition:
 
 When prd.md is written, create the first milestone file:

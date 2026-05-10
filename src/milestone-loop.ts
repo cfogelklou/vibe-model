@@ -36,8 +36,12 @@ import {
   isLastMilestone,
 } from "./milestone-state-machine";
 import { runAIWithPrompt, runReview } from "./ai-provider";
+import { runPRDReview, writePRDReviewFindings } from "./prd-review";
+import { runPRDFixPhase } from "./prd-fix-phase";
+import { createInitialPRDReviewState, writePRDReviewState } from "./prd-review-state";
 import { commitChanges } from "./checkpoint";
 import { filterMilestoneContext } from "./prompts/milestone-context";
+import { loadDeliverySummaries, cacheDeliverySummary } from "./delivery-cache";
 import { REVIEWER_TYPES, type ReviewerType } from "./constants";
 import type { MilestonePromptVars } from "./prompts/types";
 import { getReviewerPrompt } from "./prompts/states/review";
@@ -92,6 +96,23 @@ async function generatePrompt(
     MILESTONE_CONTENT: filtered,
     PRD_CONTENT: prdContent,
   };
+
+  // Add milestone-specific context (NOT for PRD phase)
+  if (state !== MilestoneState.PRD) {
+    const prd = await readPRD(projectDir);
+    const summaries = await loadDeliverySummaries(projectDir, milestone.id);
+
+    vars.PRD_CONTEXT = `## Original Goal\n${prd.goal}\n\n## Tech Stack\n${prd.techStack}\n\n## Architecture Overview\n${prd.architectureOverview}`;
+    vars.MILESTONE_DEPENDENCIES = {
+      previous: summaries.map(s => `Milestone ${s.milestoneId}: ${s.milestoneName}`),
+      next: prd.milestones.filter(m => m.id > milestone.id).map(m => `Milestone ${m.id}: ${m.name}`)
+    };
+    vars.MILESTONE_POSITION = {
+      current: milestone.id,
+      total: prd.milestones.length,
+      isLast: milestone.id === prd.milestones.length
+    };
+  }
 
   let prompt: string;
 
@@ -343,6 +364,94 @@ async function runStateLoop(
 }
 
 // ---------------------------------------------------------------------------
+// PRD Review Loop
+// ---------------------------------------------------------------------------
+
+/**
+ * Run PRD review loop after PRD generation.
+ * Max 5 iterations of author-reviewer arm-wrestle before deferring to human.
+ */
+async function runPRDReviewLoop(
+  prdPath: string,
+  projectDir: string,
+  _originalMilestoneCount: number
+): Promise<void> {
+  logInfo("Starting PRD review loop...");
+
+  // Initialize review state
+  const reviewState = await createInitialPRDReviewState(projectDir);
+
+  while (reviewState.iteration < reviewState.maxIterations &&
+         reviewState.overallStatus === "pending") {
+
+    logInfo(`PRD review iteration ${reviewState.iteration + 1}...`);
+
+    // Run review
+    const prdContent = await fs.readFile(prdPath, "utf-8");
+    const review = await runPRDReview(
+      projectDir,
+      prdContent,
+      reviewState.iteration + 1
+    );
+
+    // Write findings
+    await writePRDReviewFindings(projectDir, review);
+
+    // Update state
+    reviewState.iteration = review.iteration;
+    reviewState.reviewResults = review.results;
+
+    if (review.overallApproved) {
+      reviewState.overallStatus = "approved";
+      await writePRDReviewState(projectDir, reviewState);
+      logSuccess("PRD review approved! Advancing to Milestone 1.");
+      break;
+    }
+
+    // Check if we should defer to human
+    if (reviewState.iteration >= reviewState.maxIterations) {
+      reviewState.overallStatus = "deferred";
+      await writePRDReviewState(projectDir, reviewState);
+      logWarning("PRD review reached max iterations. Deferring to human review.");
+
+      if (!config.autonomous) {
+        logInfo("Please review prd-review.md and run 'continue' when ready.");
+        return;
+      }
+
+      // Autonomous mode: hard fail unless --force flag
+      if (config.force !== true) {
+        logError("Max iterations reached in autonomous mode. PRD review failed.");
+        process.exit(1);
+      }
+
+      logWarning("Max iterations reached but --force set. Proceeding with unresolved issues.");
+      break;
+    }
+
+    // Run fix phase
+    await runPRDFixPhase(projectDir, reviewState.iteration + 1);
+
+    // Commit the fixes
+    await commitChanges(
+      `milestone(prd): PRD fix iteration ${reviewState.iteration + 1}`
+    );
+
+    // Update state for next iteration
+    reviewState.iteration++;
+    await writePRDReviewState(projectDir, reviewState);
+  }
+
+  // Clean up review state file after approval
+  try {
+    const statePath = path.join(projectDir, "vibe-model", "prd-review-state.json");
+    await fs.unlink(statePath);
+  } catch {
+    // ignore
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -362,7 +471,8 @@ export async function milestoneLoop(prdPath: string): Promise<void> {
 
   // If the PRD has no milestones yet, run the PRD phase first.
   // This happens on fresh projects where createPRD() wrote an empty template.
-  if (prd.milestones.length === 0) {
+  const initialMilestoneCount = prd.milestones.length;
+  if (initialMilestoneCount === 0) {
     logInfo("PRD has no milestones — running PRD phase to generate them...");
 
     // Create a temporary milestone file for the PRD phase prompt context.
@@ -414,6 +524,11 @@ export async function milestoneLoop(prdPath: string): Promise<void> {
     }
 
     logSuccess(`PRD generated with ${prd.milestones.length} milestone(s)`);
+
+    // Run PRD review loop (only if PRD was just generated)
+    if (initialMilestoneCount === 0 && prd.milestones.length > 0) {
+      await runPRDReviewLoop(prdPath, projectDir, 0);
+    }
   }
 
   const activeMilestone = getActiveMilestone(prd);
@@ -463,6 +578,12 @@ export async function milestoneLoop(prdPath: string): Promise<void> {
   const finalState = await getMilestoneState(milestonePath);
   if (isTerminalState(finalState)) {
     logSuccess(`Milestone #${activeMilestone.id} complete!`);
+
+    // Cache delivery summary BEFORE setting COMPLETE state
+    if (finalState === MilestoneState.DELIVERY) {
+      await cacheDeliverySummary(projectDir, activeMilestone.id, activeMilestone.name);
+      logInfo(`Delivery summary cached for milestone #${activeMilestone.id}`);
+    }
 
     await commitChanges(
       `milestone(complete): milestone #${activeMilestone.id} — ${activeMilestone.name}`,
@@ -553,6 +674,12 @@ export async function continueMilestone(prdPath: string): Promise<void> {
   const finalState = await getMilestoneState(milestonePath);
   if (isTerminalState(finalState)) {
     logSuccess(`Milestone #${activeMilestone.id} complete!`);
+
+    // Cache delivery summary BEFORE setting COMPLETE state
+    if (finalState === MilestoneState.DELIVERY) {
+      await cacheDeliverySummary(projectDir, activeMilestone.id, activeMilestone.name);
+      logInfo(`Delivery summary cached for milestone #${activeMilestone.id}`);
+    }
 
     await commitChanges(
       `milestone(complete): milestone #${activeMilestone.id} — ${activeMilestone.name}`,

@@ -13,6 +13,8 @@
 export const VIBE_MODEL_DIR = "vibe-model";
 export const PRD_FILE = "prd.md";
 export const MILESTONES_DIR = "milestones";
+export const PRD_REVIEW_FILE = "prd-review.md";
+export const DELIVERY_CACHE_DIR = "delivery-summaries";
 
 // Milestone ID format
 export function milestoneFileName(id: number, name: string): string {
@@ -52,6 +54,13 @@ export const REVIEWER_TYPES = [
 ] as const;
 
 export type ReviewerType = (typeof REVIEWER_TYPES)[number];
+
+// PRD reviewers: exclude "code" reviewer (no code to review in PRD phase)
+export const PRD_REVIEWERS: readonly ReviewerType[] = [
+  "architecture",
+  "testability",
+  "ux",
+] as const;
 
 // Reviewer-specific system prompts (short, focused)
 export const REVIEWER_PROMPTS: Record<ReviewerType, string> = {
