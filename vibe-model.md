@@ -1,6 +1,6 @@
 # V-Model Protocol Specification
 
-**Formal specification of the V-Model development lifecycle protocol for autonomous R&D agents.**
+**Formal specification of the milestone-based V-Model development lifecycle for autonomous R&D agents.**
 
 **Audience**: AI agents, developers implementing V-Model systems
 
@@ -12,1028 +12,612 @@
 
 The V-Model protocol defines a formal development lifecycle for autonomous R&D agents. It combines:
 
-- **Architecture-driven development**: Formal decomposition into Epics → Stories → Tasks
-- **Rigorous verification**: Each design level has a corresponding verification stage
-- **Design review**: External consultation (Gemini) for design quality and research thoroughness
-- **Safe rollback**: Git checkpointing at key milestones
-- **Dead-end detection**: Automatic pivot when approaches stagnate
+- **Milestone-driven decomposition**: Goals are broken into independently deliverable milestones
+- **Formal V-Model lifecycle**: Each milestone runs through a linear verification chain (Requirements → Design → Implementation → Verification → Delivery)
+- **Optional sub-agent review**: Specialist reviewers can evaluate each phase's output
+- **Human-in-the-loop control**: Milestones can pause for human approval between phases
+- **Git checkpointing**: Auto-commit after each state transition
+- **Delivery context injection**: Later milestones receive context from earlier ones
 
 ### 1.1 State Machine
 
-The protocol implements a state machine with 19 states:
+The protocol implements a state machine with 9 states:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> REQUIREMENTS: Start Journey
+    [*] --> PRD: Start
 
-    state "Design Phase" as design {
-        REQUIREMENTS --> WAITING_FOR_USER: Need sign-off
-        WAITING_FOR_USER --> REQUIREMENTS: Clarifications received
-        WAITING_FOR_USER --> DESIGN_REVIEW: User approved
-        DESIGN_REVIEW --> REQUIREMENTS: ITERATE
-        DESIGN_REVIEW --> SYSTEM_DESIGN: APPROVED
-        SYSTEM_DESIGN --> DESIGN_REVIEW: Complete
-        DESIGN_REVIEW --> SYSTEM_DESIGN: ITERATE
-        DESIGN_REVIEW --> ARCH_DESIGN: APPROVED
-        ARCH_DESIGN --> DESIGN_REVIEW: Complete
-        DESIGN_REVIEW --> ARCH_DESIGN: ITERATE
-        DESIGN_REVIEW --> MODULE_DESIGN: APPROVED
-        MODULE_DESIGN --> MODULE_DESIGN: Review failed
-        MODULE_DESIGN --> DESIGN_REVIEW: Review passed
-        DESIGN_REVIEW --> MODULE_DESIGN: ITERATE
-        DESIGN_REVIEW --> IMPLEMENTATION: APPROVED
-        MODULE_DESIGN --> WAITING_FOR_USER: Unsure
-    }
+    PRD --> REQUIREMENTS: PRD approved
+    REQUIREMENTS --> DESIGN: Requirements defined
+    DESIGN --> IMPLEMENTATION: Design complete
+    IMPLEMENTATION --> UNIT_TEST: Code complete
+    UNIT_TEST --> INTEGRATION_TEST: Unit tests passed
+    INTEGRATION_TEST --> DELIVERY: Integration tests passed
+    DELIVERY --> REQUIREMENTS: More milestones
+    DELIVERY --> COMPLETE: All milestones done
 
-    state "Build Phase" as build {
-        IMPLEMENTATION --> UNIT_TEST
-        PROTOTYPING --> IMPLEMENTATION: Validated
-        PROTOTYPING --> MODULE_DESIGN: Need design update
-    }
-
-    state "Verify Phase" as verify {
-        UNIT_TEST --> MODULE_DESIGN: Failed
-        UNIT_TEST --> INTEGRATION_TEST: Passed
-        INTEGRATION_TEST --> ARCH_DESIGN: Failed
-        INTEGRATION_TEST --> SYSTEM_TEST: Passed
-        SYSTEM_TEST --> SYSTEM_DESIGN: Failed
-        SYSTEM_TEST --> ACCEPTANCE_TEST: Passed
-        ACCEPTANCE_TEST --> REQUIREMENTS: Failed
-        ACCEPTANCE_TEST --> CONSOLIDATING: Passed
-        CONSOLIDATING --> COMPLETE
-    }
-
-    state "Terminal States" as terminal {
-        COMPLETE --> [*]
-        BLOCKED --> [*]
-        PIVOTING --> REQUIREMENTS: New approach
-        REFLECTING --> REQUIREMENTS: Analysis complete
-    }
-
-    %% Cross-cutting transitions
-    REQUIREMENTS --> PROTOTYPING: Optional
-    MODULE_DESIGN --> PROTOTYPING: Optional
+    WAITING_FOR_USER --> REQUIREMENTS: Hint received
 
     note right of WAITING_FOR_USER
-        Can transition from any state
-        when user input is needed
-    end note
-
-    note right of BLOCKED
-        External dependency or error
-        Can occur from any state
-    end note
-
-    note right of PIVOTING
-        Force pivot to next approach
-        via 'pivot' command
-    end note
-
-    note right of ARCHIVING
-        Triggered when epic completion detected.
-        After archival, restores previous state.
-        Can transition from any state.
+        Any state can pause to WAITING_FOR_USER
+        via HIL mode. Resumes to pendingTransition.
     end note
 ```
 
-**Note on State Handlers**: Most V-Model phases use a generic `runIteration()` handler. Phase-specific logic is enforced via AI prompt instructions rather than dedicated code handlers. The exceptions are:
-- **DESIGN_REVIEW**: Consults external AI (Gemini) for design quality
-- **WAITING_FOR_USER**: Handles user interaction and epic auto-transitions
-- **ARCHIVING**: Archives completed epic files and restores previous state
+**State Handler Architecture**: All phases use a single `runAIWithPrompt()` call with phase-specific prompt templates from `src/prompts/states/`. The orchestrator in `src/milestone-loop.ts` manages the loop — no dedicated code handlers per phase.
 
 ### 1.2 State Definitions
 
-| State | Type | Description |
-|:------|:------|:-------------|
-| `REQUIREMENTS` | Design | Formalizing User Requirements into System Requirements |
-| `SYSTEM_DESIGN` | Design | High-level architectural planning (Epics) |
-| `ARCH_DESIGN` | Design | Component-level design (Sub-systems/Interfaces) |
-| `MODULE_DESIGN` | Design | Low-level logic design for a single Story |
-| `PROTOTYPING` | Build | Optional experimental phase |
-| `IMPLEMENTATION` | Build | Coding the specific module/story |
-| `UNIT_TEST` | Verify | Verifying the specific module logic |
-| `INTEGRATION_TEST` | Verify | Verifying interaction with the system |
-| `SYSTEM_TEST` | Verify | Verifying against original Spec |
-| `ACCEPTANCE_TEST` | Verify | Final validation against User Requirements |
-| `CONSOLIDATING` | Verify | Cleaning up, syncing to memory.md, final verification |
-| `DESIGN_REVIEW` | Review | Automatic consultation for design quality |
-| `REVIEWING` | Review | Placeholder for future review functionality |
-| `ARCHIVING` | Control | Archives completed epic files and restores previous state |
-| `WAITING_FOR_USER` | Control | Awaiting clarification or sign-off |
-| `COMPLETE` | Terminal | Goal achieved, journey finished |
-| `BLOCKED` | Terminal | Blocked by external dependency or error |
-| `PIVOTING` | Control | Force pivot to next approach |
-| `REFLECTING` | Control | Forced reflection phase |
+| State | Type | Description | Progress |
+|:------|:-----|:------------|:---------|
+| `PRD` | Init | Generate lean PRD with tech stack, architecture, milestone table (one-shot) | 0% |
+| `REQUIREMENTS` | Design | Formalize testable requirements for the current milestone | 10% |
+| `DESIGN` | Design | Technical design and natural-language test specifications | 25% |
+| `IMPLEMENTATION` | Build | Code the milestone against the approved design | 50% |
+| `UNIT_TEST` | Verify | Verify module-level logic against test specifications | 70% |
+| `INTEGRATION_TEST` | Verify | Verify cross-component behavior and regressions | 85% |
+| `DELIVERY` | Delivery | Create PR, finalize documentation, cache delivery summary | 95% |
+| `COMPLETE` | Terminal | Milestone done; orchestrator advances to next milestone | 100% |
+| `WAITING_FOR_USER` | Control | Paused for human input; stores `pendingTransition` | — |
 
 ---
 
-## 2. Spec Initiation Protocol
+## 2. Transition Rules
 
-Before starting a journey, an AI agent MUST execute this protocol to establish a high-fidelity specification with the user.
+Transitions are strictly linear with no backward paths. The hardcoded transition map:
 
-### 2.1 Goal Extraction Phase (Q&A)
+| Current State | Next State |
+|:--------------|:-----------|
+| `PRD` | `REQUIREMENTS` |
+| `REQUIREMENTS` | `DESIGN` |
+| `DESIGN` | `IMPLEMENTATION` |
+| `IMPLEMENTATION` | `UNIT_TEST` |
+| `UNIT_TEST` | `INTEGRATION_TEST` |
+| `INTEGRATION_TEST` | `DELIVERY` |
+| `DELIVERY` | `null` (orchestrator decides: next milestone or `COMPLETE`) |
+| `COMPLETE` | `null` (terminal) |
+| `WAITING_FOR_USER` | `null` (resumed via `continue` command) |
 
-The agent MUST ask these specific questions:
+### 2.1 WAITING_FOR_USER Mechanics
 
-1. **Metric-Driven Goals**: Current baseline metrics and target values for success
-2. **Scope and Boundaries**: What files/modules are in scope, what must not be touched
-3. **Constraint Identification**: Memory, threading, standards requirements
-4. **Verification Strategy**: How to prove the goal is achieved (existing tests vs new harness)
-5. **Anti-Pattern Mining**: Already-tried approaches that failed, known gotchas
+When HIL mode is active, the orchestrator stores the next intended state in `pendingTransition` before pausing. The `continue` command reads this value, applies it, and re-enters the state loop.
 
-### 2.2 Specification Construction
+### 2.2 DELIVERY Decision Point
 
-Create the `{journey_name}.spec.md` file with:
-
-#### User Requirements (The "Why")
-- Human-readable goals and the value they provide
-
-#### System Requirements (The "What")
-- Technical, measurable specifications
-
-#### Acceptance Criteria (The "How we prove it")
-- The exact tests or benchmarks that must pass
-
-#### Initial Epic Breakdown
-- High-level milestones (Epics) needed to reach the goal
-
-### 2.3 Sign-Off Protocol
-
-After creating the Spec, set journey state to `WAITING_FOR_USER` and present the Spec. Ask:
-
-> "I have drafted the System Specification based on our discussion. Please review the goals, metrics, and acceptance criteria in `[journey_name].spec.md`. Once you provide a sign-off or a 'proceed' hint, I will begin the SYSTEM_DESIGN phase."
-
-**Do not proceed to SYSTEM_DESIGN until the user provides confirmation.**
-
-### 2.4 Optional Guardrails
-
-Before design begins, define optional constraints:
-
-#### Performance Constraints
-- Performance Budgets: Max CPU%, Latency (ms), Memory (KB)
-- Platform limits (ARM clock speed, iOS background tasks, threading model)
-
-#### Quality Assurance Tooling
-- Linters: `clang-tidy`, `eslint`, `shellcheck` (zero tolerance)
-- Static Type Checkers: `mypy`, `flow`, C++ strict type checking
-- Dynamic Checkers: ASan, UBSan, Valgrind
-- Code Coverage: Target coverage % for new modules
-
-#### Dependency Guidelines
-- What libraries can/cannot be added
-- Version constraints
-- License compatibility requirements
+`DELIVERY` maps to `null` in the transition map. The orchestrator checks whether all milestones in the PRD are complete:
+- If more milestones remain: advances to the next milestone's `REQUIREMENTS` state
+- If all milestones complete: sets project status to done
 
 ---
 
-## 3. V-Model Stages
+## 3. Milestone Lifecycle Phases
 
-**Note on Phase Handler Architecture**: Most V-Model phases use a generic `runIteration()` handler. Phase-specific logic is enforced via AI prompt instructions rather than dedicated code handlers. Only three states have dedicated code handlers:
-- **DESIGN_REVIEW**: Consults Gemini for design quality
-- **WAITING_FOR_USER**: Handles user interaction and epic auto-transitions
-- **ARCHIVING**: Archives completed epic files
+### 3.1 PRD
 
-### 3.1 REQUIREMENTS
-
-**Purpose**: Formalize User Requirements into System Requirements
+**Purpose**: Generate a lean Product Requirements Document from a user goal.
 
 **Protocol**:
-1. Execute Spec Initiation Protocol (see above)
-2. Conduct research before finalizing requirements:
-   - Web search for similar systems/libraries
-   - Consult memory.md for past learnings
-   - Use external AI (Gemini) for complex tradeoffs
-3. Document research in "## Research Notes > ### REQUIREMENTS Phase Research"
-4. Create or update `{journey_name}.spec.md`
-5. Transition to `WAITING_FOR_USER` for sign-off
-6. After sign-off, update "Previous Phase: REQUIREMENTS" in Meta section
-7. Transition to `DESIGN_REVIEW`
+1. Detect tech stack from existing project files (package.json, Cargo.toml, CMakeLists.txt, etc.)
+2. Write a concise Architecture Overview (3-5 sentences)
+3. Decompose the goal into milestones (plain integer IDs: 1, 2, 3...)
+4. Each milestone must be independently deliverable and produce a testable increment
+5. Write `vibe-model/prd.md` with sections: Goal, Tech Stack, Architecture Overview, Milestones table
 
-**Output**: Updated System Requirements in the Spec
+**One-shot**: Runs exactly once per project. Creates a temporary milestone file with sentinel ID 0, runs AI, then cleans up.
 
-### 3.2 DESIGN_REVIEW
+**Output**: `vibe-model/prd.md` with milestones table (columns: ID | Name | Description | Status | Mode)
 
-**Purpose**: Automatic external consultation for design quality and research thoroughness
+**Transition**: PRD → PRD review loop → REQUIREMENTS
 
-**Protocol**:
-1. Extract design content from the previous phase
-2. Extract research notes for that phase
-3. Consult external AI (Gemini) with both design and research
-4. Parse decision:
-   - If `DECISION: ITERATE`: Transition back to previous design phase
-   - Otherwise: Auto-transition to next design phase
+### 3.2 REQUIREMENTS
 
-**Transition Mapping**:
-- `REQUIREMENTS` → `SYSTEM_DESIGN`
-- `SYSTEM_DESIGN` → `ARCH_DESIGN`
-- `ARCH_DESIGN` → `MODULE_DESIGN`
-- `MODULE_DESIGN` → `IMPLEMENTATION`
-
-### 3.3 SYSTEM_DESIGN
-
-**Purpose**: High-level architectural planning (Epics)
+**Purpose**: Gather and formalize testable requirements for the current milestone.
 
 **Protocol**:
-1. Conduct research:
-   - Web search for architectural patterns
-   - Search codebase for similar implementations
-   - Use external AI for architectural tradeoffs
-2. Document research in "## Research Notes > ### SYSTEM_DESIGN Phase Research"
-3. Decompose goal into **Epics**
-4. Identify cross-cutting concerns (memory, threading, API)
-5. Update Design Spec with architecture and Epics list
-6. Update "Previous Phase: SYSTEM_DESIGN" in Meta section
-7. Transition to `DESIGN_REVIEW`
+1. Research: web search, codebase exploration, memory.md consultation
+2. Document findings in Research Notes section
+3. Write clear, numbered requirements (R1, R2, R3...) in Requirements section
+4. Each requirement must be a single verifiable statement — no ambiguous language
 
-**Output**: `Epics` list in the Spec
+**Context Injected**: Status + Requirements + Research Notes
 
-### 3.4 ARCH_DESIGN
+**Transition**: REQUIREMENTS → DESIGN
 
-**Purpose**: Component-level design (Sub-systems/Interfaces)
+### 3.3 DESIGN
+
+**Purpose**: Create technical design and natural-language test specifications.
 
 **Protocol**:
-1. Conduct research:
-   - Search for existing interfaces/APIs in codebase
-   - Web search for component design patterns
-   - Use external AI for interface decisions
-2. Document research in "## Research Notes > ### ARCH_DESIGN Phase Research"
-3. Select current Epic
-4. Decompose Epic into **Stories** (Sub-systems/Interfaces)
-5. Update Design Spec and Journey file
-6. Update "Previous Phase: ARCH_DESIGN" in Meta section
-7. Transition to `DESIGN_REVIEW` for the first/next Story
+1. Research if needed (architectural patterns, existing APIs, conventions)
+2. Write Design section: components, data structures, interfaces, tradeoffs
+3. Reference specific requirements by number (R1, R2, ...) for each design element
+4. Write Test Specifications section using format: **TS-N**: Description → Given [context], When [action], Then [expected result]
+5. Test specs are natural language — no code, no framework specifics
 
-**Output**: Component interfaces and sub-system design
+**Context Injected**: Status + Requirements + Design + Research Notes
 
-### 3.5 MODULE_DESIGN
+**Transition**: DESIGN → IMPLEMENTATION
 
-**Purpose**: Low-level logic design for a single Story
+### 3.4 IMPLEMENTATION
+
+**Purpose**: Code the milestone against the approved design.
 
 **Protocol**:
-1. Conduct research:
-   - Search codebase for similar functions/classes
-   - Web search for algorithm implementations
-   - Use external AI for edge cases
-2. Document research in "## Research Notes > ### MODULE_DESIGN Phase Research"
-3. Select current Story
-4. Create detailed technical design: signatures, state changes, error handling
-5. **Perform Design Review**: Critique for leaks, complexity, performance
-6. If review fails, stay in `MODULE_DESIGN` and fix
-7. If unsure, transition to `WAITING_FOR_USER`
-8. If passed, update "Previous Phase: MODULE_DESIGN" in Meta section
-9. Transition to `DESIGN_REVIEW`
+1. Review Design and Test Specifications
+2. Implement code following the approved design exactly
+3. Write unit tests that map to Test Specifications (comment each test with `// Satisfies TS-N`)
+4. Run build (mandatory) — must compile with zero errors
+5. Run unit tests — must pass
+6. Document in Implementation Notes: files created/modified, deviations, limitations
 
-**Output**: `Current Story Design` with "Review Passed" stamp
+**Context Injected**: Status + Design + Test Specifications
 
-### 3.6 PROTOTYPING (Optional)
+**Transition**: IMPLEMENTATION → UNIT_TEST
 
-**Purpose**: Experimental phase to validate complex algorithms
+### 3.5 UNIT_TEST
+
+**Purpose**: Verify module-level logic against test specifications.
 
 **Protocol**:
-1. Use Python/C++ for rapid prototyping
-2. Validate approach before production implementation
-3. If successful, transition back to `MODULE_DESIGN` or `IMPLEMENTATION`
-4. If failed, transition back to `MODULE_DESIGN` with learnings
+1. Run build (mandatory) — zero errors
+2. Run unit tests
+3. Build traceability matrix: TS-N → Test Name → Pass/Fail
+4. Fix failures: distinguish test bugs from implementation bugs from design issues
+5. Re-run full suite after each fix
+6. Document results in Unit Test Results section
 
-**Trigger**: Optional transition from `REQUIREMENTS` or `MODULE_DESIGN`
+**Context Injected**: Status + Implementation Notes + Test Specifications
 
-### 3.7 IMPLEMENTATION
+**Transition**: UNIT_TEST → INTEGRATION_TEST
 
-**Purpose**: Coding the specific module/story
+### 3.6 INTEGRATION_TEST
 
-**Protocol**:
-1. Code exactly one Story based on approved `MODULE_DESIGN`
-2. Run basic guardrails (build)
-3. Transition to `UNIT_TEST`
-
-**Output**: Production code changes
-
-### 3.8 UNIT_TEST
-
-**Purpose**: Verifying the specific module logic
+**Purpose**: Verify cross-component behavior and regressions.
 
 **Protocol**:
-1. Run tests specific to the module/story
-2. Analyze logs and edge cases
-3. If fails, transition back to `MODULE_DESIGN`
-4. If passes, transition to `INTEGRATION_TEST`
+1. Run build (mandatory) — zero errors
+2. Run full test suite (not just affected tests)
+3. Verify interfaces between modules
+4. Check for regressions in existing functionality
+5. Fix failures — distinguish integration issues from regressions
+6. Document results in Integration Test Results section
 
-### 3.9 INTEGRATION_TEST
+**Context Injected**: Status + Design + Unit Test Results
 
-**Purpose**: Verifying interaction with the system
+**Transition**: INTEGRATION_TEST → DELIVERY
 
-**Protocol**:
-1. Run system-wide tests (full test suite)
-2. Verify new module interacts correctly with existing components
-3. **Automated Audit Gate**: Run linters and static analyzers
-   - All linting errors must be resolved (zero tolerance)
-   - Static analysis warnings should be addressed or documented
-4. If fails, transition back to `ARCH_DESIGN`
-5. If passes:
-   - Check if this was the last story in current epic
-   - If yes, mark Epic complete and check for more epics
-   - If more epics, transition to `WAITING_FOR_USER` (auto-transitions to next epic)
-   - If no more epics, transition to `SYSTEM_TEST`
-   - If not last story, transition back to `MODULE_DESIGN` for next story
+### 3.7 DELIVERY
 
-### 3.10 SYSTEM_TEST
-
-**Purpose**: Verifying against original Spec
+**Purpose**: Finalize milestone delivery with PR and documentation.
 
 **Protocol**:
-1. Verify entire system against **System Requirements** in Spec
-2. Run full test suite, not just affected tests
-3. Check performance metrics (CPU, latency) against thresholds
-4. If fails, transition back to `SYSTEM_DESIGN`
-5. If passes, transition to `ACCEPTANCE_TEST`
+1. Run final build — zero errors and zero warnings
+2. Run full test suite — all tests pass
+3. Verify all requirements satisfied (trace R-N to implementation)
+4. Verify all test specifications passed (trace TS-N to test results)
+5. Create PR with title and body summarizing changes
+6. Update Delivery section: PR URL, key deliverables, caveats
+7. Update Learnings section: notable findings, patterns to reuse, pitfalls
 
-### 3.11 ACCEPTANCE_TEST
+**Context Injected**: All sections (full summary)
 
-**Purpose**: Final validation against User Requirements
-
-**Protocol**:
-1. Verify against **User Requirements** and final **Acceptance Criteria**
-2. Check guardrails if defined
-3. If everything passes, transition to `CONSOLIDATING`
-4. If fails, transition back to `REQUIREMENTS`
-
-### 3.12 CONSOLIDATING
-
-**Purpose**: Cleanup, document, and finalize
-
-**Protocol**:
-1. Cleanup and finalize Design Spec
-2. Sync learnings to `memory.md`
-3. Transition to `COMPLETE`
+**Transition**: DELIVERY → COMPLETE (orchestrator handles next milestone)
 
 ---
 
 ## 4. Data Structures
 
-### 4.1 Journey File Format
+### 4.1 PRD File Format
 
-Journey files are stored as `{PROJ_ROOT}/vibe-model/journey/{name}.journey.md`
-
-**Required Sections**:
+**Path**: `{PROJ_ROOT}/vibe-model/prd.md`
 
 ```markdown
-# Journey: {goal}
+# PRD: {goal title}
 
-## Meta
-- Goal: {goal}
-- State: {current_state}
-- Previous Phase: {last_completed_design_phase}
-- Previous State: {last_state}
-- Current Epic: {epic_id}
-- Started: {UTC_timestamp}
-- Current Approach: {approach_number}
-- Progress: {percentage}
+## Goal
+{goal}
 
-## Approaches
-### Approach {N}: {name}
-- Status: PENDING/ACTIVE/ABANDONED/COMPLETE
-- Reason: {description}
-- Iterations: {count}
+## Tech Stack
+{language, framework, build tool, test runner}
 
-## Current Approach Detail
-### Approach {N}: {name}
-- Hypothesis: {description}
-- Milestones: [checklist]
+## Architecture Overview
+{3-5 sentence summary of major components and their interactions}
 
-## Guardrails
-- [status] {constraint}
+## Milestones
 
-## Baseline Metrics
-| Metric | Baseline | Current | Threshold |
-|--------|----------|---------|-----------|
+| ID | Name | Description | Status | Mode |
+|----|------|-------------|--------|------|
+| 1  | {name} | {description} | PENDING | |
+| 2  | {name} | {description} | PENDING | |
+```
 
-## User Hints
-- {timestamp}: "{hint}"
+- **ID**: Plain integers (1, 2, 3...) — no prefixes
+- **Status**: `PENDING` | `IN_PROGRESS` | `COMPLETE`
+- **Mode**: Optional override — `hil` | `autonomous` | (empty = project default)
+
+### 4.2 Milestone File Format
+
+**Path**: `{PROJ_ROOT}/vibe-model/milestones/{NN}-{name}.md`
+- NN: zero-padded ID (01, 02, ...)
+- name: lowercase, hyphens, max 64 chars
+
+```markdown
+# Milestone {id}: {name}
+
+## Status
+- State: {MilestoneState}
+- Progress: {percentage}%
+- Started: {ISO timestamp}
+- Pending Transition: NONE | {MilestoneState}
+
+## Requirements
+*(Numbered, testable requirements: R1, R2, R3...)*
+
+## Design
+*(Technical design tracing to requirements)*
+
+## Test Specifications
+*(Natural-language test cases: TS-N format)*
 
 ## Research Notes
-### REQUIREMENTS Phase Research
-{content}
+*(Findings from research phase)*
 
-### SYSTEM_DESIGN Phase Research
-{content}
+## Implementation Notes
+*(Files modified, deviations, limitations)*
 
-### ARCH_DESIGN Phase Research
-{content}
+## Unit Test Results
+*(Traceability matrix: TS-N → Test → Pass/Fail)*
 
-### MODULE_DESIGN Phase Research
-{content}
+## Integration Test Results
+*(Cross-component verification, regressions)*
 
-## Epic Progress
-| Epic ID | Name | Status | Stories Complete | Total Stories |
+## Delivery
+*(PR link, deliverables, caveats)*
 
-## Generated Artifacts
-{list}
-
-## Learnings Log
-- {timestamp}: {learning}
-
-## Dead Ends
-### {approach_name}
-- Status: ABANDONED
-- Reason: {description}
-- Learnings: {learnings}
-- Abandoned: {date}
-
-## Anti-Patterns
-- **{pattern}**: {description}
-
-## Pending Questions
-- [ ] {date}: {question}
-
-## Design Spec
-{link_to_spec}
-
-## Checkpoints
-| ID | Tag | Date | Description |
+## Learnings
+*(Findings, patterns, pitfalls)*
 ```
 
-### 4.2 Spec File Format
+### 4.3 Delivery Summary Format
 
-Spec files are stored as `{PROJ_ROOT}/vibe-model/journey/{name}.spec.md`
-
-**Required Sections**:
+**Path**: `{PROJ_ROOT}/vibe-model/delivery-summaries/{N}-{name}-delivery-summary.md`
 
 ```markdown
-# Design Spec: {goal}
+# Delivery Summary: Milestone {N} - {name}
 
-> **Journey**: {journey_name}
-> **Created**: {UTC_timestamp}
-> **Status**: DRAFT/COMPLETE
+**Timestamp:** {ISO 8601}
 
-## Overview
-**Goal**: {goal}
+## Deliverables
+- Deliverable: {description}
 
-This document describes the design and implementation plan for achieving the stated goal.
-
-## Approach
-{approach_details}
-
-## Baseline Metrics
-{metrics}
-
-## Files to Modify
-*(To be populated during implementation)*
-
-## Implementation Plan
-### Phase 1: Research and Planning
-- [ ] Research complete
-- [ ] Approach selected
-- [ ] Design spec created
-
-### Phase 2: Prototyping (if applicable)
-- [ ] Prototype implementation
-- [ ] Prototype validation
-- [ ] Results documented
-
-### Phase 3: Implementation
-- [ ] Production code changes
-- [ ] Tests passing
-- [ ] Code review complete
-
-### Phase 4: Consolidation
-- [ ] Documentation updated
-- [ ] Design spec finalized
-- [ ] Tests validated
-
-## Success Criteria
-- [ ] Goal achieved
-- [ ] All tests pass (no regression)
-- [ ] Documentation complete
-- [ ] Design spec finalized
-
-## Changes Made
-*(To be populated during CONSOLIDATING phase)*
-
-## Documentation Updates
-*(To be populated during CONSOLIDATING phase)*
-
-## References
-*(Add links to relevant docs, papers, or code)*
+## Key Learnings
+- {learning}
 ```
 
-**Note**: User Requirements, System Requirements, Acceptance Criteria, and Epics sections are tracked in the journey file, not the spec file. The spec file focuses on implementation details.
+**Extraction strategies** (multi-strategy regex):
+1. `## Deliverables:` section with list items
+2. `- Deliverable:` format lines
+3. Fallback: entire `## Delivery` section
 
 ---
 
-## 5. Algorithms
+## 5. Orchestration Algorithm
 
-### 5.1 Dead-End Detection
-
-**Purpose**: Detect when an approach is stuck and trigger a pivot
-
-**Algorithm**:
+### 5.1 Main Loop
 
 ```
-IF (current_iterations_in_state >= MAX_STALE_ITERATIONS) AND
-   (progress_percent < MIN_PROGRESS_PERCENT) THEN
-    Trigger pivot to next approach
-END IF
+1. Parse CLI arguments → initialize config
+2. If goal provided:
+     create prd.md template → enter milestone loop
+   If no goal:
+     enter milestone loop (resume mode)
+
+3. Milestone loop:
+   a. Read PRD
+   b. If no milestones: run PRD phase (one-shot AI call), then PRD review loop
+   c. Find active milestone (first non-COMPLETE in PRD table)
+   d. Create milestone file if not exists
+   e. Run state loop:
+      - Generate prompt (filtered context for current state)
+      - Run AI with prompt
+      - Auto-commit
+      - Re-read state (AI may have updated it directly)
+      - Run review sub-phase if --review enabled
+      - Check HIL pause
+      - Advance to next state
+   f. After state loop: cache delivery summary
+   g. Mark milestone COMPLETE in PRD
+   h. Check for next milestone → recurse or exit
 ```
 
-**Variables**:
-- `MAX_STALE_ITERATIONS`: Default 3
-- `MIN_PROGRESS_PERCENT`: Default 5
+### 5.2 State Loop Detail
 
-**Actions on Dead End**:
-1. Log dead end in journey file with reason and learnings
-2. Extract learnings to `memory.md`
-3. Increment approach number
-4. Reset state to `REQUIREMENTS` for new approach
+For each state in the milestone:
 
-### 5.2 Epic Completion Detection
+1. **Generate prompt**: Filter milestone content for current state, add PRD context and dependencies
+2. **Run AI**: Execute AI with the generated prompt
+3. **Auto-commit**: `milestone({state}): AI completed {state} phase`
+4. **Re-read state**: The AI may have advanced the state directly — respect it
+5. **Review sub-phase** (if `--review`): Run specialist reviewers sequentially, stop on first FAIL
+6. **HIL pause** (if enabled): Set `pendingTransition`, pause in `WAITING_FOR_USER`
+7. **Advance**: Move to next state from transition map, update progress
 
-**Purpose**: Detect when all stories in an epic are complete
-
-**Algorithm**:
+### 5.3 Continue Command
 
 ```
-# Check Epic Progress table for completion status
-epic_status = parseEpicProgressTable(journey, Epic_ID)
-
-IF (epic_status == "COMPLETE") THEN
-    Check for next epic
-    IF next_epic EXISTS THEN
-        Transition to WAITING_FOR_USER (auto-transition to next epic)
-    ELSE
-        Transition to SYSTEM_TEST
-    END IF
-END IF
-```
-
-**Note**: The Learnings Log may contain "Epic {Epic_ID} COMPLETED" entries for human reference, but actual epic completion detection is based on the Epic Progress table status column.
-
-### 5.3 Design Review Transition
-
-**Purpose**: Auto-transition from `DESIGN_REVIEW` to next phase
-
-**Algorithm**:
-
-```
-PREVIOUS_PHASE = journey.meta.previous_phase
-
-IF gemini_feedback contains "DECISION: ITERATE" THEN
-    NEW_STATE = PREVIOUS_PHASE
-ELSE
-    SWITCH PREVIOUS_PHASE
-        CASE REQUIREMENTS:   NEW_STATE = SYSTEM_DESIGN
-        CASE SYSTEM_DESIGN:  NEW_STATE = ARCH_DESIGN
-        CASE ARCH_DESIGN:    NEW_STATE = MODULE_DESIGN
-        CASE MODULE_DESIGN:  NEW_STATE = IMPLEMENTATION
-        DEFAULT:             NEW_STATE = SYSTEM_DESIGN
-    END SWITCH
-END IF
-
-journey.state = NEW_STATE
-```
-
-### 5.4 Previous Phase Detection
-
-**Purpose**: Determine which design phase just completed
-
-**Algorithm**:
-
-```
-IF journey.meta.previous_phase EXISTS AND != "TBD" THEN
-    RETURN journey.meta.previous_phase
-ELSE
-    # Fallback: infer from learnings log
-    IF learnings_log contains "Transitioned to.*SYSTEM_DESIGN" THEN
-        RETURN "REQUIREMENTS"
-    ELSE IF learnings_log contains "Transitioned to.*ARCH_DESIGN" THEN
-        RETURN "SYSTEM_DESIGN"
-    ELSE IF learnings_log contains "Transitioned to.*MODULE_DESIGN" THEN
-        RETURN "ARCH_DESIGN"
-    ELSE IF learnings_log contains "Transitioned to.*IMPLEMENTATION" THEN
-        RETURN "MODULE_DESIGN"
-    ELSE
-        RETURN "UNKNOWN"
-    END IF
-END IF
+1. Read active milestone
+2. Verify state is WAITING_FOR_USER
+3. Read pendingTransition from milestone file
+4. Apply the pending transition
+5. Clear pendingTransition (set to NONE)
+6. Re-enter state loop from the new state
 ```
 
 ---
 
-## 6. Verification Best Practices
+## 6. Context Injection
 
-### 6.1 Test-Driven Design (TDD)
+### 6.1 Section Filtering
 
-- Draft `UNIT_TEST` and `INTEGRATION_TEST` signatures **before** `IMPLEMENTATION`
-- Define expected inputs/outputs and edge cases upfront
-- This clarifies the contract before coding begins
+Each state receives only the relevant milestone sections:
 
-### 6.2 Negative Testing
+| State | Sections Injected |
+|:------|:------------------|
+| `PRD` | (none — uses prd.md directly) |
+| `REQUIREMENTS` | Status + Requirements + Research Notes |
+| `DESIGN` | Status + Requirements + Design + Research Notes |
+| `IMPLEMENTATION` | Status + Design + Test Specifications |
+| `UNIT_TEST` | Status + Implementation Notes + Test Specifications |
+| `INTEGRATION_TEST` | Status + Design + Unit Test Results |
+| `DELIVERY` | All sections (full summary) |
+| `WAITING_FOR_USER` | Status only |
+| `COMPLETE` | Status + Delivery + Learnings |
+
+### 6.2 PRD Context
+
+For non-PRD phases, the following PRD-level context is injected:
+
+- **PRD_CONTEXT**: Original Goal + Tech Stack + Architecture Overview
+- **MILESTONE_DEPENDENCIES**: Lists of previous (completed) and upcoming milestone names
+- **MILESTONE_POSITION**: Current milestone number, total count, `isLast` flag
+
+### 6.3 Delivery Summary Loading
+
+Delivery summaries from previous milestones are loaded and injected for context:
+- Only summaries with milestone ID < current milestone ID
+- Sorted by milestone ID ascending
+- Format: `Milestone {id}: {name} — {count} deliverables`
+
+---
+
+## 7. CLI Reference
+
+### Commands
+
+| Command | Description |
+|:--------|:------------|
+| `vibe-model "goal"` | Start a new project with this goal |
+| `vibe-model` | Continue the active milestone loop (no argument) |
+| `vibe-model continue` | Resume from `WAITING_FOR_USER` state |
+| `vibe-model status` | Show PRD, milestones, and active milestone state |
+| `vibe-model hint <message>` | Add a hint to the active milestone's Learnings |
+
+### Options
+
+| Flag | Description |
+|:-----|:------------|
+| `-v, --verbose` | Enable verbose output (shows AI prompts, tool calls, costs) |
+| `-g, --gemini` | Use Gemini as primary AI provider |
+| `--autonomous` | Skip all human-in-the-loop pauses |
+| `--review` | Enable sub-agent reviews after each phase |
+| `--no-consult` | Disable Gemini consultation |
+| `--project-dir <path>` | Specify project directory |
+| `--config <path>` | Specify config file path |
+| `--no-push` | Disable auto-push after iterations |
+| `--commit-interval <n>` | Commit every N iterations (default: 1) |
+
+---
+
+## 8. Configuration
+
+### Environment Variables
+
+| Variable | Values | Default | Description |
+|:---------|:-------|:--------|:------------|
+| `AI_PROVIDER` | `claude` \| `gemini` | `claude` | Primary AI provider |
+| `MAX_ITERATIONS` | integer | `100` | Maximum loop iterations |
+| `CONSULT_GEMINI` | `true` \| `false` | `true` | Enable Gemini consultation |
+| `VERBOSE` | `true` | `false` | Verbose logging |
+| `HIL_MODE` | `false` | `true` | Set to `false` to enable autonomous mode |
+| `REVIEW_ENABLED` | `true` | `false` | Enable sub-agent reviews |
+
+### Config File
+
+JSON format, searched in order:
+1. `{project_dir}/.vibe-modelrc`
+2. `~/.vibe-modelrc`
+
+### Priority
+
+```
+Defaults < Config file < Environment variables < CLI arguments
+```
+
+### Defaults
+
+| Setting | Default |
+|:--------|:--------|
+| `aiProvider` | `claude` |
+| `maxIterations` | `100` |
+| `consultGemini` | `true` |
+| `verbose` | `false` |
+| `noPush` | `false` |
+| `commitInterval` | `1` |
+| `hilMode` | `true` |
+| `reviewEnabled` | `false` |
+| `autonomous` | `false` |
+
+---
+
+## 9. Verification Best Practices
+
+### 9.1 Test-Driven Design
+
+Draft test specifications (TS-N) during the DESIGN phase, before IMPLEMENTATION. Define expected inputs/outputs and edge cases upfront. This clarifies the contract before coding begins.
+
+### 9.2 Negative Testing
 
 - Include tests for failure modes (empty buffers, timeouts, null pointers)
 - Test boundary conditions (max values, zero, negative)
 - Verify graceful degradation under stress
 
-### 6.3 Performance Benchmarking
+### 9.3 Performance Benchmarking
 
 - Run benchmarks and compare against baseline metrics
 - If guardrails were defined, validate against them
 - Document any performance regressions with root cause analysis
 
-### 6.4 Regression Verification
+### 9.4 Regression Verification
 
 - Ensure existing tests still pass after changes
 - Run full test suite, not just new tests
 
 ---
 
-## 7. Research Protocol
+## 10. Research Protocol
 
-Each design phase includes an implicit research step. Before finalizing any design:
+Each design phase includes a research step. Before finalizing any design:
 
-** Read `generic-best-practices.md` before starting research.**
-- This document contains 20 generic best practices applicable to ALL software projects
-- Every line of code is a liability - reuse proven solutions
-- Reference: `./vibe-model/generic-best-practices.md`
+### 10.1 Research Methods
 
-### 7.1 Standard Research Protocol (Parallel Exploration)
+For complex research, use parallel explore agents:
+1. Identify 2-3 distinct research areas
+2. Launch Explore agents in parallel (single message, multiple tool calls)
+3. Each agent focuses on one area and reports back
+4. Consolidate findings into Research Notes
 
-**Launch 3 Explore agents IN PARALLEL** (single message, multiple Agent tool calls):
+For simple research, proceed sequentially:
+1. **Web search**: existing libraries, best practices, design patterns
+2. **External AI consultation** (optional): use Gemini CLI for complex tradeoffs
+3. **Codebase research**: existing implementations, memory.md for past learnings
+4. **Document findings**: add to Research Notes section with citations
 
-**Agent 1: Codebase Search**
-- Search for existing implementations of similar functionality
-- Check for reusable patterns, interfaces, or modules
-- Look for anti-patterns and successful patterns in memory.md
-- Report: "Found X existing implementations: [files], patterns used: [list]"
+### 10.2 Build vs Reuse Decision
 
-**Agent 2: External Solutions Search**
-- Web search for existing libraries/frameworks that solve this problem
-- Check platform/vendor official libraries (Google, Apple, Microsoft, etc.)
-- Look for libraries with strong community adoption (>10k stars, active maintenance)
-- Report: "Found N candidate libraries: [names, URLs, why relevant]"
-
-**Agent 3: Best Practices Check**
-- Read `generic-best-practices.md` for relevant principles
-- Search for domain-specific best practices and anti-patterns
-- Check for established design patterns for this problem type
-- Report: "Applicable best practices: [principles], recommended patterns: [list]"
-
-**After agents report back:**
-1. Consolidate findings into journey file under "## Research Notes"
-2. **CRITICAL DECISION**: Build vs Reuse
-   - If a well-maintained library exists: USE IT
-   - If codebase has a reusable pattern: ADAPT IT
-   - Only build custom if no viable solution exists
-3. Document your decision with justification
-4. Cite all sources (URLs, file paths, memory entries)
-
-### 7.2 Additional Research Tools
-
-**Web Search** (used by Agent 2, above):
-- Search for existing libraries, frameworks, solutions
-- Look for best practices and anti-patterns
-- Use current year in queries (2026)
-
-**External AI Consultation** (optional, for complex tradeoffs):
-- Use external AI to talk through design reasoning
-- Ask about edge cases, failure modes, alternatives
-- Example: `echo "What are tradeoffs between X and Y?" | gemini --yolo`
-
-### 7.3 Codebase Research
-
-- Search for existing implementations
-- Check `memory.md` for project-specific learnings
-- Review test data and examples
-
-### 7.4 Literature Review
-
-- Whitepapers, RFCs, technical standards (DSP, embedded, audio)
-- Academic papers for algorithmic approaches
-- Platform-specific documentation (Apple HIG, Android NDK guides)
-
-### 7.5 Prior Art Search
-
-- `grep -r "similar_pattern" --include="*.ts"`
-- Check commit history for related changes
-- Review closed issues/PRs for context
-
-### 7.6 Constraint Discovery
-
-- Physical limits (sample rates, buffer sizes)
-- Platform constraints (real-time requirements, memory tiers)
-- Backward compatibility requirements
-
-### 7.7 Document Findings
-
-- Add findings to journey file under "## Research Notes"
-- Include sources (URLs, file paths)
-- Note rejected alternatives with reasons
+After research:
+- If a well-maintained library exists: USE IT
+- If codebase has a reusable pattern: ADAPT IT
+- Only build custom if no viable solution exists
+- Document the decision with justification
 
 ---
 
-## 8. Implementation Guidelines
+## 11. Implementation Guidelines
 
-### 8.1 Anchor the Endpoint
+### 11.1 Anchor the Endpoint
 
-The `Acceptance Criteria` must include specific CLI commands to verify success.
+Acceptance criteria must include specific CLI commands to verify success:
 
-**Example**:
 ```markdown
 ## Acceptance Criteria
-- `npm test -- --filter` passes with 100% success
+- `npm test` passes with 100% success
 - `npm run test -- --coverage` shows >80% line coverage
-- Latency benchmark: `./bench_latency` reports <10ms p99
+- `./bench_latency` reports <10ms p99
 ```
 
-### 8.2 No Vibe Coding
+### 11.2 No Vibe Coding
 
-If a design proposes a solution without citing a "Research Note" or "Existing Pattern," the `DESIGN_REVIEW` must reject it. Every implementation decision should be grounded in:
+Every implementation decision must be grounded in:
 - Prior art in the codebase
 - External research (papers, documentation, best practices)
 - Explicit trade-off analysis
-- **Generic Best Practices**: Consult `generic-best-practices.md` before designing
-  - Prefer existing solutions (libraries, frameworks, standard APIs)
-  - Don't reinvent well-known algorithms, patterns, or infrastructure
-  - Example: Use Workbox for service workers, not custom SW code
 
-### 8.3 Read Before Write
+### 11.3 Read Before Write
 
-Before every `SYSTEM_DESIGN` or `ARCH_DESIGN` turn:
-1. **Search for existing solutions FIRST**:
-   - Standard libraries and platform APIs
-   - Well-maintained third-party libraries
-   - Vendor-provided frameworks (Google, Apple, Microsoft)
-   - Refer to `generic-best-practices.md` for guidance
-2. Search the codebase for related modules (`grep`, `glob`)
-3. List relevant directories to understand structure
-4. Review existing patterns before proposing new ones
+Before every design or implementation turn:
+1. Search for existing solutions first (standard libraries, third-party libraries, vendor frameworks)
+2. Search the codebase for related modules
+3. Review existing patterns before proposing new ones
 
-This prevents redundant implementations and ensures consistency.
+If writing >200 lines of infrastructure code, you probably missed an existing solution.
 
-**Note**: If you're writing >200 lines of infrastructure code, you probably missed an existing solution.
+### 11.4 Update Guardrails from Bugs
 
-### 8.4 Update Guardrails from Bugs
-
-When a bug is found during `UNIT_TEST` or `INTEGRATION_TEST`, ask:
-
-> "How can I update my linter, static analysis, or test suite to prevent this class of bug forever?"
-
-**Example**: If a buffer overflow is found, add `-fsanitize=address` to the test build or add a static analysis rule for array bounds checking.
+When a bug is found during testing, ask: "How can I update my linter, static analysis, or test suite to prevent this class of bug forever?"
 
 ---
 
-## 9. Design Review Checklist
+## 12. Design Review Checklist
 
-During `DESIGN_REVIEW`, consider reviewing from multiple perspectives:
-
-### Security Review
+### 12.1 Security Review
 - [ ] Buffer overflows / array bounds
 - [ ] Integer overflow/underflow
 - [ ] Credential/secret handling
 - [ ] Input validation at system boundaries
 - [ ] Thread safety and race conditions
 
-### UX/Accessibility Review (for App/PWA)
+### 12.2 UX/Accessibility Review
 - [ ] Platform guidelines (Apple HIG, Material Design)
 - [ ] Accessibility (screen readers, color contrast, touch targets)
 - [ ] Responsive layout considerations
 - [ ] Error messages user-friendly
 
-### Systems Architecture Review
+### 12.3 Systems Architecture Review
 - [ ] No circular dependencies
 - [ ] Clear module boundaries
 - [ ] Appropriate abstraction levels
 - [ ] Memory ownership is clear
 - [ ] Error propagation is handled
 
-### Code Quality Review
+### 12.4 Code Quality Review
 - [ ] Code follows project style guide
-- [ ] No magic numbers - constants are named and documented
+- [ ] No magic numbers — constants are named and documented
 - [ ] Functions are single-purpose and testable
 - [ ] No dead code or commented-out code blocks
 - [ ] Logging/tracing at appropriate levels
 
-### Performance Review
+### 12.5 Performance Review
 - [ ] No unnecessary allocations in hot paths
 - [ ] Algorithm complexity is appropriate (O(n) vs O(n²))
 - [ ] Caching strategy is sound (if applicable)
 - [ ] No blocking operations in real-time contexts
 
-### Maintainability Review
+### 12.6 Maintainability Review
 - [ ] Code is self-documenting or has adequate comments
 - [ ] Error messages are actionable and informative
 - [ ] TODOs/FIXMEs are tracked or resolved
 - [ ] No premature optimization
 
+### 12.7 Sub-Agent Review System
+
+When `--review` is enabled, four specialist reviewers evaluate each phase sequentially:
+
+| Reviewer | Focus |
+|:---------|:------|
+| **architecture** | Separation of concerns, abstractions, scalability, project conventions |
+| **code** | Correctness, error handling, security, performance, readability, style |
+| **testability** | Test spec clarity, unit test coverage, integration test coverage |
+| **ux** | User-facing behavior, accessibility, error messages, edge cases |
+
+**Protocol**:
+- Reviewers run sequentially, stop at first FAIL
+- Each finding has severity: BLOCKER, MAJOR, MINOR
+- Verdict: PASS (no blockers/majors) or FAIL (one+ blocker/major)
+- On FAIL: record findings as a learning, pause for HIL if active, otherwise continue
+
 ---
 
-## 10. Workflow Diagram
+## 13. Workflow Diagram
 
 ```text
-  REQUIREMENTS ───────────────→ ACCEPTANCE_TEST
-       ↓                              ↑
-  [DESIGN_REVIEW]                    |
-       ↓                              |
-  SYSTEM_DESIGN ──────────────→ SYSTEM_TEST
-       ↓                              ↑
-  [DESIGN_REVIEW]                    |
-       ↓                              |
-  ARCH_DESIGN ────────────→ INTEGRATION_TEST
-       ↓                              ↑
-  [DESIGN_REVIEW]                    |
-       ↓                              |
-  MODULE_DESIGN ──────────→ UNIT_TEST
-       ↓                              ↑
-  PROTOTYPING (Optional) ─────────────┘
-       ↓
-  IMPLEMENTATION (Coding)
+  REQUIREMENTS ────────────────────→ DELIVERY
+       ↓                                  ↑
+  DESIGN ────────────────────→ INTEGRATION_TEST
+       ↓                                ↑
+  IMPLEMENTATION ──────────→ UNIT_TEST
 ```
 
----
-
-## 11. Parallel Execution Patterns
-
-The V-Model supports both sequential and parallel execution modes.
-
-### 11.1 Sequential Mode (Default)
-
-- Single agent works through phases linearly
-- Suitable for simple tasks and stories
-- Lower coordination overhead
-
-### 11.2 Parallel Mode (Complex Tasks)
-
-**Research Phase:**
-- Multiple Explore agents investigate different areas concurrently
-- Each agent focuses on one research area:
-  - Existing implementations in codebase
-  - External research (web search, best practices)
-  - Memory patterns and anti-patterns
-- Orchestrator consolidates findings into Research Notes
-
-**Implementation Phase:**
-- Independent sub-tasks are executed by multiple agents
-- Orchestrator manages dependencies between tasks
-- Results are integrated and tested together
-
-**Coordination:**
-- Orchestrator agent consolidates results
-- Manages dependencies between parallel tasks
-- Ensures consistency and integration
-
-### 11.3 When to Use Parallel Mode
-
-Use parallel execution when:
-- Research has 3+ distinct areas to investigate
-- Implementation has 3+ independent modules
-- Performance-critical paths where time matters
-
-Use sequential mode when:
-- Tasks are simple and well-defined
-- Dependencies exist between most tasks
-- Coordination overhead would exceed benefits
-
-### 11.4 Structuring Parallel Tasks
-
-**For Parallel Research:**
-```
-1. Identify distinct research areas
-2. Launch Explore agents IN PARALLEL (single message, multiple tool calls)
-3. Each agent reports back with findings
-4. Orchestrator consolidates into Research Notes
-```
-
-**For Parallel Implementation:**
-```
-## Implementation Plan
-- [ ] Sub-task A (can run in parallel)
-- [ ] Sub-task B (can run in parallel)
-- [ ] Sub-task C (depends on A and B)
-- [ ] Sub-task D (depends on A and B)
-```
-
----
-
-## 12. State Management
-
-Every state transition must be documented in the **Learnings Log**.
-
-Format: `**[{timestamp}] State Transition: {from_state} → {to_state}**`
-
----
-
-## 13. Epic Archival
-
-### 13.1 Purpose
-
-Reduce context bloat in the main journey.md file by archiving completed epic details to separate files.
-
-As V-Model journeys progress through multiple epics, the journey.md file accumulates large amounts of detailed content:
-- Research notes for each design phase (REQUIREMENTS, SYSTEM_DESIGN, ARCH_DESIGN, MODULE_DESIGN)
-- Epic Decomposition sections with detailed story designs
-- Implementation Progress tables
-- Learnings Log with timestamped entries
-- Dead Ends and Anti-Patterns
-
-This creates two problems:
-1. **Context bloat**: The main journey file becomes very large (1,200+ lines), injecting unnecessary context into each AI iteration
-2. **Difficult navigation**: Hard to find current/relevant information amidst completed epic details
-
-### 13.2 Automatic Archival
-
-Archival happens automatically during state transitions - no manual intervention required.
-
-After each state transition, the loop checks for completed epics without archival files and runs the archival agent.
-
-**Detection Logic**:
-1. Check Epic Progress table for epics marked "COMPLETE"
-2. Verify archival file doesn't already exist
-3. Skip the current epic (still in progress)
-4. Archive all other completed epics
-
-### 13.3 Epic File Format
-
-**File**: `{PROJ_ROOT}/vibe-model/journey/{name}.journey.E{id}.md`
-
-**Contents**:
-- Epic summary
-- Epic decomposition (full story designs)
-- Research notes for that epic's phases (ARCH_DESIGN, MODULE_DESIGN)
-- Implementation progress table
-- Learnings related to that epic
-- Any dead ends specific to that epic
-
-**Example Structure**:
-```markdown
-# Epic E1: Synthetic Test Harness
-
-> **Journey**: create-a-test-tone-generation-pwa
-> **Created**: 2026-03-16 12:00:00 UTC
-> **Status**: IN_PROGRESS
-
-## Epic Summary
-{Brief description of what this epic accomplishes}
-
-## Epic Decomposition
-
-### Story S1: {Story Name}
-**Status**: PENDING/IN_PROGRESS/COMPLETE
-**Description**: {What this story does}
-**Dependencies**: {None or other stories}
-
-### Story S2: {Story Name}
-...
-
-## Research Notes
-
-### ARCH_DESIGN Phase Research
-{Component-level research, API/interface designs}
-
-### MODULE_DESIGN Phase Research
-{Algorithm research, edge cases, implementation details}
-
-## Implementation Progress
-| Story | Phase | Status | Tests | Notes |
-|-------|-------|--------|-------|-------|
-| S1 | MODULE_DESIGN | IN_PROGRESS | - | Working on detailed design |
-| S2 | PENDING | PENDING | - | Not started |
-
-## Learnings
-{Epic-specific learnings added during work}
-
-## Dead Ends (if any)
-{Anti-patterns or approaches that didn't work}
-```
-
-**Note**: Epic files are created in IN_PROGRESS status when epic work begins. Upon completion, the status changes to "COMPLETE (date)" but the format remains similar.
-
-### 13.4 What Stays in Main Journey
-
-The following sections remain in the main journey.md file (runtime-critical):
-
-- **Meta** - State tracking (Goal, State, Previous Phase, Current Epic, Progress)
-- **User Hints** - User feedback (must stay accessible)
-- **Pending Questions** - Questions for user
-- **Epic Progress** - Epic completion status table
-- **Checkpoints** - Git checkpoint tracking
-- **Design Spec** - Link to .spec.md file
-- **Guardrails & Baseline Metrics** - Active constraints
-- **Current Epic Summary** - Brief summary of the epic in progress
-- **REQUIREMENTS Phase Research** - Needed throughout the journey
-- **Approaches / Current Approach Detail** - Journey-level context
-- **Anti-Patterns** - Journey-wide patterns
-
-### 13.5 Backwards Compatibility
-
-When this feature is added to an existing journey, archival automatically detects and archives completed epics on the next state transition.
-
-**Example**: An existing journey with E1 and E2 complete will automatically archive both epics on the next iteration, significantly reducing the main journey file size.
-
-### 13.6 Agent Access to Archived Content
-
-Archived epics are not lost - the AI agent can still read them when needed:
-
-1. **Explicit reading**: Agent can use Read tool to open epic files when referencing past work
-2. **Not auto-injected**: Epic files are not included in the main journey content, reducing context
-3. **Searchable**: Agent can use Grep to search across all journey files including archives
+Each milestone runs this full cycle. The PRD phase is a one-shot setup. The orchestrator handles milestone sequencing — after DELIVERY completes, it advances to the next milestone or exits.
 
 ---
 
@@ -1041,70 +625,63 @@ Archived epics are not lost - the AI agent can still read them when needed:
 
 ### 14.1 Custom AI Providers
 
-The TypeScript implementation supports extensibility through the `AIProvider` interface in `src/ai-provider.ts`:
+The system uses function-based AI execution via `src/ai-provider.ts`:
 
 ```typescript
-export interface AIProvider {
-  name: string;
-  consult(prompt: string, options: ConsultOptions): Promise<AIResponse>;
-}
+// Add new providers by extending the execution functions
+runAIWithPrompt(promptPath: string): Promise<number>
+runReview(reviewerType: string, prompt: string): Promise<ReviewResult>
 ```
-
-To add a new provider:
-1. Implement the `AIProvider` interface
-2. Add provider initialization in `src/config.ts`
-3. Register the provider in the configuration
 
 ### 14.2 Custom Verification Stages
 
-Add custom verification stages by:
-1. Extending the `VModelState` type in `src/types.ts`
-2. Adding state handlers in `src/state-machine.ts`
-3. Implementing phase-specific logic in `src/main-loop.ts`
+Add new states by:
+1. Extending `MilestoneState` enum in `src/types.ts`
+2. Adding transition in `src/milestone-state-machine.ts`
+3. Adding prompt in `src/prompts/states/`
+4. Wiring into `src/milestone-loop.ts` prompt switch
 
 ### 14.3 Custom Prompt Templates
 
-Add new prompt templates in `prompts/` directory. Templates are loaded using the `loadPrompt()` function in `src/design-spec.ts`.
+Add or modify prompts in `src/prompts/states/`. Each exports a function taking `MilestonePromptVars`.
 
 ### 14.4 TypeScript Module Structure
 
-Key extension modules:
-- `src/ai-provider.ts`: AI provider abstraction layer
-- `src/state-machine.ts`: State transition logic
-- `src/main-loop.ts`: Phase-specific handlers
-- `src/journey.ts`: Journey file operations
-- `src/checkpoint.ts`: Git checkpoint operations
-- `src/config.ts`: Configuration management
+| Module | Purpose |
+|:-------|:--------|
+| `src/ai-provider.ts` | AI provider execution (Claude/Gemini) |
+| `src/milestone-state-machine.ts` | State transition logic |
+| `src/milestone-loop.ts` | Main orchestration loop |
+| `src/milestone.ts` | Milestone file operations |
+| `src/prd.ts` | PRD file operations |
+| `src/config.ts` | Configuration management |
+| `src/checkpoint.ts` | Git commit operations |
+| `src/constants.ts` | Section names, reviewer types, file templates |
+| `src/delivery-cache.ts` | Delivery summary caching |
+| `src/prompts/states/` | Phase-specific prompt templates |
+| `src/prompts/milestone-context.ts` | Context filtering per state |
+| `src/prompts/types.ts` | MilestonePromptVars interface |
+| `src/types.ts` | Core types (MilestoneState, Config, etc.) |
 
 ### 14.5 CLI Commands
 
-The TypeScript CLI is implemented in `src/index.ts` using commander.js. Commands are registered as subcommands:
+Add new commands via commander.js in `src/index.ts`:
 
 ```typescript
 program
   .command('status')
-  .description('Show status of all journeys')
+  .description('Show status of milestones')
   .action(statusCommand);
 ```
 
-Add new commands by:
-1. Creating command handler functions
-2. Registering in `src/index.ts`
-3. Adding help text and examples
-
 ---
 
-## 15. PRD Review Protocol (Milestone-Based System)
-
-**Note**: This section applies to the milestone-based V-Model system. For legacy epic-based system, see Section 2.
+## 15. PRD Review Protocol
 
 ### 15.1 PRD Review Loop
 
 After PRD generation, the system runs an automated review loop before starting Milestone 1.
 
-**Purpose**: Ensure PRD quality before committing to milestone execution.
-
-**Protocol**:
 ```
 PRD_GENERATED → PRD_REVIEW_LOOP → APPROVED → MILESTONE_1
                   ↓
@@ -1113,10 +690,10 @@ PRD_GENERATED → PRD_REVIEW_LOOP → APPROVED → MILESTONE_1
 
 ### 15.2 Specialist Reviewers
 
-Three specialist reviewers evaluate the PRD in sequence:
+Three specialist reviewers evaluate the PRD:
 
 | Reviewer | Evaluation Criteria |
-|----------|-------------------|
+|:---------|:-------------------|
 | **Architecture** | Tech stack appropriateness, architecture clarity, milestone decomposition logic, dependency ordering |
 | **Testability** | Milestones verifiable, first milestone includes testing infrastructure, acceptance criteria definable |
 | **UX** | User journey clarity, accessibility, error handling, overall UX quality |
@@ -1133,24 +710,20 @@ Three specialist reviewers evaluate the PRD in sequence:
 ```
 iteration = 0
 max_iterations = 5
-overall_status = "pending"
 
 WHILE iteration < max_iterations AND overall_status == "pending":
-    # Run reviews
     FOR EACH reviewer IN [architecture, testability, ux]:
         findings = run_review(reviewer, prd_content)
         score = findings.all_blockers_or_majors ? -1 : +2
         ADD findings TO review_results
 
         IF score == -1:
-            BREAK  # Stop reviews early on failure
+            BREAK
 
-    # Check approval
     IF ALL scores == +2:
         overall_status = "approved"
         BREAK
 
-    # Check max iterations
     IF iteration >= max_iterations:
         overall_status = "deferred"
         IF autonomous AND NOT force:
@@ -1159,11 +732,9 @@ WHILE iteration < max_iterations AND overall_status == "pending":
             LOG warning: proceeding with unresolved issues
             BREAK
         ELSE:
-            # HIL mode - wait for human
             SET milestone.state = WAITING_FOR_USER
             RETURN
 
-    # Run fix phase
     iteration++
     run_prd_fix_phase(review_results, iteration)
     COMMIT changes
@@ -1222,12 +793,10 @@ After each milestone completes, a delivery summary is extracted and cached.
 ## Deliverables
 - Deliverable: {description}
 - Deliverable: {description}
-...
 
 ## Key Learnings
 - {learning}
 - {learning}
-...
 ```
 
 ### 16.4 Loading for Context
