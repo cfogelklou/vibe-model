@@ -39,6 +39,8 @@ export interface MilestonePromptVars {
   MILESTONE_CONTENT: string;
   /** PRD content (for PRD phase only) */
   PRD_CONTENT?: string;
+  /** Absolute path to prd.md (for PRD phase to know where to write) */
+  PRD_FILE_PATH?: string;
   /** Original goal, tech stack, and architecture (for milestone phases) */
   PRD_CONTEXT?: string;
   /** Previous and next milestone context */

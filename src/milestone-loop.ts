@@ -18,6 +18,7 @@ import {
   readPRD,
   getActiveMilestone,
   setMilestoneStatus,
+  getPRDPath,
 } from "./prd";
 import {
   createMilestoneFile,
@@ -96,6 +97,11 @@ async function generatePrompt(
     MILESTONE_CONTENT: filtered,
     PRD_CONTENT: prdContent,
   };
+
+  // Add PRD file path for PRD phase so AI knows where to write
+  if (state === MilestoneState.PRD) {
+    vars.PRD_FILE_PATH = getPRDPath(projectDir);
+  }
 
   // Add milestone-specific context (NOT for PRD phase)
   if (state !== MilestoneState.PRD) {

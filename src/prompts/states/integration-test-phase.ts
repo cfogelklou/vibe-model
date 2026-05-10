@@ -48,24 +48,29 @@ Run integration tests for milestone **#${vars.MILESTONE_ID}: ${vars.MILESTONE_NA
 
 ### Instructions:
 
-1. **Run integration / system-wide tests**:
+1. **Run the build** (MANDATORY — do NOT skip):
+   - Execute the project's actual build command (e.g., cmake --build build, make, bun build, etc.).
+   - Verify the build completes with zero errors.
+   - Verify all expected build artifacts (executables, libraries) actually exist on disk.
+
+2. **Run integration / system-wide tests**:
    - Execute the project's integration test command (or full test suite).
    - Verify the new code integrates with existing components.
    - Check for regressions in other parts of the system.
 
-2. **Verify interactions**:
+3. **Verify interactions**:
    - Interfaces between modules are called correctly.
    - Data flows match the design specification.
    - Error handling works across component boundaries.
 
-3. **Fix failures**:
+4. **Fix failures**:
    - If integration tests fail, diagnose and fix.
    - Distinguish between:
      - **Integration issue**: Fix the glue code.
      - **Regression**: Fix the regression without breaking the new feature.
    - Re-run the full suite after each fix.
 
-4. **Document results**:
+5. **Document results**:
    - In the Integration Test Results section, record:
      - Tests run, passed, failed.
      - Any regressions found and fixed.

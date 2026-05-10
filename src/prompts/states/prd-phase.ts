@@ -75,6 +75,9 @@ Milestones are ordered by user value delivery. Earlier milestones provide workin
 
 ### Output:
 
-Write **only** the prd.md file. Do NOT create any milestone files — the orchestrator will create them automatically from the milestones table.
+Write **only** the file at: ${vars.PRD_FILE_PATH ?? "vibe-model/prd.md"}
+
+Do NOT create any milestone files — the orchestrator will create them automatically from the milestones table.
+Do NOT write a prd.md anywhere else — write to the exact path above.
 `;
 }

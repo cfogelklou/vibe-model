@@ -36,11 +36,16 @@ Run and verify unit tests for milestone **#${vars.MILESTONE_ID}: ${vars.MILESTON
 
 ### Instructions:
 
-1. **Run unit tests**:
+1. **Run the build** (MANDATORY — do NOT skip):
+   - Execute the project's actual build command (e.g., cmake --build build, make, bun build, etc.).
+   - Verify the build completes with zero errors.
+   - If the build fails, fix errors before proceeding.
+
+2. **Run unit tests**:
    - Execute the project's unit test command.
    - Capture the full test output (pass/fail counts, failure details).
 
-2. **Analyze results against Test Specifications**:
+3. **Analyze results against Test Specifications**:
    - Verify each Test Specification (TS-N) is covered by at least one passing test.
    - Build a traceability matrix: TS-N → Test Name → Pass/Fail.
    - For any failing tests, determine root cause:
@@ -48,12 +53,12 @@ Run and verify unit tests for milestone **#${vars.MILESTONE_ID}: ${vars.MILESTON
      - **Implementation bug**: Fix the code.
      - **Design issue**: Note it in the Unit Test Results section.
 
-3. **Fix failures**:
+4. **Fix failures**:
    - Fix all test failures.
    - Re-run the full test suite after each fix.
    - Do NOT skip or comment out failing tests.
 
-4. **Document results**:
+5. **Document results**:
    - In the Unit Test Results section, record:
      - Total tests run, passed, failed.
      - **Traceability matrix**: TS-N → Test Name → Pass/Fail.

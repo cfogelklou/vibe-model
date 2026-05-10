@@ -47,24 +47,29 @@ Deliver milestone **#${vars.MILESTONE_ID}: ${vars.MILESTONE_NAME}**.
 
 ### Instructions:
 
-1. **Review the milestone**:
+1. **Run the final build** (MANDATORY — do NOT skip):
+   - Execute the project's actual build command (e.g., cmake --build build, make, bun build, etc.).
+   - Verify the build completes with zero errors and zero warnings.
+   - Verify all expected build artifacts (executables, libraries) actually exist on disk.
+   - Run the full test suite and verify all tests pass.
+
+2. **Review the milestone**:
    - Verify all requirements are satisfied (trace R-N to implementation).
    - Verify all test specifications passed (trace TS-N to test results).
-   - Ensure the build passes with no warnings.
 
-2. **Create a pull request**:
+3. **Create a pull request**:
    - Stage all changes for this milestone.
    - Write a clear commit message summarizing the milestone.
    - Create a PR with:
      - **Title**: milestone name and ID.
      - **Body**: summary of changes, test results, any known limitations.
 
-3. **Update the Delivery section**:
+4. **Update the Delivery section**:
    - Record the PR URL or reference.
    - List key deliverables (files added/modified).
    - Note any caveats or follow-up items.
 
-4. **Update the Learnings section**:
+5. **Update the Learnings section**:
    - Record any notable findings from this milestone.
    - Patterns to reuse, pitfalls to avoid, performance notes.
 

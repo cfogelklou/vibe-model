@@ -78,8 +78,11 @@ Each test you write MUST map to a Test Specification (TS-N):
    - Use the project's existing test framework.
    - Each test should map to one or more test specs (TS-N).
 
-4. **Run the build**:
-   - Ensure the project compiles/builds with no errors.
+4. **Run the build** (MANDATORY — do NOT skip):
+   - Execute the project's actual build command (e.g., cmake --build build, make, bun build, etc.).
+   - Ensure the project compiles/builds with zero errors.
+   - If the build fails, fix the errors and rebuild. Repeat until clean.
+   - Verify the expected build artifacts (executables, libraries) actually exist on disk after the build.
    - Run the unit tests and verify they pass.
 
 5. **Document**:
