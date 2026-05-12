@@ -19,7 +19,7 @@ The **vibe-model** CLI provides an autonomous R&D agent that implements the V-Mo
 - Formal V-Model lifecycle (Requirements → Design → Implementation → Verification)
 - Gemini consultation during design phases
 - Research integration (web search, codebase exploration)
-- Git checkpointing for safe rollback
+- Git checkpointing with phase-by-phase commit history
 - Memory persistence across sessions
 - Type-safe TypeScript implementation
 - Cross-platform support (macOS, Linux, Windows)
@@ -199,7 +199,7 @@ Never tell the AI agent to create, rename, or delete milestone files, PRD files,
 
 Review loops (PRD review, sub-agent review) must have:
 - A hard iteration cap (e.g., `maxIterations: 5`)
-- A degradation path: approve-with-warnings, defer-to-human, or `--force` bypass
+- A degradation path: approve-with-warnings, defer-to-human, or autonomous proceed-with-warning behavior
 - Clear, achievable acceptance criteria — not subjective standards like "thoroughly reviewed"
 
 The PRD review loop should approve a PRD that is *good enough*, not *perfect*. A 5-iteration loop that never approves is a bug in the review prompt, not the PRD.

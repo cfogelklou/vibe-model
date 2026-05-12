@@ -292,7 +292,7 @@ After PRD generation, vibe-model runs an automated review loop:
 3. **Approve or Fix**:
    - All +2? → PRD approved, proceed to Milestone 1
    - Any -1? → AI author addresses findings, loop repeats
-   - Max 5 iterations, then defer to human (unless `--autonomous` with `--force`)
+   - Max 5 iterations, then defer to human; in autonomous mode the loop may proceed with a warning
 
 ### PRD Review File
 
@@ -350,7 +350,7 @@ vim vibe-model/prd.md
 vibe-model continue
 ```
 
-In autonomous mode with `--force`, vibe-model proceeds with unresolved issues (not recommended for production).
+In autonomous mode, vibe-model may proceed with unresolved PRD review issues after the iteration cap is reached. Review the generated PRD carefully before relying on it for production work.
 
 ---
 
@@ -660,7 +660,7 @@ cat vibe-model/prd-review.md  # Check review findings
 
 **Fix**:
 - **HIL mode**: Review findings manually, edit PRD if needed, run `vibe-model continue`
-- **Autonomous mode**: Add `--force` flag to proceed with unresolved issues (not recommended)
+- **Autonomous mode**: Review the generated `prd-review.md` and `prd.md`; current behavior may proceed with a warning after the review iteration cap is reached
 
 #### Milestone 1 Not an MVP
 
