@@ -27,9 +27,16 @@ export async function generatePRDFixPrompt(
   const reviewPath = path.join(projectDir, "vibe-model", "prd-review.md");
   const reviewContent = await fs.readFile(reviewPath, "utf-8");
 
+  const prdPath = path.join(projectDir, "vibe-model", "prd.md");
+  const rawPrd = await fs.readFile(prdPath, "utf-8");
+
   return `You are the author of the PRD. This is PRD review iteration ${iteration}.
 
-## Current PRD
+## Current PRD (raw markdown)
+
+${rawPrd}
+
+## Parsed Summary
 
 **Goal:** ${prd.goal}
 
@@ -52,7 +59,17 @@ Address the review findings above. For each finding:
 
 1. **Implement valid suggestions** — update the PRD accordingly
 2. **Add \`## Review Response\` section** to prd.md for any items you defer or disagree with
-3. **Commit your changes** after addressing the findings
+3. Preserve the milestone table in a machine-readable form using this exact header:
+   - \`| ID | Name | Description | Status | Mode |\`
+   - \`|----|------|-------------|--------|------|\`
+4. Preserve the top-level PRD structure in this exact order:
+   - \`# PRD: ...\`
+   - \`## Goal\`
+   - \`## Tech Stack\`
+   - \`## Architecture Overview\`
+   - \`## Milestones\`
+   - optional extra sections after the milestones table (for example \`## Review Response\`)
+5. Do **not** convert the milestones table into bullets, prose, or a 4-column table.
 
 ### Rules:
 
@@ -60,10 +77,12 @@ Address the review findings above. For each finding:
 - If you disagree with a finding, explain why in the Review Response section
 - Focus on resolving BLOCKER and MAJOR issues first
 - Minor issues can be deferred if they don't affect the core architecture
+- Keep all milestone rows parseable by the orchestrator.
 
 ### Output:
 
-After addressing the findings, write the updated PRD to \`prd.md\`.
+After addressing the findings, write the updated PRD only to \`${prdPath}\`.
+Do not create milestone files.
 `;
 }
 

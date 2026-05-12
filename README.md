@@ -62,7 +62,7 @@ You: "Build a workout app with AI-generated exercises"
                    ✅ Working app
 ```
 
-Each state transition gets its own git commit. Each milestone produces a testable increment. Delivery summaries are cached after each milestone and injected into subsequent milestones for context. You can watch it build, pause to review, or let it run fully autonomously.
+Each state transition gets its own git commit. Each milestone produces a testable increment. Delivery summaries are cached after each milestone and injected into subsequent milestones for context. Auto-commit intentionally skips common generated artifacts such as `node_modules/`, `dist/`, `coverage/`, `.vite/`, `.vitest/`, and `*.tsbuildinfo` so new repos do not accidentally commit build junk. You can watch it build, pause to review, or let it run fully autonomously.
 
 ---
 
@@ -80,13 +80,29 @@ Each state transition gets its own git commit. Each milestone produces a testabl
 git clone https://github.com/cfogelklou/vibe-model.git
 cd vibe-model
 bun install
-bun run build       # creates bin/vibe-model
+bun run build       # creates a standalone bin/vibe-model executable
+```
+
+### Install Globally
+
+```bash
+cp bin/vibe-model ~/.bin/
+# or another directory on your PATH
 ```
 
 ### Verify
 
 ```bash
 ./bin/vibe-model --help
+vibe-model --help   # if installed on PATH
+```
+
+### Project Detection
+
+Run `vibe-model` from anywhere inside the target repository and it will detect the nearest git root automatically. If needed, override detection explicitly:
+
+```bash
+vibe-model --project-dir /path/to/project "your goal here"
 ```
 
 ---

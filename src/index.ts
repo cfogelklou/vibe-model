@@ -23,7 +23,7 @@ import {
 } from "./logger";
 import { killAllChildProcesses } from "./ai-provider";
 import { getPRDPath, createPRD, readPRD, getActiveMilestone } from "./prd";
-import { getMilestoneFilePath, addLearning, getMilestoneState } from "./milestone";
+import { getMilestoneFilePath, createMilestoneFile, addLearning, getMilestoneState } from "./milestone";
 import { milestoneLoop, continueMilestone } from "./milestone-loop";
 import { VIBE_MODEL_DIR, MILESTONES_DIR } from "./constants";
 
@@ -99,6 +99,10 @@ async function handleMilestoneHint(hint: string): Promise<void> {
   }
 
   const milestonePath = getMilestoneFilePath(config.projectDir, active.id, active.name);
+  if (!existsSync(milestonePath)) {
+    createMilestoneFile(config.projectDir, active.id, active.name);
+  }
+
   await addLearning(milestonePath, `User hint: ${hint}`);
   logSuccess("Hint added to milestone");
 

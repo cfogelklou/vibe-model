@@ -28,16 +28,18 @@
 # 1. Install Bun
 curl -fsSL https://bun.sh/install | bash
 
-# 2. Build vibe-model
+# 2. Build vibe-model and optionally install it on PATH
 cd vibe-model && bun install && bun run build
+cp bin/vibe-model ~/.bin/
 
 # 3. Create a target project
 mkdir /tmp/my-project && cd /tmp/my-project
 git init && git config user.name "You" && git config user.email "you@example.com"
 echo "# My Project" > README.md && git add . && git commit -m "init"
 
-# 4. Run vibe-model
-/path/to/vibe-model/bin/vibe-model --autonomous "Build a CLI calculator in TypeScript using Bun"
+# 4. Run vibe-model from inside the target repo
+vibe-model --autonomous "Build a CLI calculator in TypeScript using Bun"
+# or: /path/to/vibe-model/bin/vibe-model --autonomous "Build a CLI calculator in TypeScript using Bun"
 
 # 5. Check results
 ls vibe-model/prd.md
@@ -60,13 +62,21 @@ vibe-model status
 ```bash
 cd vibe-model
 bun install
-bun run build      # Output: bin/vibe-model
+bun run build      # Output: standalone bin/vibe-model executable
+```
+
+### Global Install (Optional)
+
+```bash
+cp bin/vibe-model ~/.bin/
+# or another directory on your PATH
 ```
 
 ### Verify Installation
 
 ```bash
 ./bin/vibe-model --help
+vibe-model --help
 ```
 
 ---
@@ -87,6 +97,8 @@ vibe-model "your goal here"
 # Verbose mode (shows AI prompts and costs)
 vibe-model -v --autonomous "your goal here"
 ```
+
+Vibe-model detects the nearest git root from your current working directory and uses that as the target project. If that is not what you want, pass `--project-dir` explicitly.
 
 ### Continuing After Interruption
 
@@ -212,6 +224,7 @@ PRD (one-shot)
    - Each state runs a single AI call with a phase-specific prompt
    - Receive PRD context (goal, tech stack, architecture) and milestone dependencies (previous deliverables, upcoming milestones)
    - Auto-commit to git after each state transition
+   - Auto-commit skips common generated artifacts such as `node_modules/`, `dist/`, `coverage/`, `.vite/`, `.vitest/`, and `*.tsbuildinfo`
    - If `--review` is enabled, sub-agent reviews run after each state
    - After DELIVERY, cache delivery summary for context injection
 
@@ -625,6 +638,14 @@ git config user.email "you@example.com"
 ```
 
 Vibe-model auto-commits after each state transition. If git is not configured, commits silently fail (non-fatal).
+
+It also intentionally skips common generated artifacts during auto-commit, even if the target repo forgot to ignore them:
+- `node_modules/`
+- `dist/`
+- `coverage/`
+- `.vite/`
+- `.vitest/`
+- `*.tsbuildinfo`
 
 ### PRD Review Issues
 

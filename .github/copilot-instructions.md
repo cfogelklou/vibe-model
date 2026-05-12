@@ -1,6 +1,6 @@
 # AI V-Model - Quick Reference
 
-**Quick reference for AI agents using the V-Model submodule.**
+**Quick reference for AI agents using the V-Model CLI.**
 
 **This is the SINGLE SOURCE OF TRUTH for all AI agents.** When this file is updated, run `./scripts/copy-ai-instructions.sh` to synchronize changes to GEMINI.md, .github/copilot-instructions.md, and CLAUDE.md.
 
@@ -12,7 +12,7 @@
 
 ## Project Overview
 
-The **vibe-model** submodule provides an autonomous R&D agent that implements the V-Model development lifecycle with formal verification. Now implemented in TypeScript for better maintainability and cross-platform compatibility.
+The **vibe-model** CLI provides an autonomous R&D agent that implements the V-Model development lifecycle with formal verification. It is implemented in TypeScript and distributed as a standalone executable for better maintainability and cross-platform compatibility.
 
 **Key Features**:
 - Goal-driven development (no pre-defined plans)
@@ -32,25 +32,30 @@ The **vibe-model** submodule provides an autonomous R&D agent that implements th
 # Install Bun (if not already installed)
 curl -fsSL https://bun.sh/install | bash
 
-# Install dependencies and build
+# Install dependencies and build the standalone executable
 cd vibe-model && bun install && bun run build
+
+# Optional: install globally
+cp bin/vibe-model ~/.bin/
 ```
 
 ### Running Vibe-Model in Your Project
 
-**IMPORTANT**: Vibe-model runs from **within** your target project directory, not from the vibe-model directory itself.
+**IMPORTANT**: Run vibe-model from anywhere inside the target repository, or pass `--project-dir` explicitly. It detects the nearest git root and writes outputs there.
 
 ```bash
 # 1. Navigate to YOUR project directory (where you want to build something)
 cd /path/to/your/project
 
-# 2. Run vibe-model (relative path to the executable)
-/path/to/vibe-model/bin/vibe-model -g -v "your goal here"
+# 2. Run vibe-model
+vibe-model -g -v "your goal here"
+# or: /path/to/vibe-model/bin/vibe-model -g -v "your goal here"
 
 # This creates a `vibe-model/` directory in your project with:
-# - journey/     - Journey tracking files
-# - prototypes/  - Experimental code
-# - memory.md    - Knowledge persistence
+# - prd.md
+# - prd-review.md
+# - milestones/
+# - delivery-summaries/
 ```
 
 ### Example: Using the Test Fixture
@@ -58,32 +63,29 @@ cd /path/to/your/project
 ```bash
 # From the vibe-model repository root:
 ./scripts/setup_example_repo.sh  # Creates example/src/ test fixture
-bun run build                     # Build bin/vibe-model
+bun run build                    # Build bin/vibe-model
 
-cd example/src                    # Navigate INTO the target project
+cd example/src                   # Navigate INTO the target project
 ../../bin/vibe-model -g -v "Build a pig latinifier CLI in C++ using CMake and CTest"
 ```
 
 ### Vibe-Model Commands
 
 ```bash
-# Start a new journey
-../../bin/vibe-model -g -v "your goal here"
+# Start a new project
+vibe-model -g -v "your goal here"
 
-# Continue active journey (from within your project)
-../../bin/vibe-model
+# Continue active milestone loop
+vibe-model
 
 # Check status
-../../bin/vibe-model status
+vibe-model status
 
-# Add a hint to unblock WAITING_FOR_USER
-../../bin/vibe-model hint "proceed with the approach"
+# Add a hint to the active milestone
+vibe-model hint "proceed with the approach"
 
-# Force pivot to next approach
-../../bin/vibe-model pivot
-
-# Rollback to last checkpoint
-../../bin/vibe-model rollback
+# Resume after WAITING_FOR_USER
+vibe-model continue
 ```
 
 ---
@@ -127,39 +129,39 @@ your-project/
 │   └── milestones/                # Milestone tracking files
 │       ├── 01-*.md
 │       └── ...
-└── vibe-model/                    # This submodule
-    ├── src/                       # TypeScript source
-    │   ├── index.ts               # CLI entry point
-    │   ├── config.ts              # Configuration
-    │   ├── types.ts               # Type definitions
-    │   ├── milestone-loop.ts      # Milestone orchestration
-    │   ├── prd.ts                 # PRD operations
-    │   ├── milestone.ts           # Milestone operations
-    │   ├── ai-provider.ts         # Claude/Gemini execution
-    │   └── ...                    # Other modules
-    ├── bin/
-    │   └── vibe-model             # Executable CLI
-    ├── prompts/                   # AI prompt templates
-    ├── package.json               # Dependencies
-    ├── USER_GUIDE.md              # Complete user manual
-    ├── vibe-model.md              # Protocol specification
-    └── AGENTS.md                  # This file
+└── ...your source files...
+
+vibe-model-repo/
+├── src/                           # TypeScript source
+├── bin/
+│   └── vibe-model                 # Standalone executable CLI
+├── prompts/                       # AI prompt templates
+├── package.json                   # Dependencies
+├── USER_GUIDE.md                  # Complete user manual
+├── vibe-model.md                  # Protocol specification
+└── AGENTS.md                      # This file
 ```
 
 ---
 
 ## Git Workflow
 
-**All commits happen in the parent project**, not the submodule.
+**All commits happen in the target project repository detected from the current working directory (nearest git root, unless `--project-dir` is provided).**
+
+Vibe-model auto-commits after each phase. During auto-commit it intentionally skips common generated artifacts even if the target project forgot to ignore them, including:
+- `node_modules/`
+- `dist/`
+- `coverage/`
+- `.vite/`
+- `.vitest/`
+- `*.tsbuildinfo`
 
 ```bash
-# Run V-Model loop
-./vibe-model/bin/vibe-model "goal"
+# Run V-Model loop from inside the target repo
+vibe-model "goal"
 
-# Commit changes (from parent project root)
-git add vibe-model/journey/your-journey.md
-git add src/changed_file.ts
-git commit -m "feat: description"
+# Review the resulting commits in that same repo
+git log --oneline
 ```
 
 ---
@@ -174,9 +176,9 @@ This CLI calls Claude Code agents and can cause dangerous recursion. Always ask 
 
 **Keep all modifications project-agnostic.**
 
-When fixing bugs or adding features to the vibe-model submodule:
+When fixing bugs or adding features to the vibe-model CLI:
 
-This ensures the submodule remains portable and reusable across all projects that depend on it.
+This ensures the tool remains portable and reusable across all projects that depend on it.
 
 ---
 
@@ -266,7 +268,7 @@ When contributing to the vibe-model TypeScript codebase:
 1. **Follow the TypeScript Guidelines** - See [TypeScript Guidelines](docs/guidelines-typescript.md) for comprehensive coding standards
 2. **Strict Mode Compliance** - All code must pass `bun run typecheck` with no errors
 3. **No Magic Strings/Numbers** - Use enums and constants from `src/types.ts`
-4. **Project-Agnostic Design** - Keep all code portable and reusable across any parent project
+4. **Project-Agnostic Design** - Keep all code portable and reusable across any target project repository
 5. **Pre-Commit Checklist** - Run `./scripts/sanity_checks.sh` before marking work complete
 
 ---

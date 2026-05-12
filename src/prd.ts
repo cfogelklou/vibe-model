@@ -67,11 +67,12 @@ export async function readPRD(projectDir: string): Promise<PRDFile> {
   const prdPath = getPRDPath(projectDir);
   const content = await fs.readFile(prdPath, "utf-8");
 
-  // Extract Goal section
+  // Extract Goal section, falling back to the H1 title for older/non-conforming PRDs.
   const goalMatch = content.match(
     /## Goal\s*\n([\s\S]*?)(?=\n## )/
   );
-  const goal = goalMatch ? goalMatch[1].trim() : "";
+  const titleMatch = content.match(/^# PRD:\s*(.+)$/m);
+  const goal = goalMatch ? goalMatch[1].trim() : titleMatch ? titleMatch[1].trim() : "";
 
   // Extract Tech Stack section
   const techMatch = content.match(
@@ -105,11 +106,13 @@ export async function readPRD(projectDir: string): Promise<PRDFile> {
 export function parseMilestonesTable(content: string): Milestone[] {
   const milestones: Milestone[] = [];
 
-  // Match table data rows: | <id> | <text> | <text> | <text> | <text> |
+  // Match table data rows:
+  //   | <id> | <text> | <text> | <text> | <text> |
+  // or the older 4-column variant without Mode:
+  //   | <id> | <text> | <text> | <text> |
   // The ID column may be a plain number ("1"), prefixed ("M1", "M-1"), or
-  // zero-padded ("01").  We extract the first sequence of digits.
-  // The mode column may be empty.
-  const rowPattern = /^\|\s*(?:M[-]?)?(\d+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]*)\s*\|$/gim;
+  // zero-padded ("01"). We extract the first sequence of digits.
+  const rowPattern = /^\|\s*(?:M[-]?)?(\d+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*(?:\|\s*([^|]*)\s*)?\|$/gim;
 
   let match: RegExpExecArray | null;
   while ((match = rowPattern.exec(content)) !== null) {
@@ -117,7 +120,7 @@ export function parseMilestonesTable(content: string): Milestone[] {
     const name = match[2].trim();
     const description = match[3].trim();
     const rawStatus = match[4].trim().toUpperCase();
-    const rawMode = match[5].trim().toLowerCase();
+    const rawMode = (match[5] ?? "").trim().toLowerCase();
 
     // Validate status — only recognise the three allowed values.
     const status = (rawStatus === "PENDING" || rawStatus === "IN_PROGRESS" || rawStatus === "COMPLETE")

@@ -50,11 +50,15 @@ Generate a lean Product Requirements Document (prd.md) for this goal.
    - Order by dependency (earlier milestones are foundations).
    - Use concise names and one-line descriptions.
 
-4. **Write prd.md** with these sections:
+4. **Write prd.md** with these sections in this exact order:
    - \`# PRD: {goal title}\`
+   - \`## Goal\` — restate the goal in 1-3 sentences.
    - \`## Tech Stack\` — language, framework, build tool, test runner.
    - \`## Architecture Overview\` — the 3-5 sentence summary.
-   - \`## Milestones\` — a table with columns: ID | Name | Description | Status | Mode
+   - \`## Milestones\` — a markdown table with this exact header row:
+     - \`| ID | Name | Description | Status | Mode |\`
+     - followed by this separator row:
+     - \`|----|------|-------------|--------|------|\`
      - **ID must be a plain integer** (1, 2, 3...) — do NOT prefix with letters like M1 or MS-1.
      - Status is always PENDING initially.
      - Mode is empty (defaults to project settings).
@@ -64,6 +68,7 @@ Generate a lean Product Requirements Document (prd.md) for this goal.
 - Keep the PRD lean — no implementation details, no acceptance criteria here.
 - Each milestone will go through full V-Model phases (REQUIREMENTS → DESIGN → IMPLEMENTATION → TEST).
 - Milestones are ordered; later ones may depend on earlier ones.
+- Preserve the markdown table format exactly so the orchestrator can parse milestone rows programmatically.
 
 ### LeanUX MVP Requirement:
 

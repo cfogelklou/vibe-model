@@ -275,26 +275,29 @@ async function runStateLoop(
     }
 
     // 3. Auto-commit after each state
+    const phaseState = currentState;
     await commitChanges(
-      `milestone(${currentState.toLowerCase()}): AI completed ${currentState} phase`,
+      `milestone(${phaseState.toLowerCase()}): AI completed ${phaseState} phase`,
     );
 
     // 4. Re-read state (the AI may have updated it directly)
-    currentState = await getMilestoneState(milestonePath);
+    const resultingState = await getMilestoneState(milestonePath);
 
     // If the AI already advanced to a terminal/WAITING state, respect it.
     if (
-      isTerminalState(currentState) ||
-      currentState === MilestoneState.WAITING_FOR_USER
+      isTerminalState(resultingState) ||
+      resultingState === MilestoneState.WAITING_FOR_USER
     ) {
+      currentState = resultingState;
       break;
     }
 
-    // 5. Run review sub-phase if enabled
+    // 5. Run review sub-phase if enabled.
+    // Review the phase that just completed, not whatever state the AI may have moved to.
     if (shouldRunReview(config)) {
       logInfo("Running review sub-phase...");
       const reviewResult = await handleReviewSubPhase(
-        currentState,
+        phaseState,
         milestonePath,
       );
 
@@ -309,16 +312,15 @@ async function runStateLoop(
           .map((r) => `${r.reviewer}: ${r.findings.join("; ")}`)
           .join(" | ");
 
-        const _milestone = await readMilestoneFile(milestonePath);
         const { addLearning } = await import("./milestone");
         await addLearning(
           milestonePath,
-          `Review failed during ${currentState}: ${failedReviewers}`,
+          `Review failed during ${phaseState}: ${failedReviewers}`,
         );
 
         // If HIL active, pause for user to review; otherwise just continue
         if (shouldPauseForHIL(config, modeOverride)) {
-          const nextState = getNextMilestoneState(currentState);
+          const nextState = getNextMilestoneState(phaseState);
           if (nextState) {
             await setPendingTransition(milestonePath, nextState);
           }
@@ -330,22 +332,55 @@ async function runStateLoop(
           return;
         }
 
-        // Not in HIL mode — continue loop (AI should fix issues on next pass)
+        // Not in HIL mode — retry the same phase so the AI can address findings.
+        currentState = phaseState;
         continue;
       }
 
       logSuccess("All reviews passed");
     }
 
-    // 6. Advance state
-    const nextState = getNextMilestoneState(currentState);
+    // 6. Determine the next state for this phase.
+    const nextState = getNextMilestoneState(phaseState);
+
+    // DELIVERY is the final actionable phase. If the AI left the milestone in
+    // DELIVERY, finalize it to COMPLETE programmatically.
     if (nextState === null) {
-      // DELIVERY reached completion — let the AI's own transition handle it,
-      // or break if the AI already set COMPLETE.
+      if (phaseState === MilestoneState.DELIVERY && resultingState === MilestoneState.DELIVERY) {
+        await setMilestoneState(milestonePath, MilestoneState.COMPLETE);
+        await setMilestoneProgress(milestonePath, STATE_PROGRESS[MilestoneState.COMPLETE] ?? 100);
+        logSuccess(`State advanced: ${phaseState} -> ${MilestoneState.COMPLETE}`);
+        currentState = MilestoneState.COMPLETE;
+        break;
+      }
+
+      currentState = resultingState;
       break;
     }
 
-    // 7. HIL pause check
+    // 7. If the AI already advanced exactly one phase, respect it and continue
+    // without double-advancing.
+    if (resultingState === nextState) {
+      const progress = STATE_PROGRESS[nextState];
+      if (progress !== undefined) {
+        await setMilestoneProgress(milestonePath, progress);
+      }
+
+      logSuccess(`AI advanced state: ${phaseState} -> ${nextState}`);
+      currentState = nextState;
+      continue;
+    }
+
+    // If the AI changed the state unexpectedly, trust the file and continue from it.
+    if (resultingState !== phaseState) {
+      logWarning(
+        `AI changed state unexpectedly: ${phaseState} -> ${resultingState}. Continuing from file state.`,
+      );
+      currentState = resultingState;
+      continue;
+    }
+
+    // 8. HIL pause check
     if (shouldPauseForHIL(config, modeOverride)) {
       await setPendingTransition(milestonePath, nextState);
       await setMilestoneState(milestonePath, MilestoneState.WAITING_FOR_USER);
@@ -356,14 +391,14 @@ async function runStateLoop(
       return;
     }
 
-    // 8. Advance and update progress
+    // 9. Advance and update progress
     await setMilestoneState(milestonePath, nextState);
     const progress = STATE_PROGRESS[nextState];
     if (progress !== undefined) {
       await setMilestoneProgress(milestonePath, progress);
     }
 
-    logSuccess(`State advanced: ${currentState} -> ${nextState}`);
+    logSuccess(`State advanced: ${phaseState} -> ${nextState}`);
 
     currentState = nextState;
   }
@@ -489,11 +524,11 @@ async function handleMilestoneCompletion(
 
   logSuccess(`Milestone #${activeMilestone.id} complete!`);
 
+  await setMilestoneStatus(projectDir, activeMilestone.id, "COMPLETE");
+
   await commitChanges(
     `milestone(complete): milestone #${activeMilestone.id} — ${activeMilestone.name}`,
   );
-
-  await setMilestoneStatus(projectDir, activeMilestone.id, "COMPLETE");
 
   const updatedPrd = await readPRD(projectDir);
   if (isLastMilestone(updatedPrd)) {
