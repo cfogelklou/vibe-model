@@ -10,7 +10,7 @@
 
 import { promises as fs } from "fs";
 import path from "path";
-import { runAIWithPrompt } from "./ai-provider";
+import { ensureSuccessfulAIExit, runAIWithPrompt } from "./ai-provider";
 import { config } from "./config";
 import { readPRD } from "./prd";
 import { logInfo, logSuccess } from "./logger";
@@ -121,6 +121,7 @@ export async function runPRDFixPhase(
       process.exit(130);
     }
 
+    ensureSuccessfulAIExit(exitCode, `PRD fix iteration ${iteration}`);
     logSuccess(`PRD fix iteration ${iteration} completed`);
   } finally {
     try {

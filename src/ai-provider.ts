@@ -16,7 +16,7 @@ import os from "os";
 import { config } from "./config";
 import { logDebug, logInfo, logWarning } from "./logger";
 import { geminiReviewPrompt } from "./prompts/index";
-import type { ClaudeCapabilities, StreamEvent, ReviewResult } from "./types";
+import { VModelError, type ClaudeCapabilities, type StreamEvent, type ReviewResult } from "./types";
 import type { ReviewerType } from "./constants";
 
 // Track child processes for cleanup
@@ -199,6 +199,15 @@ function resetStreamBuffer(): void {
  *
  * Returns the AI exit code.
  */
+export function ensureSuccessfulAIExit(exitCode: number, operation: string): void {
+  if (exitCode !== 0) {
+    throw new VModelError(
+      `AI ${operation} failed with exit code ${exitCode}. No orchestrator state was advanced.`,
+      exitCode,
+    );
+  }
+}
+
 export async function runAIWithPrompt(promptFile: string): Promise<number> {
   const isGemini = config.aiProvider === "gemini";
   const capabilities = isGemini

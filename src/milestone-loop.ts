@@ -12,7 +12,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
-import { MilestoneState, type SubAgentReview } from "./types";
+import { MilestoneState, VModelError, type MilestoneFile, type SubAgentReview } from "./types";
 import { config } from "./config";
 import {
   readPRD,
@@ -36,7 +36,7 @@ import {
   isTerminalState,
   isLastMilestone,
 } from "./milestone-state-machine";
-import { runAIWithPrompt, runReview } from "./ai-provider";
+import { ensureSuccessfulAIExit, runAIWithPrompt, runReview } from "./ai-provider";
 import { runPRDReview, writePRDReviewFindings } from "./prd-review";
 import { runPRDFixPhase } from "./prd-fix-phase";
 import { createInitialPRDReviewState, writePRDReviewState } from "./prd-review-state";
@@ -68,6 +68,92 @@ const STATE_PROGRESS: Partial<Record<MilestoneState, number>> = {
   [MilestoneState.DELIVERY]: 95,
   [MilestoneState.COMPLETE]: 100,
 };
+
+export const MAX_AUTONOMOUS_REVIEW_RETRIES = 3;
+
+const DEFAULT_PHASE_SECTION_CONTENT = {
+  requirements: "*(To be filled during REQUIREMENTS phase)*",
+  design: "*(To be filled during DESIGN phase)*",
+  testSpecifications: "*(NL test cases written during DESIGN)*",
+  implementationNotes: "*(To be filled during IMPLEMENTATION phase)*",
+  unitTestResults: "*(To be filled during UNIT_TEST phase)*",
+  integrationTestResults: "*(To be filled during INTEGRATION_TEST phase)*",
+  delivery: "*(Local branch/commit summary, deliverables, and caveats — to be filled during DELIVERY phase)*",
+} as const;
+
+function isDefaultSectionContent(value: string, placeholder: string): boolean {
+  return value.trim() === placeholder;
+}
+
+export function getMissingPhaseArtifacts(
+  phaseState: MilestoneState,
+  milestone: MilestoneFile,
+): string[] {
+  switch (phaseState) {
+    case MilestoneState.REQUIREMENTS:
+      return isDefaultSectionContent(milestone.requirements, DEFAULT_PHASE_SECTION_CONTENT.requirements)
+        ? ["Requirements"]
+        : [];
+    case MilestoneState.DESIGN: {
+      const missing: string[] = [];
+      if (isDefaultSectionContent(milestone.design, DEFAULT_PHASE_SECTION_CONTENT.design)) {
+        missing.push("Design");
+      }
+      if (isDefaultSectionContent(milestone.testSpecifications, DEFAULT_PHASE_SECTION_CONTENT.testSpecifications)) {
+        missing.push("Test Specifications");
+      }
+      return missing;
+    }
+    case MilestoneState.IMPLEMENTATION:
+      return isDefaultSectionContent(milestone.implementationNotes, DEFAULT_PHASE_SECTION_CONTENT.implementationNotes)
+        ? ["Implementation Notes"]
+        : [];
+    case MilestoneState.UNIT_TEST:
+      return isDefaultSectionContent(milestone.unitTestResults, DEFAULT_PHASE_SECTION_CONTENT.unitTestResults)
+        ? ["Unit Test Results"]
+        : [];
+    case MilestoneState.INTEGRATION_TEST:
+      return isDefaultSectionContent(milestone.integrationTestResults, DEFAULT_PHASE_SECTION_CONTENT.integrationTestResults)
+        ? ["Integration Test Results"]
+        : [];
+    case MilestoneState.DELIVERY:
+      return isDefaultSectionContent(milestone.delivery, DEFAULT_PHASE_SECTION_CONTENT.delivery)
+        ? ["Delivery"]
+        : [];
+    default:
+      return [];
+  }
+}
+
+function ensurePhaseArtifactsPresent(
+  phaseState: MilestoneState,
+  milestone: MilestoneFile,
+): void {
+  const missingArtifacts = getMissingPhaseArtifacts(phaseState, milestone);
+  if (missingArtifacts.length > 0) {
+    throw new VModelError(
+      `AI ${phaseState} phase did not update required milestone sections: ${missingArtifacts.join(", ")}. No orchestrator state was advanced.`,
+    );
+  }
+}
+
+/**
+ * Decide how autonomous mode should recover when phase reviews keep failing.
+ *
+ * Prefer the AI-written file state when it already moved forward. Otherwise,
+ * advance one lifecycle step programmatically so autonomous runs cannot get
+ * trapped retrying the same phase forever.
+ */
+export function getAutonomousReviewFailureRecoveryState(
+  phaseState: MilestoneState,
+  resultingState: MilestoneState,
+): MilestoneState {
+  if (resultingState !== phaseState) {
+    return resultingState;
+  }
+
+  return getNextMilestoneState(phaseState) ?? resultingState;
+}
 
 // ---------------------------------------------------------------------------
 // Prompt generation
@@ -238,6 +324,7 @@ async function runStateLoop(
   modeOverride?: string | null,
 ): Promise<void> {
   let currentState = await getMilestoneState(milestonePath);
+  const reviewFailureCounts = new Map<MilestoneState, number>();
 
   // Loop until we hit a terminal state, WAITING_FOR_USER, or a review failure.
   while (!isTerminalState(currentState)) {
@@ -266,6 +353,8 @@ async function runStateLoop(
       if (exitCode === 130) {
         process.exit(130);
       }
+
+      ensureSuccessfulAIExit(exitCode, `${currentState} phase`);
     } finally {
       try {
         await fs.unlink(tempPrompt);
@@ -274,13 +363,17 @@ async function runStateLoop(
       }
     }
 
-    // 3. Auto-commit after each state
+    // 3. Validate required milestone artifacts before any orchestrator state changes.
     const phaseState = currentState;
+    const milestoneAfterPhase = await readMilestoneFile(milestonePath);
+    ensurePhaseArtifactsPresent(phaseState, milestoneAfterPhase);
+
+    // 4. Auto-commit after each successful state
     await commitChanges(
       `milestone(${phaseState.toLowerCase()}): AI completed ${phaseState} phase`,
     );
 
-    // 4. Re-read state (the AI may have updated it directly)
+    // 5. Re-read state (the AI may have updated it directly)
     const resultingState = await getMilestoneState(milestonePath);
 
     // If the AI already advanced to a terminal/WAITING state, respect it.
@@ -292,7 +385,7 @@ async function runStateLoop(
       break;
     }
 
-    // 5. Run review sub-phase if enabled.
+    // 6. Run review sub-phase if enabled.
     // Review the phase that just completed, not whatever state the AI may have moved to.
     if (shouldRunReview(config)) {
       logInfo("Running review sub-phase...");
@@ -332,15 +425,46 @@ async function runStateLoop(
           return;
         }
 
-        // Not in HIL mode — retry the same phase so the AI can address findings.
-        currentState = phaseState;
+        const failureCount = (reviewFailureCounts.get(phaseState) ?? 0) + 1;
+        reviewFailureCounts.set(phaseState, failureCount);
+
+        if (failureCount < MAX_AUTONOMOUS_REVIEW_RETRIES) {
+          logWarning(
+            `Autonomous mode retrying ${phaseState} after review failure ` +
+              `(${failureCount}/${MAX_AUTONOMOUS_REVIEW_RETRIES - 1} retries used).`,
+          );
+          currentState = phaseState;
+          continue;
+        }
+
+        const recoveryState = getAutonomousReviewFailureRecoveryState(
+          phaseState,
+          resultingState,
+        );
+        logWarning(
+          `Review failed ${failureCount} time(s) in ${phaseState}. ` +
+            `Autonomous mode proceeding with latest artifact at ${recoveryState}.`,
+        );
+        reviewFailureCounts.delete(phaseState);
+        await setPendingTransition(milestonePath, null);
+
+        if (recoveryState !== resultingState) {
+          await setMilestoneState(milestonePath, recoveryState);
+          const recoveryProgress = STATE_PROGRESS[recoveryState];
+          if (recoveryProgress !== undefined) {
+            await setMilestoneProgress(milestonePath, recoveryProgress);
+          }
+        }
+
+        currentState = recoveryState;
         continue;
       }
 
+      reviewFailureCounts.delete(phaseState);
       logSuccess("All reviews passed");
     }
 
-    // 6. Determine the next state for this phase.
+    // 7. Determine the next state for this phase.
     const nextState = getNextMilestoneState(phaseState);
 
     // DELIVERY is the final actionable phase. If the AI left the milestone in
@@ -358,7 +482,7 @@ async function runStateLoop(
       break;
     }
 
-    // 7. If the AI already advanced exactly one phase, respect it and continue
+    // 8. If the AI already advanced exactly one phase, respect it and continue
     // without double-advancing.
     if (resultingState === nextState) {
       const progress = STATE_PROGRESS[nextState];
@@ -380,7 +504,7 @@ async function runStateLoop(
       continue;
     }
 
-    // 8. HIL pause check
+    // 9. HIL pause check
     if (shouldPauseForHIL(config, modeOverride)) {
       await setPendingTransition(milestonePath, nextState);
       await setMilestoneState(milestonePath, MilestoneState.WAITING_FOR_USER);
@@ -517,7 +641,8 @@ async function handleMilestoneCompletion(
   }
 
   if (!isTerminalState(finalState)) {
-    // Not COMPLETE — state loop paused (HIL) or timed out
+    // Not COMPLETE — state loop paused (HIL) or stopped after a successful phase.
+    await setMilestoneStatus(projectDir, activeMilestone.id, "IN_PROGRESS");
     logInfo(`Milestone #${activeMilestone.id} ended at ${finalState}`);
     return;
   }
@@ -585,6 +710,7 @@ export async function milestoneLoop(prdPath: string): Promise<void> {
       if (exitCode === 130) {
         process.exit(130);
       }
+      ensureSuccessfulAIExit(exitCode, "PRD phase");
     } finally {
       try {
         await fs.unlink(tempPrompt);
@@ -600,17 +726,16 @@ export async function milestoneLoop(prdPath: string): Promise<void> {
       // ignore
     }
 
-    // Commit the PRD changes
-    await commitChanges("milestone(prd): PRD generated with milestones");
-
-    // Re-read the PRD (AI should have filled in milestones)
+    // Re-read the PRD (AI should have filled in milestones) before committing.
     prdContent = await fs.readFile(prdPath, "utf-8");
     prd = await readPRD(projectDir);
 
     if (prd.milestones.length === 0) {
-      logError("PRD phase completed but no milestones were generated. Check prd.md.");
-      return;
+      throw new VModelError("AI PRD phase did not generate any milestones. No orchestrator state was advanced.");
     }
+
+    // Commit the PRD changes
+    await commitChanges("milestone(prd): PRD generated with milestones");
 
     logSuccess(`PRD generated with ${prd.milestones.length} milestone(s)`);
 
@@ -625,11 +750,6 @@ export async function milestoneLoop(prdPath: string): Promise<void> {
   if (!activeMilestone) {
     logSuccess("All milestones complete!");
     return;
-  }
-
-  // Mark the milestone as IN_PROGRESS in the PRD
-  if (activeMilestone.status === "PENDING") {
-    await setMilestoneStatus(projectDir, activeMilestone.id, "IN_PROGRESS");
   }
 
   logInfo(
