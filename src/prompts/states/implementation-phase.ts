@@ -94,6 +94,7 @@ Each test you write MUST map to a Test Specification (TS-N):
 ### Rules:
 
 - Implement exactly what the design specifies. Do not add unscoped features.
+- Do not spend time on speculative optimization (performance, bundle size, caching, memoization, scalability) unless it is explicitly required or needed to fix an observed regression.
 - If you discover a design flaw, note it in Implementation Notes but continue implementing.
 - Tests must pass before transitioning.
 

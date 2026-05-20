@@ -83,6 +83,7 @@ Create the technical design and test specifications for milestone **#${vars.MILE
 - Design must trace back to requirements. Every requirement must be covered.
 - Test specs are natural language — no code, no framework specifics.
 - Keep the design proportional to the milestone scope. Do not over-engineer.
+- Do not add speculative optimization work unless it is explicitly required or needed to address an observed regression.
 
 ### State Transition:
 

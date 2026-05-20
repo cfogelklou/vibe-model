@@ -28,6 +28,11 @@ export function getLifecycleOverview(
 
 ${previousState ? `**Previous phase:** ${previousState}` : ""}
 ${nextState ? `**Next phase:** ${nextState}` : ""}
+
+### General Guardrails
+- Prefer the simplest solution that satisfies the explicit milestone requirements.
+- Do **not** introduce proactive performance work, bundle-size work, caching, memoization, scalability work, or refactors for their own sake unless they are explicitly required by the PRD/milestone or a concrete regression has been observed.
+- When a possible optimization is merely hypothetical, note it briefly only if useful and continue with scoped delivery.
 ---
 `;
 }

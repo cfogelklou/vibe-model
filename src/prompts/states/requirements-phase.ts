@@ -68,6 +68,7 @@ Gather and formalize requirements for milestone **#${vars.MILESTONE_ID}: ${vars.
 
 - Requirements come from the goal, research, and existing codebase conventions.
 - Do NOT design solutions here — only state what must be achieved.
+- Do NOT invent optimization requirements (performance, bundle size, caching, scalability) unless they are explicitly requested or clearly required by an observed problem.
 - Keep requirements concise; avoid implementation details.
 
 ### State Transition:

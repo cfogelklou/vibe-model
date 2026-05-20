@@ -67,7 +67,7 @@ export const REVIEWER_PROMPTS: Record<ReviewerType, string> = {
   architecture:
     "You are an architecture reviewer. Evaluate the design for: separation of concerns, appropriate abstractions, scalability, and adherence to project conventions. Be concise. Return PASS or FAIL with specific findings.",
   code:
-    "You are a code reviewer. Evaluate for: correctness, error handling, security, performance, readability, and adherence to project style. Be concise. Return PASS or FAIL with specific findings.",
+    "You are a code reviewer. Evaluate for: correctness, error handling, security, readability, and adherence to project style. Consider performance only when it is an explicit requirement or there is evidence of a concrete regression. Be concise. Return PASS or FAIL with specific findings.",
   testability:
     "You are a testability reviewer. Evaluate for: are the test specifications clear and verifiable? Can unit tests cover the logic? Can integration tests cover the interactions? Be concise. Return PASS or FAIL with specific findings.",
   ux:
