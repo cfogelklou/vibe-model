@@ -56,7 +56,7 @@ stateDiagram-v2
 | `IMPLEMENTATION` | Build | Code the milestone against the approved design | 50% |
 | `UNIT_TEST` | Verify | Verify module-level logic against test specifications | 70% |
 | `INTEGRATION_TEST` | Verify | Verify cross-component behavior and regressions | 85% |
-| `DELIVERY` | Delivery | Create PR, finalize documentation, cache delivery summary | 95% |
+| `DELIVERY` | Delivery | Finalize local branch delivery, finalize documentation, cache delivery summary | 95% |
 | `COMPLETE` | Terminal | Milestone done; orchestrator advances to next milestone | 100% |
 | `WAITING_FOR_USER` | Control | Paused for human input; stores `pendingTransition` | — |
 
@@ -188,15 +188,15 @@ When HIL mode is active, the orchestrator stores the next intended state in `pen
 
 ### 3.7 DELIVERY
 
-**Purpose**: Finalize milestone delivery with PR and documentation.
+**Purpose**: Finalize milestone delivery locally on the current branch and document it.
 
 **Protocol**:
 1. Run final build — zero errors and zero warnings
 2. Run full test suite — all tests pass
 3. Verify all requirements satisfied (trace R-N to implementation)
 4. Verify all test specifications passed (trace TS-N to test results)
-5. Create PR with title and body summarizing changes
-6. Update Delivery section: PR URL, key deliverables, caveats
+5. Finalize locally on the current branch — no push, publishing, or PR creation by default
+6. Update Delivery section: local branch/commit summary, key deliverables, caveats
 7. Update Learnings section: notable findings, patterns to reuse, pitfalls
 
 **Context Injected**: All sections (full summary)
@@ -272,7 +272,7 @@ When HIL mode is active, the orchestrator stores the next intended state in `pen
 *(Cross-component verification, regressions)*
 
 ## Delivery
-*(PR link, deliverables, caveats)*
+*(Local branch/commit summary, deliverables, caveats)*
 
 ## Learnings
 *(Findings, patterns, pitfalls)*
@@ -413,7 +413,7 @@ Delivery summaries from previous milestones are loaded and injected for context:
 | `--no-consult` | Disable Gemini consultation |
 | `--project-dir <path>` | Specify project directory |
 | `--config <path>` | Specify config file path |
-| `--no-push` | Disable auto-push after iterations |
+| `--no-push` | Keep delivery local-only; do not perform any orchestrator-level push |
 | `--commit-interval <n>` | Commit every N iterations (default: 1) |
 
 ---

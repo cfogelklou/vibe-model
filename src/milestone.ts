@@ -96,7 +96,7 @@ export function createMilestoneFile(
 *(To be filled during INTEGRATION_TEST phase)*
 
 ## Delivery
-*(PR link, to be filled during DELIVERY phase)*
+*(Local branch/commit summary, deliverables, and caveats — to be filled during DELIVERY phase)*
 
 ## Learnings
 *(Replaces memory.md — learnings from this milestone)*

@@ -143,7 +143,7 @@ Shows the PRD goal, tech stack, architecture, milestones table, and active miles
 | `--no-consult` | Disable Gemini consultation |
 | `--project-dir <path>` | Specify project directory |
 | `--config <path>` | Specify config file |
-| `--no-push` | Disable auto-push |
+| `--no-push` | Keep delivery local-only; do not perform any orchestrator-level push |
 | `--commit-interval <n>` | Commit every N iterations (default: 1) |
 
 ---
@@ -197,7 +197,7 @@ CLI arguments → Environment variables → Config file → Defaults
 | `IMPLEMENTATION` | Code the milestone | 50% |
 | `UNIT_TEST` | Verify module-level logic | 70% |
 | `INTEGRATION_TEST` | Verify cross-component behavior | 85% |
-| `DELIVERY` | Create PR, finalize documentation | 95% |
+| `DELIVERY` | Finalize local branch delivery, finalize documentation | 95% |
 | `COMPLETE` | Milestone done | 100% |
 | `WAITING_FOR_USER` | Paused for human input | — |
 
@@ -389,7 +389,7 @@ Each milestone has a tracking file at `vibe-model/milestones/{NN}-{name}.md`:
 {Cross-component verification, regressions}
 
 ## Delivery
-{PR link, deliverables, caveats}
+{Local branch/commit summary, deliverables, caveats}
 
 ## Learnings
 {Patterns, pitfalls, performance notes}
@@ -473,6 +473,8 @@ When enabled with `--review`, vibe-model runs four sequential specialist reviews
 | **UX** | User-facing behavior, accessibility, error messages |
 
 Each review is a separate `claude --print` call with a specialist prompt. Reviews stop on first failure. If a review fails in HIL mode, the milestone pauses for human intervention.
+
+In autonomous mode, failed phase reviews are retried a small number of times. If the same phase keeps failing review, vibe-model proceeds with the latest artifact instead of retrying forever. This keeps autonomous runs from livelocking on overly-strict review feedback while still preserving the review findings in the milestone Learnings section.
 
 ---
 

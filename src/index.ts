@@ -166,7 +166,7 @@ async function main(): Promise<number> {
     .option("--no-consult", "Disable Gemini consultation")
     .option("--project-dir <path>", "Specify project directory")
     .option("--config <path>", "Specify config file")
-    .option("--no-push", "Disable auto-push after iterations")
+    .option("--no-push", "Keep delivery local-only; do not perform any orchestrator-level push")
     .option("--commit-interval <n>", "Commit every N iterations", "1")
     .option("--autonomous", "Run without human-in-the-loop pauses")
     .option("--review", "Enable sub-agent reviews after each phase")

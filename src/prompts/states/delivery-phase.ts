@@ -14,7 +14,7 @@ import { getLifecycleOverview } from "../common/lifecycle-context";
 /**
  * Generate DELIVERY phase prompt.
  * Input: milestone context (all sections summary).
- * Task: Create a PR, update Delivery section with PR link.
+ * Task: finalize the milestone locally on the current branch and update Delivery.
  */
 export function deliveryPhasePrompt(vars: MilestonePromptVars): string {
   return `You are an autonomous development agent working through a milestone lifecycle.
@@ -57,15 +57,17 @@ Deliver milestone **#${vars.MILESTONE_ID}: ${vars.MILESTONE_NAME}**.
    - Verify all requirements are satisfied (trace R-N to implementation).
    - Verify all test specifications passed (trace TS-N to test results).
 
-3. **Create a pull request**:
+3. **Finalize locally on the current branch**:
    - Stage all changes for this milestone.
    - Write a clear commit message summarizing the milestone.
-   - Create a PR with:
-     - **Title**: milestone name and ID.
-     - **Body**: summary of changes, test results, any known limitations.
+   - **Do not push, publish, or open a pull request.**
+   - **Do not assume network access or GitHub CLI availability.**
+   - Delivery must remain fully local to the target repository unless the user explicitly asks for a separate push or PR step.
 
 4. **Update the Delivery section**:
-   - Record the PR URL or reference.
+   - Record that delivery remains local to the current branch.
+   - Record the current branch name if known.
+   - Record the latest local commit hash if known.
    - List key deliverables (files added/modified).
    - Note any caveats or follow-up items.
 
@@ -77,11 +79,12 @@ Deliver milestone **#${vars.MILESTONE_ID}: ${vars.MILESTONE_NAME}**.
 
 - Only deliver what was scoped in this milestone.
 - If any requirement is not met, do NOT transition — fix it first.
-- Keep the PR description concise and self-contained.
+- Keep delivery notes concise and self-contained.
+- Default to privacy-preserving local-only delivery: no remote pushes, no PR creation, no publishing.
 
 ### State Transition:
 
-When the PR is created, update the milestone file:
+When local delivery is complete, update the milestone file:
 - Set \`- State:\` to \`COMPLETE\`
 - Set \`- Progress:\` to \`100%\`
 - Update the Delivery and Learnings sections with your work

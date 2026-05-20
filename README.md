@@ -450,9 +450,10 @@ vibe-model hint "use a weighted random selection for exercise variety"
 | `-v, --verbose` | Show AI prompts and cost per call |
 | `-g, --gemini` | Use Gemini instead of Claude |
 | `--autonomous` | Skip all human-in-the-loop pauses |
-| `--review` | Enable sub-agent reviews (architecture, code, testability, UX) |
+| `--review` | Enable sub-agent reviews (architecture, code, testability, UX). In autonomous mode, repeated review failures are retried a few times, then the run proceeds with the latest artifact to avoid infinite loops. |
 | `--no-consult` | Disable Gemini design consultation |
 | `--project-dir <path>` | Specify project directory |
+| `--no-push` | Keep delivery local-only; do not perform any orchestrator-level push |
 
 ---
 
@@ -532,7 +533,8 @@ No findings.
 
 ### Delivery Summaries (`vibe-model/delivery-summaries/`)
 
-Cached after each milestone delivery. Injected into subsequent milestones for context:
+Cached after each milestone delivery. Injected into subsequent milestones for context.
+Delivery is local-by-default: vibe-model finalises work on the current branch and records branch/commit metadata in the milestone file. It does not need to push or open a PR to complete a milestone.
 
 ```markdown
 # Delivery Summary: Milestone 2 - Exercise Database
