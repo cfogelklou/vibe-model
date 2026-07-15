@@ -208,8 +208,8 @@ export function ensureSuccessfulAIExit(exitCode: number, operation: string): voi
   }
 }
 
-const AI_MAX_ATTEMPTS = 3;
-const AI_BACKOFF_MS = [15_000, 45_000, 90_000]; // waits before attempts 2, 3, (4)
+const AI_MAX_ATTEMPTS = 5;
+const AI_BACKOFF_MS = [60_000, 120_000, 240_000, 300_000]; // 1,2,4,5 min backoff (ride through sustained gateway outages; each 529 attempt itself eats ~3 min)
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /**
