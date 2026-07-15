@@ -362,36 +362,52 @@ async function runStateLoop(
       return;
     }
 
-    // 2. Generate prompt and run AI
-    logPhase(`Running ${currentState} phase...`);
-    const tempPrompt = await generatePrompt(
-      currentState,
-      milestonePath,
-      config.projectDir,
-      prdContent,
-    );
+    // 2. Generate prompt, run AI, and validate — with phase-level retry for
+    //    compliance misses (AI exits clean but produces no required artifact).
+    const phaseState = currentState;
+    const MAX_PHASE_ATTEMPTS = 3;
+    let phaseAttempt = 0;
+    for (;;) {
+      logPhase(`Running ${currentState} phase...`);
+      const tempPrompt = await generatePrompt(
+        currentState,
+        milestonePath,
+        config.projectDir,
+        prdContent,
+      );
 
-    try {
-      const exitCode = await runAIWithPrompt(tempPrompt);
+      try {
+        const exitCode = await runAIWithPrompt(tempPrompt);
 
-      // Re-raise SIGINT
-      if (exitCode === 130) {
-        process.exit(130);
+        // Re-raise SIGINT
+        if (exitCode === 130) {
+          process.exit(130);
+        }
+
+        ensureSuccessfulAIExit(exitCode, `${currentState} phase`);
+      } finally {
+        try {
+          await fs.unlink(tempPrompt);
+        } catch {
+          // Temp file cleanup failed, ignore
+        }
       }
 
-      ensureSuccessfulAIExit(exitCode, `${currentState} phase`);
-    } finally {
+      // 3. Validate required milestone artifacts before any orchestrator state changes.
+      const milestoneAfterPhase = await readMilestoneFile(milestonePath);
       try {
-        await fs.unlink(tempPrompt);
-      } catch {
-        // Temp file cleanup failed, ignore
+        await ensurePhaseArtifactsPresent(phaseState, milestoneAfterPhase, milestonePath);
+        break; // phase produced its required artifact(s)
+      } catch (error) {
+        phaseAttempt++;
+        if (phaseAttempt >= MAX_PHASE_ATTEMPTS || !(error instanceof VModelError)) {
+          throw error;
+        }
+        logWarning(
+          `${currentState} phase produced no required artifact (attempt ${phaseAttempt}/${MAX_PHASE_ATTEMPTS}); re-running the phase...`,
+        );
       }
     }
-
-    // 3. Validate required milestone artifacts before any orchestrator state changes.
-    const phaseState = currentState;
-    const milestoneAfterPhase = await readMilestoneFile(milestonePath);
-    await ensurePhaseArtifactsPresent(phaseState, milestoneAfterPhase, milestonePath);
 
     // 4. Auto-commit after each successful state
     await commitChanges(
