@@ -170,6 +170,7 @@ async function main(): Promise<number> {
     .option("--commit-interval <n>", "Commit every N iterations", "1")
     .option("--autonomous", "Run without human-in-the-loop pauses")
     .option("--review", "Enable sub-agent reviews after each phase")
+    .option("--new", "Overwrite an existing prd.md that already has milestones (discard the in-progress plan)")
     .action(async (goal, options) => {
       try {
         // Initialize configuration
@@ -202,6 +203,30 @@ async function main(): Promise<number> {
           }
           await milestoneLoop(prdPath);
           return;
+        }
+
+        // Footgun guard: createPRD unconditionally overwrites prd.md. Refuse to clobber an
+        // existing plan that already has milestones unless --new is passed. To RESUME an
+        // existing plan, run `vibe-model` with NO goal argument.
+        {
+          const existingPrdPath = getPRDPath(config.projectDir);
+          if (existsSync(existingPrdPath)) {
+            const existing = await readPRD(config.projectDir);
+            if (existing.milestones.length > 0) {
+              if (!options.new) {
+                logError(
+                  `Refusing to overwrite ${existingPrdPath} (already has ${existing.milestones.length} milestone(s)).`,
+                );
+                logInfo("To RESUME the existing plan, run:  vibe-model   (no goal)");
+                logInfo("To DISCARD it and start fresh, add: --new");
+                process.exitCode = 1;
+                return;
+              }
+              logWarning(
+                `--new: overwriting existing prd.md (${existing.milestones.length} milestone(s) will be discarded).`,
+              );
+            }
+          }
         }
 
         // Create new PRD and start milestone loop
