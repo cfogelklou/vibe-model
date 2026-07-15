@@ -208,32 +208,23 @@ export function ensureSuccessfulAIExit(exitCode: number, operation: string): voi
   }
 }
 
-export async function runAIWithPrompt(promptFile: string): Promise<number> {
-  const isGemini = config.aiProvider === "gemini";
-  const capabilities = isGemini
-    ? null
-    : await detectClaudeCapabilities();
+const AI_MAX_ATTEMPTS = 3;
+const AI_BACKOFF_MS = [15_000, 45_000, 90_000]; // waits before attempts 2, 3, (4)
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-  // Build AI command
-  const aiCmd = isGemini ? ["gemini", "--yolo"] : ["claude"];
-
-  // Add flags for Claude
-  if (!isGemini && capabilities) {
-    if (capabilities.hasPrint) {
-      aiCmd.push("--print");
-    }
-    aiCmd.push("--dangerously-skip-permissions");
-    if (config.verbose && capabilities.hasStreamJson && capabilities.hasVerbose) {
-      aiCmd.push("--output-format", "stream-json");
-      aiCmd.push("--include-partial-messages");
-      aiCmd.push("--verbose");
-    }
-  }
-
-  logDebug(`Running AI command: ${aiCmd.join(" ")}`);
-
-  // Reset stream buffer before starting a new AI call
-  resetStreamBuffer();
+/**
+ * Spawn ONE claude invocation: stream output live AND capture it for diagnostics.
+ * Returns { code, output } where output is the merged stdout+stderr captured this run.
+ *
+ * Always claude: external CLI consultation was removed in favour of claude
+ * subagent reviewers.
+ */
+async function runAIOnce(
+  aiCmd: string[],
+  promptFile: string,
+  capabilities: ClaudeCapabilities | null,
+): Promise<{ code: number; output: string }> {
+  let captured = "";
 
   return new Promise((resolve, reject) => {
     const proc = spawn(aiCmd[0], aiCmd.slice(1), {
@@ -255,30 +246,37 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
         reject(error);
       });
 
-    // Handle verbose mode streaming
-    if (
+    const useStreamJson =
       config.verbose &&
-      !isGemini &&
-      capabilities?.hasStreamJson &&
-      capabilities?.hasVerbose
-    ) {
+      !!capabilities?.hasStreamJson &&
+      !!capabilities?.hasVerbose;
+
+    // Handle verbose mode streaming (live passthrough + capture for diagnostics)
+    if (useStreamJson) {
       // Stream JSON parsing mode
       proc.stdout?.on("data", (chunk) => {
         const text = chunk.toString();
+        captured += text;
         parseStreamChunk(text);
       });
 
       proc.stderr?.on("data", (chunk) => {
-        process.stderr.write(chunk); // Pass through stderr output
+        const text = chunk.toString();
+        captured += text;
+        process.stderr.write(text); // Pass through stderr output
       });
     } else {
       // Non-streaming mode - pass through output
       proc.stdout?.on("data", (chunk) => {
-        process.stdout.write(chunk);
+        const text = chunk.toString();
+        captured += text;
+        process.stdout.write(text);
       });
 
       proc.stderr?.on("data", (chunk) => {
-        process.stderr.write(chunk);
+        const text = chunk.toString();
+        captured += text;
+        process.stderr.write(text);
       });
     }
 
@@ -289,7 +287,7 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
         childProcesses.splice(index, 1);
       }
 
-      resolve(code || 0);
+      resolve({ code: code ?? 0, output: captured });
     });
 
     proc.on("error", (error) => {
@@ -305,7 +303,66 @@ export async function runAIWithPrompt(promptFile: string): Promise<number> {
 }
 
 /**
- * Consult Gemini for design review
+ * Run AI with prompt file, with retry+backoff for transient failures (429 / API hiccups).
+ * In verbose mode (Claude only): uses stream-json to show tool calls and thinking live.
+ *
+ * Returns the AI exit code (0 = success). On failure, logs the captured output tail so
+ * the cause is diagnosable (previously the error was swallowed).
+ *
+ * Always claude — external CLI consultation is replaced by claude subagents.
+ */
+export async function runAIWithPrompt(promptFile: string): Promise<number> {
+  // Always claude (external CLI consultation removed).
+  const capabilities = await detectClaudeCapabilities();
+
+  // Build AI command (claude only)
+  const aiCmd = ["claude"];
+  if (capabilities) {
+    if (capabilities.hasPrint) {
+      aiCmd.push("--print");
+    }
+    aiCmd.push("--dangerously-skip-permissions");
+    if (config.verbose && capabilities.hasStreamJson && capabilities.hasVerbose) {
+      aiCmd.push("--output-format", "stream-json");
+      aiCmd.push("--include-partial-messages");
+      aiCmd.push("--verbose");
+    }
+  }
+
+  logDebug(`Running AI command: ${aiCmd.join(" ")}`);
+
+  for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt++) {
+    // Reset stream buffer before each attempt
+    resetStreamBuffer();
+
+    const { code, output } = await runAIOnce(aiCmd, promptFile, capabilities);
+    if (code === 0) {
+      return 0;
+    }
+
+    // Failure — log the captured output tail so failures are diagnosable, then retry.
+    const tail = output.trimEnd().slice(-1500);
+    logWarning(
+      `AI attempt ${attempt}/${AI_MAX_ATTEMPTS} exited ${code}. ` +
+        `Likely transient (429 / API error). Captured output tail:\n${tail || "(no output)"}`,
+    );
+
+    if (attempt < AI_MAX_ATTEMPTS) {
+      const wait = AI_BACKOFF_MS[attempt - 1] ?? 60_000;
+      logInfo(`Retrying AI in ${Math.round(wait / 1000)}s...`);
+      await sleep(wait);
+    } else {
+      logWarning(`AI failed after ${AI_MAX_ATTEMPTS} attempts.`);
+    }
+  }
+
+  return 1;
+}
+
+/**
+ * Consult a claude subagent reviewer for design review.
+ * (Always claude — the old external-CLI path is gone; this spawns a claude reviewer
+ * with the same role-based review prompt.)
  */
 export async function consultGemini(
   phase: string,
@@ -320,8 +377,8 @@ export async function consultGemini(
     RESEARCH_CONTENT: researchContent || '',
   }, hasResearch);
 
-  // Run Gemini with review prompt
-  const proc = spawn("gemini", ["--yolo"], {
+  // Run a claude subagent reviewer with the review prompt
+  const proc = spawn("claude", ["--print", "--dangerously-skip-permissions"], {
     stdio: ["pipe", "pipe", "pipe"],
   });
 
@@ -350,7 +407,7 @@ export async function consultGemini(
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`Gemini exited with code ${code}`));
+        reject(new Error(`Reviewer (claude) exited with code ${code}`));
       }
     });
 

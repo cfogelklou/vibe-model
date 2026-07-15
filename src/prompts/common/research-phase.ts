@@ -28,23 +28,12 @@ Before finalizing any design, conduct research:
    - Look for best practices, design patterns, anti-patterns
    - Use the WebSearch tool with current year (2026)
 
-2. **External AI Consultation** (optional, for complex decisions):
-   - Use external AI (Gemini CLI) to "talk through" your design reasoning
-   - Ask: "What are the tradeoffs between X and Y?"
-   - Ask: "What edge cases might I be missing?"
-   - Command: \`echo "your question" | gemini --yolo\`
-   - **Workflow**:
-     * Output appears in terminal - read it and incorporate insights
-     * Add key findings to the milestone file's Research Notes section
-     * No need to save the output separately - research notes are the record
-   - Note: \`gemini\` is the Gemini CLI tool; \`--yolo\` bypasses confirmation prompts
-
-3. **Codebase Research**:
+2. **Codebase Research**:
    - Search for existing implementations of similar functionality
    - Check memory.md for anti-patterns and successful patterns
    - Review test_data/ for relevant test cases
 
-4. **Document Findings**:
+3. **Document Findings**:
    - Add key findings to the milestone file's "## Research Notes" section
    - Cite sources (URLs, file paths, memory entries)
 `;
