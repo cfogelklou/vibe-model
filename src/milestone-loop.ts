@@ -28,6 +28,7 @@ import {
   setPendingTransition,
   setMilestoneProgress,
   getMilestoneFilePath,
+  updateSection,
 } from "./milestone";
 import {
   getNextMilestoneState,
@@ -40,7 +41,7 @@ import { ensureSuccessfulAIExit, runAIWithPrompt, runReview } from "./ai-provide
 import { runPRDReview, writePRDReviewFindings } from "./prd-review";
 import { runPRDFixPhase } from "./prd-fix-phase";
 import { createInitialPRDReviewState, writePRDReviewState } from "./prd-review-state";
-import { commitChanges } from "./checkpoint";
+import { commitChanges, getChangedPaths } from "./checkpoint";
 import { filterMilestoneContext } from "./prompts/milestone-context";
 import { loadDeliverySummaries, cacheDeliverySummary } from "./delivery-cache";
 import { REVIEWER_TYPES, type ReviewerType } from "./constants";
@@ -125,15 +126,39 @@ export function getMissingPhaseArtifacts(
   }
 }
 
-function ensurePhaseArtifactsPresent(
+async function ensurePhaseArtifactsPresent(
   phaseState: MilestoneState,
   milestone: MilestoneFile,
-): void {
+  milestonePath: string,
+): Promise<void> {
   const missingArtifacts = getMissingPhaseArtifacts(phaseState, milestone);
-  if (missingArtifacts.length > 0) {
+  if (missingArtifacts.length === 0) {
+    return;
+  }
+
+  // Safety net: autonomous agents sometimes do the real work but forget the
+  // milestone-doc bookkeeping. If there ARE file changes this phase, auto-fill the
+  // missing section(s) with a stub referencing the changed files and continue — so
+  // the work gets committed and state advances. Only hard-fail on a true no-op
+  // (zero changes AND missing sections), which genuinely advanced nothing.
+  const changedPaths = (await getChangedPaths(config.projectDir))
+    .map((p) => p.replace(/\\/g, "/"))
+    .filter((p) => !p.startsWith("vibe-model/"));
+
+  if (changedPaths.length === 0) {
     throw new VModelError(
-      `AI ${phaseState} phase did not update required milestone sections: ${missingArtifacts.join(", ")}. No orchestrator state was advanced.`,
+      `AI ${phaseState} phase did no work and did not update required milestone sections: ${missingArtifacts.join(", ")}. No orchestrator state was advanced.`,
     );
+  }
+
+  logWarning(
+    `AI ${phaseState} phase changed ${changedPaths.length} file(s) but did not update required section(s): ${missingArtifacts.join(", ")}. Auto-filling so the work is not discarded.`,
+  );
+  const shown = changedPaths.slice(0, 30).map((p) => `- ${p}`).join("\n");
+  const more = changedPaths.length > 30 ? `\n- ... (${changedPaths.length - 30} more)` : "";
+  const stub = `*(Auto-filled by orchestrator — the AI completed this phase but did not write this section. Changed files this phase:)*\n${shown}${more}`;
+  for (const section of missingArtifacts) {
+    await updateSection(milestonePath, section, stub);
   }
 }
 
@@ -366,7 +391,7 @@ async function runStateLoop(
     // 3. Validate required milestone artifacts before any orchestrator state changes.
     const phaseState = currentState;
     const milestoneAfterPhase = await readMilestoneFile(milestonePath);
-    ensurePhaseArtifactsPresent(phaseState, milestoneAfterPhase);
+    await ensurePhaseArtifactsPresent(phaseState, milestoneAfterPhase, milestonePath);
 
     // 4. Auto-commit after each successful state
     await commitChanges(
