@@ -64,10 +64,11 @@ function parseMilestoneSections(content: string): MilestoneSections {
 
   for (const sectionName of MILESTONE_SECTIONS) {
     const key = SECTION_KEY_MAP[sectionName];
-    // Match `## SectionName` followed by content until the next `## ` or end of string.
+    // No "m" flag: under "m", "$" matches every line end and would truncate
+    // the capture to the first content line. Anchor with (?:^|\n), terminate
+    // at the next "\n## " heading or true end-of-string.
     const regex = new RegExp(
-      `^## ${escapeRegex(sectionName)}\\n([\\s\\S]+?)(?=\\n## |$)`,
-      "m"
+      `(?:^|\\n)## ${escapeRegex(sectionName)}\\n?([\\s\\S]*?)(?=\\n## |$)`
     );
     const match = content.match(regex);
     if (match) {

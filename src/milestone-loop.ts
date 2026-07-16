@@ -43,7 +43,7 @@ import { runPRDFixPhase } from "./prd-fix-phase";
 import { createInitialPRDReviewState, writePRDReviewState } from "./prd-review-state";
 import { commitChanges, getChangedPaths } from "./checkpoint";
 import { filterMilestoneContext } from "./prompts/milestone-context";
-import { loadDeliverySummaries, cacheDeliverySummary } from "./delivery-cache";
+import { loadDeliverySummaries, cacheDeliverySummary, formatDeliverySummariesForPrompt } from "./delivery-cache";
 import { REVIEWER_TYPES, type ReviewerType } from "./constants";
 import type { MilestonePromptVars } from "./prompts/types";
 import { getReviewerPrompt } from "./prompts/states/review";
@@ -219,7 +219,12 @@ async function generatePrompt(
     const prd = await readPRD(projectDir);
     const summaries = await loadDeliverySummaries(projectDir, milestone.id);
 
-    vars.PRD_CONTEXT = `## Original Goal\n${prd.goal}\n\n## Tech Stack\n${prd.techStack}\n\n## Architecture Overview\n${prd.architectureOverview}`;
+    const previousSummariesText = formatDeliverySummariesForPrompt(summaries);
+    vars.PRD_CONTEXT =
+      `## Original Goal\n${prd.goal}\n\n## Tech Stack\n${prd.techStack}\n\n## Architecture Overview\n${prd.architectureOverview}` +
+      (previousSummariesText
+        ? `\n\n## Previous Milestones (deliverables & learnings — build on these, do not redo them)\n${previousSummariesText}`
+        : "");
     vars.MILESTONE_DEPENDENCIES = {
       previous: summaries.map(s => `Milestone ${s.milestoneId}: ${s.milestoneName}`),
       next: prd.milestones.filter(m => m.id > milestone.id).map(m => `Milestone ${m.id}: ${m.name}`)

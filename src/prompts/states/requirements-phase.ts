@@ -50,7 +50,7 @@ Gather and formalize requirements for milestone **#${vars.MILESTONE_ID}: ${vars.
 1. **Research**:
    - Web search for similar systems, libraries, and best practices.
    - Search the codebase for existing implementations or patterns.
-   - Check memory.md for past learnings relevant to this milestone.
+   - Review the injected "Previous Milestones (deliverables & learnings)" context (when present) for relevant past learnings.
    - Document findings in the Research Notes section.
 
 2. **Define Requirements**:

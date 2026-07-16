@@ -15,6 +15,36 @@ import type { DeliverySummary } from "./types";
 import { VIBE_MODEL_DIR, sanitizeName, DELIVERY_CACHE_DIR } from "./constants";
 
 /**
+ * Escape special regex characters in a string so it can be used literally
+ * inside a RegExp constructor.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Extract bullet ("- " / "* ") list items from a "## {section}" block.
+ * Returns trimmed items (with their bullet marker preserved), empty if the
+ * section is absent. Uses the same heading-aware pattern as milestone.ts so it
+ * captures the full multi-line section (not just the first line).
+ */
+function parseBulletSection(content: string, sectionName: string): string[] {
+  const regex = new RegExp(
+    `(?:^|\\n)## ${escapeRegex(sectionName)}\\n?([\\s\\S]*?)(?=\\n## |$)`
+  );
+  const match = regex.exec(content);
+  if (!match) return [];
+  const items: string[] = [];
+  for (const raw of match[1].split("\n")) {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
+      items.push(trimmed);
+    }
+  }
+  return items;
+}
+
+/**
  * Returns the full path to a delivery summary file.
  */
 export function getDeliverySummaryPath(
@@ -165,19 +195,22 @@ export async function loadDeliverySummaries(
       const summaryPath = path.join(cacheDir, file);
       const content = await fs.readFile(summaryPath, "utf-8");
 
-      // Parse summary (simplified - extract key info)
+      // Parse the title, cached timestamp, and the actual Deliverables +
+      // Key Learnings content (previously discarded as empty arrays, which
+      // silently dropped all cross-milestone knowledge transfer).
       const titleMatch = content.match(
         /^# Delivery Summary: Milestone (\d+) - (.+)$/m
       );
-      if (titleMatch) {
-        summaries.push({
-          milestoneId: parseInt(titleMatch[1], 10),
-          milestoneName: titleMatch[2].trim(),
-          deliverables: [], // Simplified - full parsing not needed for context
-          timestamp: new Date().toISOString(),
-          keyLearnings: [],
-        });
-      }
+      if (!titleMatch) continue;
+
+      const tsMatch = content.match(/^\*\*Timestamp:\*\*\s*(.+)$/m);
+      summaries.push({
+        milestoneId: parseInt(titleMatch[1], 10),
+        milestoneName: titleMatch[2].trim(),
+        deliverables: parseBulletSection(content, "Deliverables"),
+        timestamp: tsMatch ? tsMatch[1].trim() : new Date().toISOString(),
+        keyLearnings: parseBulletSection(content, "Key Learnings"),
+      });
     }
 
     // Sort by milestone ID
@@ -195,14 +228,25 @@ export function formatDeliverySummariesForPrompt(
   summaries: DeliverySummary[]
 ): string {
   if (summaries.length === 0) {
-    return "No previous milestone deliveries.";
+    return "";
   }
 
   return summaries
-    .map(
-      (s) =>
-        `**Milestone ${s.milestoneId}: ${s.milestoneName}**\n` +
-        `Delivered: ${s.deliverables.length} deliverables\n`
-    )
-    .join("\n");
+    .map((s) => {
+      let block = `### Milestone ${s.milestoneId}: ${s.milestoneName}`;
+      if (s.deliverables.length > 0) {
+        const items = s.deliverables
+          .map((d) => `- ${d.replace(/^[-*]\s+/, "")}`)
+          .join("\n");
+        block += `\n**Deliverables:**\n${items}`;
+      }
+      if (s.keyLearnings.length > 0) {
+        const items = s.keyLearnings
+          .map((l) => `- ${l.replace(/^[-*]\s+/, "")}`)
+          .join("\n");
+        block += `\n**Key Learnings:**\n${items}`;
+      }
+      return block;
+    })
+    .join("\n\n");
 }

@@ -30,12 +30,12 @@ Before finalizing any design, conduct research:
 
 2. **Codebase Research**:
    - Search for existing implementations of similar functionality
-   - Check memory.md for anti-patterns and successful patterns
+   - Review prior milestone learnings provided in the context for anti-patterns and successful patterns
    - Review test_data/ for relevant test cases
 
 3. **Document Findings**:
    - Add key findings to the milestone file's "## Research Notes" section
-   - Cite sources (URLs, file paths, memory entries)
+   - Cite sources (URLs, file paths, prior learnings)
 `;
 
 /**
@@ -49,7 +49,7 @@ When dealing with complex research or implementation, you can spawn multiple sub
 - Launch up to 3 Explore agents IN PARALLEL with different focus areas:
   - Agent 1: Existing implementations in codebase
   - Agent 2: External research (web search, best practices)
-  - Agent 3: Memory patterns and anti-patterns
+  - Agent 3: Prior milestone learnings and anti-patterns
 - Each agent reports back findings
 - You consolidate findings into Research Notes
 

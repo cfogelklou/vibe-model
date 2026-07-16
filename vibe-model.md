@@ -114,7 +114,7 @@ When HIL mode is active, the orchestrator stores the next intended state in `pen
 **Purpose**: Gather and formalize testable requirements for the current milestone.
 
 **Protocol**:
-1. Research: web search, codebase exploration, memory.md consultation
+1. Research: web search, codebase exploration, prior milestone learnings (injected context)
 2. Document findings in Research Notes section
 3. Write clear, numbered requirements (R1, R2, R3...) in Requirements section
 4. Each requirement must be a single verifiable statement — no ambiguous language
@@ -499,7 +499,7 @@ For complex research, use parallel explore agents:
 For simple research, proceed sequentially:
 1. **Web search**: existing libraries, best practices, design patterns
 2. **External AI consultation** (optional): use Gemini CLI for complex tradeoffs
-3. **Codebase research**: existing implementations, memory.md for past learnings
+3. **Codebase research**: existing implementations, prior milestone learnings (injected context)
 4. **Document findings**: add to Research Notes section with citations
 
 ### 10.2 Build vs Reuse Decision

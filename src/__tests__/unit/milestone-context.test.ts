@@ -64,4 +64,37 @@ describe("filterMilestoneContext", () => {
     expect(context).toContain("## Implementation Notes\nImplementation text");
     expect(context).toContain("## Unit Test Results\nUnit test text");
   });
+
+  it("captures full multi-line section content, not just the first line (regression)", () => {
+    const multiline = `# Milestone 1: Example
+
+## Status
+- State: IMPLEMENTATION
+- Progress: 50%
+- Started: 2026-05-20 00:00:00 UTC
+- Pending Transition: NONE
+
+## Requirements
+R1 — First requirement
+R2 — Second requirement
+R3 — Third requirement
+
+## Learnings
+- learning one
+- learning two
+- learning three
+
+## Design
+D1
+`;
+    const context = filterMilestoneContext(multiline, MilestoneState.IMPLEMENTATION);
+    // All three requirement lines must survive (the bug truncated to R1 only).
+    expect(context).toContain("R1 — First requirement");
+    expect(context).toContain("R2 — Second requirement");
+    expect(context).toContain("R3 — Third requirement");
+    // All three learning lines must survive.
+    expect(context).toContain("learning one");
+    expect(context).toContain("learning two");
+    expect(context).toContain("learning three");
+  });
 });

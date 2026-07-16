@@ -20,7 +20,7 @@ import {
   MILESTONES_DIR,
   milestoneFileName,
 } from "./constants";
-import { sedInplace, appendToFile } from "./file-utils";
+import { sedInplace } from "./file-utils";
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -99,7 +99,7 @@ export function createMilestoneFile(
 *(Local branch/commit summary, deliverables, and caveats — to be filled during DELIVERY phase)*
 
 ## Learnings
-*(Replaces memory.md — learnings from this milestone)*
+*(Learnings captured from this milestone)*
 `;
 
   writeFileSync(filePath, template, "utf-8");
@@ -242,18 +242,21 @@ export async function updateSection(
   const fileContent = await fs.readFile(filePath, "utf-8");
 
   // Match "## {sectionName}" through to the next "## " or end-of-file.
+  // No "m" flag — see extractSectionContent(). Group 1 = heading (+ leading
+  // newline if mid-file) and its trailing newline; group 2 = content.
   const sectionRegex = new RegExp(
-    `(^## ${escapeRegex(sectionName)}$\\n)([\\s\\S]*?)(?=^## |$)`,
-    "m"
+    `((?:^|\\n)## ${escapeRegex(sectionName)}\\n?)([\\s\\S]*?)(?=\\n## |$)`
   );
 
   if (!sectionRegex.test(fileContent)) {
     return; // Section not found — do nothing.
   }
 
+  // Use a function replacement so `content` is inserted literally (a string
+  // replacement would interpret "$" inside content as backreferences).
   const updated = fileContent.replace(
     sectionRegex,
-    `$1${content}\n`
+    (_match, heading) => `${heading}${content}\n`
   );
 
   await fs.writeFile(filePath, updated);
@@ -262,42 +265,74 @@ export async function updateSection(
 /**
  * Appends a learning entry to the Learnings section.
  */
+const fileWriteLocks = new Map<string, Promise<unknown>>();
+
+/**
+ * Serialize async read-modify-write operations on the same file so concurrent
+ * callers (e.g. multiple `vibe-model hint` invocations) don't clobber each other.
+ *
+ * NOTE: this does NOT guard against the AI editing the milestone file
+ * concurrently — claude writes the file directly with its own tools, outside
+ * this process. For reliable application, add hints between phases (they take
+ * effect on the next prompt generation). See README_AGENTIC_DEVS.md.
+ */
+async function withFileLock<T>(
+  filePath: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const prev = fileWriteLocks.get(filePath) ?? Promise.resolve();
+  const result = prev.then(() => fn());
+  // Keep the chain alive even if this op rejects, so later queued ops still run.
+  fileWriteLocks.set(filePath, result.then(() => undefined, () => undefined));
+  return result;
+}
+
+/**
+ * Appends a learning entry to the Learnings section.
+ *
+ * Creates the section (with a proper header) if absent, and always places the
+ * entry on its own line directly under the header — so it is visible to every
+ * section reader (readMilestoneFile, prompt filtering, delivery-summary
+ * extraction). Previously a missing or empty section could orphan or mangle it.
+ */
 export async function addLearning(
   filePath: string,
-  learning: string
+  learning: string,
 ): Promise<void> {
-  // Find the Learnings section and append before the next ## heading or EOF.
-  const fileContent = await fs.readFile(filePath, "utf-8");
+  await withFileLock(filePath, async () => {
+    const fileContent = await fs.readFile(filePath, "utf-8");
 
-  const timestamp = new Date().toISOString().split("T")[0];
-  const line = `- ${timestamp}: ${learning}`;
+    const timestamp = new Date().toISOString().split("T")[0];
+    const line = `- ${timestamp}: ${learning}`;
 
-  // Locate the Learnings section
-  const learningsRegex = /^## Learnings$/m;
-  const match = learningsRegex.exec(fileContent);
+    // Locate the top-level "## Learnings" heading.
+    const headingRegex = /(?:^|\n)## Learnings\b/;
+    const match = headingRegex.exec(fileContent);
 
-  if (match?.index !== undefined) {
-    // Find the next ## heading after Learnings, or end of file
-    const afterSection = fileContent.substring(match.index + match[0].length);
-    const nextHeading = afterSection.match(/\n^## /m);
-
-    if (nextHeading?.index !== undefined) {
-      // Insert before the next heading
-      const insertPos =
-        match.index + match[0].length + nextHeading.index;
+    if (match) {
+      // Insert the entry on its own line right after the heading line.
+      const headingEnd = match.index + match[0].length;
+      const trailingNewline = fileContent.indexOf("\n", headingEnd);
+      if (trailingNewline === -1) {
+        // Heading is the last line with no trailing newline.
+        await fs.writeFile(filePath, `${fileContent}\n${line}\n`);
+        return;
+      }
+      const insertPos = trailingNewline + 1;
       const newContent =
         fileContent.substring(0, insertPos) +
         `${line}\n` +
         fileContent.substring(insertPos);
       await fs.writeFile(filePath, newContent);
     } else {
-      // No next heading — append to end of file
-      await appendToFile(filePath, `\n${line}`);
+      // No Learnings section — append a properly-formed one.
+      const sep = fileContent.endsWith("\n") ? "" : "\n";
+      await fs.writeFile(
+        filePath,
+        `${fileContent}${sep}\n## Learnings\n${line}\n`,
+      );
     }
-  } else {
-    // Learnings section not found — append to end
-    await appendToFile(filePath, `\n${line}`);
-  }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -310,9 +345,11 @@ export async function addLearning(
  * if the section is not found.
  */
 function extractSectionContent(content: string, sectionName: string): string {
+  // NOTE: no "m" flag. Under "m", "$" matches at every line end, which would
+  // truncate the capture to the first content line. Anchor the heading with
+  // (?:^|\n) and terminate at the next "\n## " heading or true end-of-string.
   const regex = new RegExp(
-    `^## ${escapeRegex(sectionName)}$\\n([\\s\\S]*?)(?=^## |$)`,
-    "m"
+    `(?:^|\\n)## ${escapeRegex(sectionName)}\\n?([\\s\\S]*?)(?=\\n## |$)`
   );
   const match = regex.exec(content);
   return match ? match[1].trim() : "";
