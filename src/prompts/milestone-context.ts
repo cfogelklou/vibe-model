@@ -111,15 +111,42 @@ function buildFilteredContext(
 }
 
 /**
+ * Build context with phase-relevant sections first, then append all remaining
+ * milestone sections so later phases retain the full journey context.
+ */
+function buildPhaseAwareContext(
+  sections: MilestoneSections,
+  primaryKeys: (keyof MilestoneSections)[]
+): string {
+  const orderedKeys: Array<keyof MilestoneSections> = [
+    ...primaryKeys,
+    ...(([
+      "status",
+      "requirements",
+      "design",
+      "testSpecifications",
+      "researchNotes",
+      "implementationNotes",
+      "unitTestResults",
+      "integrationTestResults",
+      "delivery",
+      "learnings",
+    ] as Array<keyof MilestoneSections>).filter((key) => !primaryKeys.includes(key))),
+  ];
+
+  return buildFilteredContext(sections, orderedKeys);
+}
+
+/**
  * Filter milestone file content based on the current state.
  *
  * Context requirements per state:
  * - PRD: (none -- uses prd.md directly)
- * - REQUIREMENTS: Status + Requirements + Research Notes
- * - DESIGN: Status + Requirements + Design + Research Notes
- * - IMPLEMENTATION: Status + Design + Test Specifications
- * - UNIT_TEST: Status + Implementation Notes + Test Specifications
- * - INTEGRATION_TEST: Status + Design + Unit Test Results
+ * - REQUIREMENTS: Prioritise Status + Requirements + Research Notes, include remaining milestone context after that
+ * - DESIGN: Prioritise Status + Requirements + Design + Research Notes, include remaining milestone context after that
+ * - IMPLEMENTATION: Prioritise Status + Requirements + Design + Test Specifications + Research Notes, include remaining milestone context after that
+ * - UNIT_TEST: Prioritise Status + Requirements + Design + Test Specifications + Implementation Notes, include remaining milestone context after that
+ * - INTEGRATION_TEST: Prioritise Status + Requirements + Design + Test Specifications + Implementation Notes + Unit Test Results, include remaining milestone context after that
  * - DELIVERY: Status + all sections (summary)
  * - WAITING_FOR_USER: Status + Pending Transition info
  */
@@ -139,14 +166,14 @@ export function filterMilestoneContext(
       return "";
 
     case MilestoneState.REQUIREMENTS:
-      return buildFilteredContext(sections, [
+      return buildPhaseAwareContext(sections, [
         "status",
         "requirements",
         "researchNotes",
       ]);
 
     case MilestoneState.DESIGN:
-      return buildFilteredContext(sections, [
+      return buildPhaseAwareContext(sections, [
         "status",
         "requirements",
         "design",
@@ -154,24 +181,33 @@ export function filterMilestoneContext(
       ]);
 
     case MilestoneState.IMPLEMENTATION:
-      return buildFilteredContext(sections, [
+      return buildPhaseAwareContext(sections, [
         "status",
+        "requirements",
         "design",
         "testSpecifications",
+        "researchNotes",
       ]);
 
     case MilestoneState.UNIT_TEST:
-      return buildFilteredContext(sections, [
+      return buildPhaseAwareContext(sections, [
         "status",
-        "implementationNotes",
+        "requirements",
+        "design",
         "testSpecifications",
+        "implementationNotes",
+        "researchNotes",
       ]);
 
     case MilestoneState.INTEGRATION_TEST:
-      return buildFilteredContext(sections, [
+      return buildPhaseAwareContext(sections, [
         "status",
+        "requirements",
         "design",
+        "testSpecifications",
+        "implementationNotes",
         "unitTestResults",
+        "researchNotes",
       ]);
 
     case MilestoneState.DELIVERY:
