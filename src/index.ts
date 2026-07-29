@@ -11,9 +11,9 @@
  */
 
 import { Command } from "commander";
-import { promises as fs } from "fs";
+import { existsSync, promises as fs } from "fs";
 import path from "path";
-import { VModelError, ExecutionMode, VModelState } from "./types";
+import { VModelError, MilestoneState } from "./types";
 import { config, initializeConfig } from "./config";
 import {
   logInfo,
@@ -21,230 +21,95 @@ import {
   logWarning,
   logError,
 } from "./logger";
-import {
-  createJourneyFile,
-  findActiveJourney,
-  listJourneys,
-  addUserHint,
-  getJourneyState,
-  setJourneyState,
-  getCurrentApproach,
-  setPreviousState,
-} from "./journey";
-import { mainLoop } from "./main-loop";
-import {
-  rollbackToCheckpoint,
-  listCheckpoints,
-} from "./checkpoint";
 import { killAllChildProcesses } from "./ai-provider";
+import { getPRDPath, createPRD, readPRD, getActiveMilestone } from "./prd";
+import { getMilestoneFilePath, createMilestoneFile, addLearning, getMilestoneState } from "./milestone";
+import { milestoneLoop, continueMilestone } from "./milestone-loop";
+import { VIBE_MODEL_DIR, MILESTONES_DIR } from "./constants";
 
 
 /**
  * Ensure required directories exist
  */
 async function ensureDirectories(): Promise<void> {
-  const vModelDir = path.join(config.projectDir, "vibe-model");
-  const journeyDir = path.join(vModelDir, "journey");
-  const prototypesDir = path.join(vModelDir, "prototypes");
-
-  await fs.mkdir(journeyDir, { recursive: true });
-  await fs.mkdir(prototypesDir, { recursive: true });
+  const vModelDir = path.join(config.projectDir, VIBE_MODEL_DIR);
+  await fs.mkdir(vModelDir, { recursive: true });
+  await fs.mkdir(path.join(vModelDir, MILESTONES_DIR), { recursive: true });
 }
 
 /**
- * Handle hint command
+ * Handle milestone status command
  */
-async function handleHint(hint: string): Promise<void> {
-  const activeJourney = await findActiveJourney();
+async function handleMilestoneStatus(): Promise<void> {
+  const prdPath = getPRDPath(config.projectDir);
 
-  if (!activeJourney) {
-    logError("No active journey found");
-    logInfo("Create one with: vibe-model \"your goal\"");
-    throw new VModelError("No active journey found", 1);
+  if (!existsSync(prdPath)) {
+    logInfo("No PRD found");
+    return;
   }
 
-  await addUserHint(activeJourney, hint);
-  logSuccess("Hint added to journey");
+  const prd = await readPRD(config.projectDir);
 
-  // If journey was waiting, unpause it
-  const state = await getJourneyState(activeJourney);
-  if (state === VModelState.WAITING_FOR_USER) {
-    logInfo("Journey was waiting - resuming...");
-    await setJourneyState(activeJourney, VModelState.REQUIREMENTS);
-  }
-}
+  console.log("\n\x1b[36m=== PRD ===\x1b[0m\n");
+  console.log(`Goal: ${prd.goal}`);
+  console.log(`Tech Stack: ${prd.techStack}`);
+  console.log(`Architecture: ${prd.architectureOverview}`);
 
-/**
- * Handle pivot command
- */
-async function handlePivot(): Promise<void> {
-  const activeJourney = await findActiveJourney();
-
-  if (!activeJourney) {
-    logError("No active journey found");
-    throw new VModelError("No active journey found", 1);
+  if (prd.milestones.length === 0) {
+    console.log("\nNo milestones defined yet");
+    return;
   }
 
-  logInfo("Forcing pivot for active journey");
-  await setJourneyState(activeJourney, VModelState.PIVOTING);
-  logSuccess("Journey state set to PIVOTING");
-}
+  console.log("\n\x1b[36m=== Milestones ===\x1b[0m\n");
+  console.log("| ID | Name | Description | Status | Mode |");
+  console.log("|----|------|-------------|--------|------|");
 
-/**
- * Handle reflect command
- */
-async function handleReflect(): Promise<void> {
-  const activeJourney = await findActiveJourney();
-
-  if (!activeJourney) {
-    logError("No active journey found");
-    throw new VModelError("No active journey found", 1);
+  for (const m of prd.milestones) {
+    const mode = m.modeOverride || "-";
+    console.log(`| ${m.id} | ${m.name} | ${m.description} | ${m.status} | ${mode} |`);
   }
 
-  logInfo("Forcing reflection for active journey");
-  await setJourneyState(activeJourney, VModelState.REFLECTING);
-  logSuccess("Journey state set to REFLECTING");
-}
-
-/**
- * Handle archive command
- */
-async function handleArchive(): Promise<void> {
-  const activeJourney = await findActiveJourney();
-
-  if (!activeJourney) {
-    logError("No active journey found");
-    throw new VModelError("No active journey found", 1);
-  }
-
-  logInfo("Archiving completed epics for active journey");
-
-  const currentState = await getJourneyState(activeJourney);
-  await setPreviousState(activeJourney, currentState);
-  await setJourneyState(activeJourney, VModelState.ARCHIVING);
-}
-
-/**
- * Handle rollback command
- */
-async function handleRollback(checkpointId?: string): Promise<void> {
-  const activeJourney = await findActiveJourney();
-
-  if (!activeJourney) {
-    logError("No active journey found");
-    throw new VModelError("No active journey found", 1);
-  }
-
-  const id = checkpointId ? parseInt(checkpointId, 10) : undefined;
-  await rollbackToCheckpoint(activeJourney, id);
-}
-
-/**
- * Handle list-checkpoints command
- */
-async function handleListCheckpoints(): Promise<void> {
-  const activeJourney = await findActiveJourney();
-
-  if (!activeJourney) {
-    logError("No active journey found");
-    throw new VModelError("No active journey found", 1);
-  }
-
-  const checkpoints = await listCheckpoints(activeJourney);
-
-  console.log("\n\x1b[36m=== Checkpoints ===\x1b[0m\n");
-  console.log("| ID | Tag                | Date       | Description |");
-  console.log("| -- | ------------------ | ---------- | ----------- |");
-
-  for (const checkpoint of checkpoints) {
-    console.log(
-      `| ${checkpoint.id} | ${checkpoint.tag} | ${checkpoint.date} | ${checkpoint.description} |`
-    );
+  // Show active milestone details
+  const active = getActiveMilestone(prd);
+  if (active) {
+    const milestonePath = getMilestoneFilePath(config.projectDir, active.id, active.name);
+    if (existsSync(milestonePath)) {
+      const state = await getMilestoneState(milestonePath);
+      console.log(`\n\x1b[33mActive: #${active.id} ${active.name}\x1b[0m`);
+      console.log(`  State: ${state}`);
+    }
+  } else {
+    console.log("\n\x1b[32mAll milestones complete!\x1b[0m");
   }
 
   console.log();
 }
 
 /**
- * Handle status command
+ * Handle milestone hint command
  */
-async function handleStatus(): Promise<void> {
-  await ensureDirectories();
+async function handleMilestoneHint(hint: string): Promise<void> {
+  const prd = await readPRD(config.projectDir);
+  const active = getActiveMilestone(prd);
 
-  const journeys = await listJourneys();
-
-  if (journeys.length === 0) {
-    logInfo("No journeys found");
-    logInfo("Start a new journey with: vibe-model \"your goal\"");
+  if (!active) {
+    logError("No active milestone found");
+    process.exitCode = 1;
     return;
   }
 
-  console.log("\n\x1b[36m=== Journeys ===\x1b[0m\n");
-
-  for (const journey of journeys) {
-    const isActive = journey.state !== VModelState.COMPLETE;
-    const statusIcon = isActive ? "🔄" : "✅";
-    console.log(`${statusIcon} ${journey.goal}`);
-    console.log(`   State: ${journey.state}`);
-    console.log(`   Progress: ${journey.progress}%`);
-
-    if (isActive) {
-      console.log(`   Current Epic: ${journey.currentEpic}`);
-      console.log(`   Started: ${journey.started}`);
-    }
-
-    console.log();
+  const milestonePath = getMilestoneFilePath(config.projectDir, active.id, active.name);
+  if (!existsSync(milestonePath)) {
+    createMilestoneFile(config.projectDir, active.id, active.name);
   }
 
-  // Show details for active journey
-  const activeJourney = await findActiveJourney();
+  await addLearning(milestonePath, `User hint: ${hint}`);
+  logSuccess("Hint added to milestone");
 
-  if (activeJourney) {
-    console.log("\x1b[33m=== Active Journey Details ===\x1b[0m");
-
-    // Meta section
-    console.log("\n\x1b[33mMeta:\x1b[0m");
-    const content = await fs.readFile(activeJourney, "utf-8");
-    const metaLines = content.match(/^- .+$/gm);
-    if (metaLines) {
-      for (const line of metaLines) {
-        console.log(`  ${line.replace(/^- /, "")}`);
-      }
-    }
-
-    // Checkpoints
-    console.log("\n\x1b[33mCheckpoints:\x1b[0m");
-    const checkpoints = await listCheckpoints(activeJourney);
-    if (checkpoints.length > 0) {
-      console.log("| ID | Tag | Date | Description |");
-      console.log("| -- | --- | ---- | ----------- |");
-      for (const checkpoint of checkpoints) {
-        console.log(
-          `| ${checkpoint.id} | ${checkpoint.tag} | ${checkpoint.date} | ${checkpoint.description} |`
-        );
-      }
-    } else {
-      console.log("  No checkpoints yet");
-    }
-
-    // Current approach
-    console.log("\n\x1b[33mCurrent Approach:\x1b[0m");
-    const approach = await getCurrentApproach(activeJourney);
-    console.log(`  ${approach}`);
-
-    // Pending questions
-    const pendingQuestionsMatch = content.match(
-      /## Pending Questions\n([\s\S]+?)\n## /
-    );
-    const pendingQuestions = pendingQuestionsMatch?.[1]
-      .split("\n")
-      .filter((line) => line.match(/^- \[ \] /))
-      .join("\n");
-
-    if (pendingQuestions) {
-      console.log("\n\x1b[33mPending Questions:\x1b[0m");
-      console.log(pendingQuestions);
-    }
+  // If milestone was waiting, log hint but don't auto-resume
+  const state = await getMilestoneState(milestonePath);
+  if (state === MilestoneState.WAITING_FOR_USER) {
+    logInfo("Milestone is WAITING_FOR_USER. Run `continue` to resume.");
   }
 }
 
@@ -280,9 +145,6 @@ function setupSignalHandlers(): void {
 function cleanup(): void {
   // Kill all child processes
   killAllChildProcesses();
-
-  // Remove any temp prompt files (would be done in actual implementation)
-  // For now, just ensure journey file is in consistent state
 }
 
 /**
@@ -301,20 +163,16 @@ async function main(): Promise<number> {
     .argument("[goal]", "Start a new journey with this goal")
     .option("-v, --verbose", "Enable verbose output")
     .option("-g, --gemini", "Use Gemini as primary AI")
-    .option("-m, --mvp", "Enable MVP mode (skip most testing)")
-    .option("--go", "Enable GO mode for AI agents (avoid recursion)")
     .option("--no-consult", "Disable Gemini consultation")
     .option("--project-dir <path>", "Specify project directory")
     .option("--config <path>", "Specify config file")
-    .option("--no-push", "Disable auto-push after iterations")
+    .option("--no-push", "Keep delivery local-only; do not perform any orchestrator-level push")
     .option("--commit-interval <n>", "Commit every N iterations", "1")
+    .option("--autonomous", "Run without human-in-the-loop pauses")
+    .option("--review", "Enable sub-agent reviews after each phase")
+    .option("--new", "Overwrite an existing prd.md that already has milestones (discard the in-progress plan)")
     .action(async (goal, options) => {
       try {
-        // Determine execution mode (--go takes precedence over --mvp)
-        let executionMode = ExecutionMode.NORMAL;
-        if (options.go) executionMode = ExecutionMode.GO;
-        else if (options.mvp) executionMode = ExecutionMode.MVP;
-
         // Initialize configuration
         await initializeConfig({
           verbose: options.verbose,
@@ -323,43 +181,59 @@ async function main(): Promise<number> {
           projectDir: options.projectDir,
           noPush: options.noPush || false,
           commitInterval: parseInt(options.commitInterval, 10),
-          executionMode,
+          autonomous: options.autonomous || false,
+          hilMode: !options.autonomous,
+          reviewEnabled: options.review || false,
         }, options.config);
 
         // Setup signal handlers
         setupSignalHandlers();
 
-        // Ensure directories exist
+        // Ensure required directories
         await ensureDirectories();
 
-        // If no goal provided, continue active journey
         if (!goal) {
-          const activeJourney = await findActiveJourney();
-
-          if (!activeJourney) {
-            logError("No active journey found");
-            logInfo("Start a new journey with: vibe-model \"your goal\"");
-            logInfo("Or check status with: vibe-model status");
+          // Continue active milestone
+          const prdPath = getPRDPath(config.projectDir);
+          if (!existsSync(prdPath)) {
+            logError("No active PRD found");
+            logInfo("Start a new project with: vibe-model \"your goal\"");
             process.exitCode = 1;
             return;
           }
-
-          await mainLoop(activeJourney);
+          await milestoneLoop(prdPath);
           return;
         }
 
-        // Create new journey
-        logInfo(`Creating new journey for goal: ${goal}`);
-        const journeyFile = await createJourneyFile(goal);
-
-        if (!journeyFile) {
-          logError("Failed to create journey file");
-          process.exitCode = 1;
-          return;
+        // Footgun guard: createPRD unconditionally overwrites prd.md. Refuse to clobber an
+        // existing plan that already has milestones unless --new is passed. To RESUME an
+        // existing plan, run `vibe-model` with NO goal argument.
+        {
+          const existingPrdPath = getPRDPath(config.projectDir);
+          if (existsSync(existingPrdPath)) {
+            const existing = await readPRD(config.projectDir);
+            if (existing.milestones.length > 0) {
+              if (!options.new) {
+                logError(
+                  `Refusing to overwrite ${existingPrdPath} (already has ${existing.milestones.length} milestone(s)).`,
+                );
+                logInfo("To RESUME the existing plan, run:  vibe-model   (no goal)");
+                logInfo("To DISCARD it and start fresh, add: --new");
+                process.exitCode = 1;
+                return;
+              }
+              logWarning(
+                `--new: overwriting existing prd.md (${existing.milestones.length} milestone(s) will be discarded).`,
+              );
+            }
+          }
         }
 
-        logSuccess("Journey created! Starting loop...");
-        await mainLoop(journeyFile);
+        // Create new PRD and start milestone loop
+        logInfo(`Creating PRD for goal: ${goal}`);
+        const prdPath = createPRD(config.projectDir, goal);
+        logSuccess("PRD created! Starting loop...");
+        await milestoneLoop(prdPath);
         return;
       } catch (error) {
         if (error instanceof VModelError) {
@@ -381,58 +255,35 @@ async function main(): Promise<number> {
   // Add subcommands
   program
     .command("status")
-    .description("Show status of all journeys")
+    .description("Show status of milestones")
     .action(async () => {
       await initializeConfig();
-      await handleStatus();
+      await handleMilestoneStatus();
+    });
+
+  program
+    .command("continue")
+    .description("Resume milestone from WAITING_FOR_USER")
+    .action(async () => {
+      await initializeConfig();
+      const prdPath = getPRDPath(config.projectDir);
+
+      if (!existsSync(prdPath)) {
+        logError("No active milestone system found");
+        logInfo("Start a new project with: vibe-model \"your goal\"");
+        process.exitCode = 1;
+        return;
+      }
+
+      await continueMilestone(prdPath);
     });
 
   program
     .command("hint <message>")
-    .description("Add a user hint to the journey")
+    .description("Add a hint to the active milestone")
     .action(async (message) => {
       await initializeConfig();
-      await handleHint(message);
-    });
-
-  program
-    .command("pivot")
-    .description("Force pivot to next approach")
-    .action(async () => {
-      await initializeConfig();
-      await handlePivot();
-    });
-
-  program
-    .command("reflect")
-    .description("Force reflection phase")
-    .action(async () => {
-      await initializeConfig();
-      await handleReflect();
-    });
-
-  program
-    .command("archive")
-    .description("Archive completed epics")
-    .action(async () => {
-      await initializeConfig();
-      await handleArchive();
-    });
-
-  program
-    .command("rollback [id]")
-    .description("Rollback to checkpoint")
-    .action(async (id) => {
-      await initializeConfig();
-      await handleRollback(id);
-    });
-
-  program
-    .command("list-checkpoints")
-    .description("List all checkpoints")
-    .action(async () => {
-      await initializeConfig();
-      await handleListCheckpoints();
+      await handleMilestoneHint(message);
     });
 
   await program.parseAsync(process.argv);

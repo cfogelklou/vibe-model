@@ -6,35 +6,46 @@
 
 /**
  * Configuration management with flexible path resolution.
- * Supports running from submodule position (parent-project/vibe-model/) or sibling position.
+ * Supports running as an installed binary or directly from source.
  */
 
 import { existsSync } from "fs";
 import os from "os";
 import path from "path";
-import { fileURLToPath } from "url";
 import type { Config, AIProvider } from "./types";
-import { ExecutionMode } from "./types.js";
-
-// Get the directory where this script is located
-const __filename = fileURLToPath(import.meta.url);
-const SCRIPT_DIR = path.dirname(__filename);
 
 /**
- * Detect the project directory based on script location.
- * Works from both submodule position (parent-project/vibe-model/) and sibling position.
+ * Walk upward from a starting directory and return the nearest git root.
+ * Handles both normal repositories (.git directory) and submodules/worktrees (.git file).
+ */
+function findNearestGitRoot(startDir: string): string | null {
+  let current = path.resolve(startDir);
+
+  while (true) {
+    if (existsSync(path.join(current, ".git"))) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return null;
+    }
+
+    current = parent;
+  }
+}
+
+/**
+ * Detect the target project directory.
  *
  * Priority order:
  * 1. Explicit --project-dir argument (highest priority)
- * 2. Submodule detection (vibe-model directory with parent .git)
- * 3. Current directory has .git (sibling case)
- * 4. Parent directory has .git (nested case)
- * 5. Fallback to current directory
+ * 2. Nearest git root from the current working directory
+ * 3. Fallback to the current working directory
  */
 export async function detectProjectDirectory(
   explicitProjectDir?: string
 ): Promise<string> {
-  // 1. Explicit --project-dir argument (highest priority)
   if (explicitProjectDir) {
     if (!existsSync(explicitProjectDir)) {
       throw new Error(`Project directory not found: ${explicitProjectDir}`);
@@ -42,41 +53,14 @@ export async function detectProjectDirectory(
     return path.resolve(explicitProjectDir);
   }
 
-  // 2. Check if we're in vibe-model directory (submodule case)
-  const dirName = path.basename(SCRIPT_DIR);
-  if (dirName === "vibe-model") {
-    const parentDir = path.dirname(SCRIPT_DIR);
-    if (existsSync(path.join(parentDir, ".git"))) {
-      return parentDir; // Parent is the project
-    }
-    // Parent might not have .git yet, assume it's the project
-    return parentDir;
-  }
-
-  // Check if we're in src directory (dev mode)
-  if (dirName === "src") {
-    const aiVModelDir = path.dirname(SCRIPT_DIR);
-    const parentDir = path.dirname(aiVModelDir);
-    if (existsSync(path.join(parentDir, ".git"))) {
-      return parentDir;
-    }
-    return parentDir;
-  }
-
-  // 3. Check for .git in current directory (sibling case)
   const cwd = process.cwd();
-  if (existsSync(path.join(cwd, ".git"))) {
-    return cwd;
+  const gitRoot = findNearestGitRoot(cwd);
+
+  if (gitRoot) {
+    return gitRoot;
   }
 
-  // 4. Check for .git in parent directory (nested case)
-  const parentDir = path.dirname(cwd);
-  if (existsSync(path.join(parentDir, ".git"))) {
-    return parentDir;
-  }
-
-  // 5. Fallback: use current directory
-  console.warn("Could not detect project directory, using current directory");
+  console.warn("Could not detect git root, using current directory");
   return cwd;
 }
 
@@ -151,15 +135,13 @@ export function parseEnvironmentVars(): Partial<Config> {
     env.verbose = true;
   }
 
-  if (process.env.EXECUTION_MODE) {
-    const mode = process.env.EXECUTION_MODE.toLowerCase();
-    if (mode === "mvp") {
-      env.executionMode = ExecutionMode.MVP;
-    } else if (mode === "go") {
-      env.executionMode = ExecutionMode.GO;
-    } else if (mode === "normal") {
-      env.executionMode = ExecutionMode.NORMAL;
-    }
+  // Milestone system env vars
+  if (process.env.HIL_MODE === "false") {
+    env.hilMode = false;
+    env.autonomous = true;
+  }
+  if (process.env.REVIEW_ENABLED === "true") {
+    env.reviewEnabled = true;
   }
 
   return env;
@@ -176,7 +158,9 @@ export const defaultConfig: Config = {
   verbose: false,
   noPush: false,
   commitInterval: 1,
-  executionMode: ExecutionMode.NORMAL,
+  hilMode: true,
+  reviewEnabled: false,
+  autonomous: false,
 };
 
 /**

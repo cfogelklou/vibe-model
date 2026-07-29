@@ -107,6 +107,14 @@ gh api -X POST "/repos/{owner}/{repo}/pulls/{PR_NUMBER}/comments/{COMMENT_ID}/re
   -f body="Fixed — [explain what was changed and why]"
 ```
 
+**Troubleshooting 404 errors:**
+- GitHub carries review comments forward to new commits automatically
+- If you get 404 immediately after pushing fixes, wait a moment for GitHub to propagate comments
+- Verify comments exist on latest commit:
+  ```bash
+  gh api /repos/{owner}/{repo}/pulls/{PR_NUMBER}/comments --jq '.[] | select(.id == {COMMENT_ID}) | {id, commit_id}'
+  ```
+
 ---
 
 ## Vibe-Model Specific CI Issues

@@ -10,42 +10,6 @@
  */
 
 /**
- * Available template variable names for type checking and autocomplete.
- * This union type represents all possible template variables used across prompts.
- */
-export type TemplateVariable =
-  | 'AI_PROVIDER'
-  | 'JOURNEY_CONTENT'
-  | 'JOURNEY_FILE'
-  | 'JOURNEY_NAME'
-  | 'EPIC_CONTENT'
-  | 'EPIC_FILE_INSTRUCTIONS'
-  | 'PHASE'
-  | 'DESIGN_CONTENT'
-  | 'RESEARCH_CONTENT';
-
-/**
- * Template variables for main-iteration prompt.
- * Used in src/main-loop.ts generateIterationPrompt()
- */
-export interface MainIterationVars {
-  /** AI provider name ("claude" or "gemini") */
-  AI_PROVIDER: string;
-  /** Full journey file content */
-  JOURNEY_CONTENT: string;
-  /** Epic file content (optional) */
-  EPIC_CONTENT?: string;
-  /** Instructions for epic-specific work (optional) */
-  EPIC_FILE_INSTRUCTIONS?: string;
-  /** Current V-Model phase (NOTE: not actually used in template, but passed for consistency) */
-  PHASE?: string;
-  /** Journey file path */
-  JOURNEY_FILE: string;
-  /** Journey name (without .journey.md extension) */
-  JOURNEY_NAME: string;
-}
-
-/**
  * Template variables for Gemini design review prompts.
  * Used in src/ai-provider.ts consultGemini()
  */
@@ -56,4 +20,43 @@ export interface GeminiReviewVars {
   RESEARCH_CONTENT?: string;
   /** Current V-Model phase being reviewed */
   PHASE: string;
+}
+
+/**
+ * Template variables for milestone-based lifecycle prompts.
+ * Used by the milestone prompt system.
+ */
+export interface MilestonePromptVars {
+  /** AI provider name ("claude" or "gemini") */
+  AI_PROVIDER: string;
+  /** Path to the milestone file */
+  MILESTONE_FILE: string;
+  /** Human-readable milestone name */
+  MILESTONE_NAME: string;
+  /** Milestone ID (1-based) */
+  MILESTONE_ID: number;
+  /** Milestone file content, filtered by current state */
+  MILESTONE_CONTENT: string;
+  /** PRD content (for PRD phase only) */
+  PRD_CONTENT?: string;
+  /** Absolute path to prd.md (for PRD phase to know where to write) */
+  PRD_FILE_PATH?: string;
+  /** Original goal, tech stack, and architecture (for milestone phases) */
+  PRD_CONTEXT?: string;
+  /** Previous and next milestone context */
+  MILESTONE_DEPENDENCIES?: {
+    /** List of completed milestones with their deliverables */
+    previous: string[];
+    /** List of upcoming milestones */
+    next: string[];
+  };
+  /** Milestone position in the PRD */
+  MILESTONE_POSITION?: {
+    /** Current milestone number */
+    current: number;
+    /** Total number of milestones */
+    total: number;
+    /** Whether this is the final milestone */
+    isLast: boolean;
+  };
 }

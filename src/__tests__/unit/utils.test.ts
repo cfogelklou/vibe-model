@@ -4,30 +4,6 @@
 
 import { describe, it, expect } from "bun:test";
 import { stripAnsi } from "../../file-utils";
-import { sanitizeJourneyName } from "../../journey";
-
-describe("sanitizeJourneyName", () => {
-  it("should convert to lowercase and replace spaces with hyphens", () => {
-    const result = sanitizeJourneyName("Test Goal Name");
-    expect(result).toBe("test-goal-name");
-  });
-
-  it("should replace special characters with hyphens", () => {
-    const result = sanitizeJourneyName("Test@Goal#Name$!");
-    expect(result).toBe("test-goal-name");
-  });
-
-  it("should limit to 50 characters", () => {
-    const longGoal = "a".repeat(100);
-    const result = sanitizeJourneyName(longGoal);
-    expect(result.length).toBeLessThanOrEqual(50);
-  });
-
-  it("should handle multiple consecutive hyphens", () => {
-    const result = sanitizeJourneyName("Test---Goal");
-    expect(result).toBe("test-goal");
-  });
-});
 
 describe("stripAnsi", () => {
   it("should remove ANSI escape sequences", () => {

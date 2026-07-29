@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to copy CLAUDE.md to GEMINI.md, .github/copilot-instructions.md, and AGENTS.md
+# Script to copy AGENTS.md to GEMINI.md, .github/copilot-instructions.md, and CLAUDE.md
 # This ensures all AI instruction files stay in sync
 #
 # If .github/copilot-instructions-addendum.md exists, it will be appended
@@ -12,7 +12,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-SOURCE_FILE="$PROJECT_ROOT/CLAUDE.md"
+SOURCE_FILE="$PROJECT_ROOT/AGENTS.md"
 GEMINI_FILE="$PROJECT_ROOT/GEMINI.md"
 COPILOT_FILE="$PROJECT_ROOT/.github/copilot-instructions.md"
 COPILOT_ADDENDUM="$PROJECT_ROOT/.github/copilot-instructions-addendum.md"
@@ -26,18 +26,18 @@ fi
 # Create .github directory if it doesn't exist
 mkdir -p "$PROJECT_ROOT/.github"
 
-# Copy CLAUDE.md to GEMINI.md
+# Copy AGENTS.md to GEMINI.md
 echo "Copying $SOURCE_FILE to $GEMINI_FILE..."
 cp "$SOURCE_FILE" "$GEMINI_FILE"
 
-# Copy CLAUDE.md to .github/copilot-instructions.md
-# Note: This overwrites any existing content, preventing duplicates
+# Copy AGENTS.md to .github/copilot-instructions.md
 echo "Copying $SOURCE_FILE to $COPILOT_FILE..."
 cp "$SOURCE_FILE" "$COPILOT_FILE"
 
-# Copy CLAUDE.md to AGENTS.md (for opencode-ai support)
-echo "Copying $SOURCE_FILE to $AGENTS_FILE..."
-cp "$SOURCE_FILE" "$AGENTS_FILE"
+# Copy AGENTS.md to CLAUDE.md (for Claude Code support)
+CLAUDE_FILE="$PROJECT_ROOT/CLAUDE.md"
+echo "Copying $SOURCE_FILE to $CLAUDE_FILE..."
+cp "$SOURCE_FILE" "$CLAUDE_FILE"
 
 # If Copilot-specific addendum exists, append it to copilot-instructions.md
 if [ -f "$COPILOT_ADDENDUM" ]; then

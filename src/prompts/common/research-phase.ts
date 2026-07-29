@@ -10,17 +10,19 @@
  */
 
 /**
- * Research phase instructions for design phases
+ * Research phase instructions for milestone phases
  */
 export const RESEARCH_PHASE_INSTRUCTIONS = `## Research Phase
 
 Before finalizing any design, conduct research:
 
-**For complex research questions, use parallel explore agents:**
-1. Identify 2-3 distinct research areas (e.g., existing implementations, external research, memory patterns)
-2. Launch Explore agents IN PARALLEL (single message, multiple tool calls)
+**For complex research questions, fan out explore subagents ONE AT A TIME:**
+1. Identify 2-3 distinct research areas (e.g., existing implementations, external research, prior learnings)
+2. Launch Explore subagents SEQUENTIALLY — spawn one, wait for it to finish, then spawn the next
 3. Each agent focuses on one area and reports back
 4. You consolidate findings into Research Notes
+
+> ⚠️ Never spawn subagents in parallel. vibe-model is long-running on a metered token budget; concurrent subagents quickly exhaust it and trigger rate-limit (529) failures. Always serialize.
 
 **For simple research, proceed sequentially:**
 1. **Web Search** (if applicable):
@@ -28,49 +30,29 @@ Before finalizing any design, conduct research:
    - Look for best practices, design patterns, anti-patterns
    - Use the WebSearch tool with current year (2026)
 
-2. **External AI Consultation** (optional, for complex decisions):
-   - Use external AI (Gemini CLI) to "talk through" your design reasoning
-   - Ask: "What are the tradeoffs between X and Y?"
-   - Ask: "What edge cases might I be missing?"
-   - Command: \`echo "your question" | gemini --yolo\`
-   - **Workflow**:
-     * Output appears in terminal - read it and incorporate insights
-     * Add key findings to journey/epic Research Notes section
-     * No need to save the output separately - research notes are the record
-   - Note: \`gemini\` is the Gemini CLI tool; \`--yolo\` bypasses confirmation prompts
-   - See vibe-model.md section 7.2 for more details on external AI consultation
-
-3. **Codebase Research**:
+2. **Codebase Research**:
    - Search for existing implementations of similar functionality
-   - Check memory.md for anti-patterns and successful patterns
+   - Review prior milestone learnings provided in the context for anti-patterns and successful patterns
    - Review test_data/ for relevant test cases
 
-4. **Document Findings**:
-   - Add key findings to journey file under "## Research Notes"
-   - Cite sources (URLs, file paths, memory entries)
-
-**IMPORTANT**: When working on an epic, write research notes to the epic file, not journey.md:
-- ARCH_DESIGN research → epic file's "### ARCH_DESIGN Phase Research" section
-- MODULE_DESIGN research → epic file's "### MODULE_DESIGN Phase Research" section
-
-**Journey-level research** (affects entire journey) still goes to journey.md:
-- REQUIREMENTS phase research
-- SYSTEM_DESIGN phase research
+3. **Document Findings**:
+   - Add key findings to the milestone file's "## Research Notes" section
+   - Cite sources (URLs, file paths, prior learnings)
 `;
 
 /**
  * Parallel agent orchestration instructions
  */
-export const PARALLEL_AGENT_INSTRUCTIONS = `## Parallel Agent Orchestration (For Complex Tasks)
+export const PARALLEL_AGENT_INSTRUCTIONS = `## Subagent Orchestration (For Complex Tasks)
 
-When dealing with complex research or implementation, you can spawn multiple sub-agents:
+When dealing with complex research or implementation, you can spawn sub-agents — but ALWAYS ONE AT A TIME:
 
 **During Research Phase:**
-- Launch up to 3 Explore agents IN PARALLEL with different focus areas:
+- Fan out up to 3 Explore subagents, ONE AT A TIME, with different focus areas:
   - Agent 1: Existing implementations in codebase
   - Agent 2: External research (web search, best practices)
-  - Agent 3: Memory patterns and anti-patterns
-- Each agent reports back findings
+  - Agent 3: Prior milestone learnings and anti-patterns
+- Spawn each subagent, wait for it to finish and report, THEN spawn the next
 - You consolidate findings into Research Notes
 
 **During Planning/Design:**
@@ -79,37 +61,9 @@ When dealing with complex research or implementation, you can spawn multiple sub
 - Include dependency information (which tasks must complete first)
 
 **At Implementation Time:**
-- If tasks are independent, note: "These can be executed in parallel by sub-agents"
-- If tasks have dependencies, note: "Execute A before B, then C and D can run in parallel"
+- If tasks are independent, you may still spawn subagents, but SEQUENTIALLY (one at a time)
+- If tasks have dependencies, note the order: "Execute A, then B, then C, then D"
 - The orchestrator (you or vibe-model tool) will handle delegation
+
+> ⚠️ Never spawn subagents in parallel. vibe-model is long-running on a metered token budget; concurrent subagents exhaust it fast and cause rate-limit (529) failures. Always serialize.
 `;
-
-/**
- * Get research instructions for a specific phase
- */
-export function getResearchInstructions(phase: "REQUIREMENTS" | "SYSTEM_DESIGN" | "ARCH_DESIGN" | "MODULE_DESIGN"): string {
-  const phaseInstructions: Record<string, string> = {
-    REQUIREMENTS: `**RESEARCH**: Before finalizing requirements:
-  - Web search for similar systems/libraries
-  - Consult memory.md for past learnings
-  - Use external AI (gemini --yolo) for complex tradeoffs (see research section above)
-- Document research in "## Research Notes > ### REQUIREMENTS Phase Research"`,
-    SYSTEM_DESIGN: `**RESEARCH**: Before finalizing architecture:
-  - Web search for architectural patterns for the domain
-  - Search codebase for similar implementations
-  - Use external AI (gemini --yolo): "What architectural tradeoffs exist?"
-- Document research in "## Research Notes > ### SYSTEM_DESIGN Phase Research"`,
-    ARCH_DESIGN: `**RESEARCH**: Before finalizing component design:
-  - Search for existing interfaces/APIs in codebase
-  - Web search for component design patterns
-  - Use external AI (gemini --yolo) for interface decisions
-- **Write epic-specific research to epic file's Research Notes section**`,
-    MODULE_DESIGN: `**RESEARCH**: Before finalizing module design:
-  - Search codebase for similar functions/classes
-  - Web search for algorithm implementations
-  - Use external AI (gemini --yolo) for edge cases
-- **Write story-specific research to epic file's Research Notes > MODULE_DESIGN section**`,
-  };
-
-  return phaseInstructions[phase] || "";
-}

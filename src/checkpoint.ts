@@ -6,19 +6,16 @@
 
 /**
  * Checkpoint and git operations.
- * Handles git checkpoint creation, rollback, and git command execution from parent project.
+ * Handles git command execution and commit/push operations in the target project.
  */
 
 import { spawn } from "child_process";
-import { promises as fs, existsSync, statSync } from "fs";
 import path from "path";
-import { VModelError } from "./types";
 import { config } from "./config";
-import { logInfo, logSuccess, logWarning, logError } from "./logger";
+import { logInfo, logSuccess, logWarning } from "./logger";
 
 /**
- * Execute git command from parent project directory.
- * NEVER run git from vibe-model directory - the parent project is where all commits/tags happen.
+ * Execute git command in the target project directory.
  */
 export async function gitCommand(
   args: string[],
@@ -58,40 +55,64 @@ export async function gitCommand(
 }
 
 /**
- * Assert we're not in vibe-model submodule directory.
- * This prevents accidental git operations in the wrong directory.
+ * Generated paths that should never be auto-committed by vibe-model,
+ * even if the target project forgot to add them to .gitignore.
  */
-export function assertInParentProject(cwd: string): void {
-  // A directory is a submodule if .git is a FILE (pointing to parent's .git/modules/...),
-  // not if .git/modules EXISTS (that's normal for a parent project with submodules)
-  const gitPath = path.join(cwd, ".git");
-  if (existsSync(gitPath)) {
-    const gitStat = statSync(gitPath);
-    if (gitStat.isFile()) {
-      throw new VModelError(
-        "Git operation attempted from submodule. Must use parent project directory.",
-        1,
-        false
-      );
+const AUTO_COMMIT_EXCLUDED_DIRS = new Set([
+  "node_modules",
+  "dist",
+  "coverage",
+  ".vite",
+  ".vitest",
+]);
+
+/**
+ * Parse `git status --porcelain` output into changed paths.
+ * For rename entries, returns both old and new paths so staging can capture the move.
+ */
+export function parsePorcelainPaths(output: string): string[] {
+  const paths: string[] = [];
+
+  for (const rawLine of output.split("\n")) {
+    if (!rawLine.trim()) {
+      continue;
     }
+
+    const pathPart = rawLine.slice(3);
+    if (!pathPart) {
+      continue;
+    }
+
+    if (pathPart.includes(" -> ")) {
+      const [from, to] = pathPart.split(" -> ");
+      if (from) {
+        paths.push(from.trim());
+      }
+      if (to) {
+        paths.push(to.trim());
+      }
+      continue;
+    }
+
+    paths.push(pathPart.trim());
   }
 
-  // Check if we're in vibe-model directory by name (with false positive check)
-  const dirName = path.basename(cwd);
-  if (dirName === "vibe-model") {
-    // Additional check: see if parent has .git or vibe-model directory
-    const parentDir = path.dirname(cwd);
-    const hasParentGit = existsSync(path.join(parentDir, ".git"));
-    const hasVModelDir = existsSync(path.join(parentDir, "vibe-model"));
+  return paths;
+}
 
-    if (hasParentGit || hasVModelDir) {
-      throw new VModelError(
-        "Git operation attempted from vibe-model directory. Must use parent project directory.",
-        1,
-        false
-      );
-    }
+/**
+ * Whether a path should be excluded from vibe-model's auto-commit staging.
+ */
+export function shouldExcludeFromAutoCommit(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, "/");
+  const segments = normalized.split("/").filter(Boolean);
+  const baseName = path.posix.basename(normalized);
+
+  if (segments.some((segment) => AUTO_COMMIT_EXCLUDED_DIRS.has(segment))) {
+    return true;
   }
+
+  return baseName.endsWith(".tsbuildinfo");
 }
 
 /**
@@ -119,164 +140,60 @@ export async function hasUncommittedChanges(cwd?: string): Promise<boolean> {
 }
 
 /**
- * Create git checkpoint (annotated tag)
+ * Return all changed paths in the repository.
  */
-export async function createCheckpoint(
-  journeyName: string,
-  milestoneNumber: number,
-  description: string
-): Promise<void> {
-  const tag = `journey-${journeyName}-milestone-${milestoneNumber}`;
+export async function getChangedPaths(cwd?: string): Promise<string[]> {
+  const result = await gitCommand(["status", "--porcelain"], cwd);
+  return parsePorcelainPaths(result.stdout);
+}
 
-  // Check if tag already exists
+/**
+ * Check if there are staged changes ready to commit.
+ */
+export async function hasStagedChanges(cwd?: string): Promise<boolean> {
   try {
-    await gitCommand(["rev-parse", tag]);
-    logWarning(`Tag ${tag} already exists, skipping`);
-    return;
+    const result = await gitCommand(["diff", "--cached", "--name-only"], cwd);
+    return result.stdout.trim().length > 0;
   } catch {
-    // Tag doesn't exist, continue
-  }
-
-  // Assert we're in parent project directory
-  assertInParentProject(config.projectDir);
-
-  // Create annotated tag
-  try {
-    await gitCommand(
-      ["tag", "-a", tag, "-m", `Journey checkpoint: ${description}`, "HEAD"],
-      config.projectDir
-    );
-    logSuccess(`Created checkpoint: ${tag}`);
-  } catch (error) {
-    logWarning(`Failed to create checkpoint: ${error}`);
+    return false;
   }
 }
 
 /**
- * Rollback to checkpoint
- */
-export async function rollbackToCheckpoint(
-  journeyFile: string,
-  checkpointId?: number
-): Promise<void> {
-  // Get checkpoints from journey file
-  const content = await fs.readFile(journeyFile, "utf-8");
-  const checkpointsSection = content.match(
-    /## Checkpoints\n([\s\S]+?)\n## /
-  );
-
-  if (!checkpointsSection) {
-    logError("No checkpoints section found in journey file");
-    return;
-  }
-
-  // Parse checkpoint table
-  const checkpoints: Array<{ id: number; tag: string }> = [];
-  for (const line of checkpointsSection[1].split("\n")) {
-    const match = line.match(/^\| (\d+) \| ([\w-]+) \|/);
-    if (match) {
-      checkpoints.push({ id: parseInt(match[1], 10), tag: match[2] });
-    }
-  }
-
-  // Determine which checkpoint to use
-  let targetCheckpoint: { id: number; tag: string } | undefined;
-
-  if (checkpointId !== undefined) {
-    targetCheckpoint = checkpoints.find((c) => c.id === checkpointId);
-  } else {
-    // Get the latest checkpoint (highest ID)
-    targetCheckpoint = checkpoints[checkpoints.length - 1];
-  }
-
-  if (!targetCheckpoint) {
-    logError(`Checkpoint ID ${checkpointId || "latest"} not found`);
-    return;
-  }
-
-  logWarning(`Rolling back to checkpoint: ${targetCheckpoint.tag}`);
-  logInfo(
-    "This will reset your working directory to the state at " +
-      targetCheckpoint.tag
-  );
-
-  // TODO: Add user confirmation prompt here
-  // For now, proceed with rollback
-
-  // Assert we're in parent project directory
-  assertInParentProject(config.projectDir);
-
-  try {
-    await gitCommand(["reset", "--hard", targetCheckpoint.tag], config.projectDir);
-    logSuccess(`Rolled back to ${targetCheckpoint.tag}`);
-  } catch (error) {
-    logError(`Rollback failed: ${error}`);
-  }
-}
-
-/**
- * List checkpoints for a journey
- */
-export async function listCheckpoints(journeyFile: string): Promise<
-  Array<{
-    id: number;
-    tag: string;
-    date: string;
-    description: string;
-  }>
-> {
-  const content = await fs.readFile(journeyFile, "utf-8");
-  const checkpointsSection = content.match(
-    /## Checkpoints\n([\s\S]+?)\n## /
-  );
-
-  if (!checkpointsSection) {
-    return [];
-  }
-
-  const checkpoints: Array<{
-    id: number;
-    tag: string;
-    date: string;
-    description: string;
-  }> = [];
-
-  for (const line of checkpointsSection[1].split("\n")) {
-    const match = line.match(
-      /^\| (\d+) \| ([\w-]+) \| (\d{4}-\d{2}-\d{2}) \| (.+?) \|/
-    );
-    if (match) {
-      checkpoints.push({
-        id: parseInt(match[1], 10),
-        tag: match[2],
-        date: match[3],
-        description: match[4].trim(),
-      });
-    }
-  }
-
-  return checkpoints;
-}
-
-/**
- * Commit all changes with message
+ * Commit all changes with message.
+ * Stages only non-generated paths so installs/builds do not accidentally commit
+ * node_modules, dist output, or tool caches into new repositories.
  */
 export async function commitChanges(message: string): Promise<void> {
-  // Assert we're in parent project directory
-  assertInParentProject(config.projectDir);
-
   try {
-    // Stage all changes
-    await gitCommand(["add", "-A"], config.projectDir);
+    const changedPaths = await getChangedPaths(config.projectDir);
+    const uniquePaths = [...new Set(changedPaths)];
+    const pathsToStage = uniquePaths.filter((filePath) => !shouldExcludeFromAutoCommit(filePath));
+    const excludedPaths = uniquePaths.filter((filePath) => shouldExcludeFromAutoCommit(filePath));
 
-    // Check if there are changes to commit
-    const hasChanges = await hasUncommittedChanges(config.projectDir);
+    if (excludedPaths.length > 0) {
+      logInfo(
+        `Skipping generated paths from auto-commit: ${excludedPaths.slice(0, 5).join(", ")}${excludedPaths.length > 5 ? " ..." : ""}`,
+      );
+    }
+
+    if (pathsToStage.length === 0) {
+      logInfo("No commit-worthy changes to stage");
+      return;
+    }
+
+    const chunkSize = 100;
+    for (let i = 0; i < pathsToStage.length; i += chunkSize) {
+      const chunk = pathsToStage.slice(i, i + chunkSize);
+      await gitCommand(["add", "-A", "--", ...chunk], config.projectDir);
+    }
+
+    const hasChanges = await hasStagedChanges(config.projectDir);
     if (!hasChanges) {
       logInfo("No changes to commit");
       return;
     }
 
-    // Commit with message
     await gitCommand(["commit", "-m", message], config.projectDir);
     logSuccess("Changes committed");
   } catch (error) {
@@ -288,9 +205,6 @@ export async function commitChanges(message: string): Promise<void> {
  * Push to remote repository
  */
 export async function pushChanges(branch?: string): Promise<void> {
-  // Assert we're in parent project directory
-  assertInParentProject(config.projectDir);
-
   try {
     const targetBranch = branch || (await getCurrentBranch(config.projectDir));
     if (!targetBranch) {

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 build/
+bin/vibe-model
 .env
 .DS_Store
 *.log
@@ -9,3 +10,6 @@ build/
 coverage/
 bin/*.js
 example/remote/
+e2e-test-project/
+example/src/
+example/todo-smoke/

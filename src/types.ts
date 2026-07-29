@@ -9,82 +9,9 @@
  */
 
 /**
- * V-Model states representing the development lifecycle.
- * Each state corresponds to a specific phase in the V-Model methodology.
- */
-export enum VModelState {
-  REQUIREMENTS = "REQUIREMENTS",
-  REQUIREMENTS_REVIEW = "REQUIREMENTS_REVIEW",
-  SYSTEM_DESIGN = "SYSTEM_DESIGN",
-  SYSTEM_DESIGN_REVIEW = "SYSTEM_DESIGN_REVIEW",
-  ARCH_DESIGN = "ARCH_DESIGN",
-  ARCH_DESIGN_REVIEW = "ARCH_DESIGN_REVIEW",
-  MODULE_DESIGN = "MODULE_DESIGN",
-  MODULE_DESIGN_REVIEW = "MODULE_DESIGN_REVIEW",
-  IMPLEMENTATION = "IMPLEMENTATION",
-  UNIT_TEST = "UNIT_TEST",
-  INTEGRATION_TEST = "INTEGRATION_TEST",
-  SYSTEM_TEST = "SYSTEM_TEST",
-  ACCEPTANCE_TEST = "ACCEPTANCE_TEST",
-  PROTOTYPING = "PROTOTYPING",
-  WAITING_FOR_USER = "WAITING_FOR_USER",
-  CONSOLIDATING = "CONSOLIDATING",
-  COMPLETE = "COMPLETE",
-  BLOCKED = "BLOCKED",
-  REVIEWING = "REVIEWING",
-  ARCHIVING = "ARCHIVING",
-  PIVOTING = "PIVOTING",
-  REFLECTING = "REFLECTING"
-}
-
-/**
  * AI provider options (Claude or Gemini)
  */
 export type AIProvider = "claude" | "gemini";
-
-/**
- * Execution mode for controlling V-Model behavior
- */
-export enum ExecutionMode {
-  NORMAL = "normal",
-  MVP = "mvp",
-  GO = "go",
-}
-
-/**
- * Journey metadata and progress tracking
- */
-export interface Journey {
-  goal: string;
-  state: VModelState;
-  progress: number;
-  currentEpic: string;
-  previousState: string;
-  started: string;
-  currentApproach: string;
-}
-
-/**
- * Epic tracking within a journey
- */
-export interface Epic {
-  id: string;
-  name: string;
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETE";
-  storiesComplete: number;
-  totalStories: number;
-}
-
-/**
- * Git checkpoint for journey rollback
- */
-export interface Checkpoint {
-  id: number;
-  tag: string;
-  date: string;
-  description: string;
-  gitSha: string;
-}
 
 /**
  * Configuration for the V-Model agent
@@ -97,7 +24,124 @@ export interface Config {
   verbose: boolean;
   noPush: boolean;
   commitInterval: number;
-  executionMode: ExecutionMode;
+  hilMode: boolean;
+  reviewEnabled: boolean;
+  autonomous: boolean;
+  force?: boolean;
+}
+
+/**
+ * Milestone-based lifecycle states (new system).
+ * 9 states, down from 22 in the legacy VModelState.
+ */
+export enum MilestoneState {
+  PRD = "PRD",
+  REQUIREMENTS = "REQUIREMENTS",
+  DESIGN = "DESIGN",
+  IMPLEMENTATION = "IMPLEMENTATION",
+  UNIT_TEST = "UNIT_TEST",
+  INTEGRATION_TEST = "INTEGRATION_TEST",
+  DELIVERY = "DELIVERY",
+  COMPLETE = "COMPLETE",
+  WAITING_FOR_USER = "WAITING_FOR_USER",
+}
+
+/**
+ * A single milestone from the PRD milestones table.
+ */
+export interface Milestone {
+  id: number;
+  name: string;
+  description: string;
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETE";
+  modeOverride?: "hil" | "autonomous" | null;
+}
+
+/**
+ * Parsed representation of prd.md.
+ */
+export interface PRDFile {
+  goal: string;
+  techStack: string;
+  architectureOverview: string;
+  milestones: Milestone[];
+}
+
+/**
+ * Parsed representation of a milestone/{NN}-{name}.md file.
+ */
+export interface MilestoneFile {
+  id: number;
+  name: string;
+  state: MilestoneState;
+  progress: number;
+  started: string;
+  pendingTransition?: MilestoneState;
+  requirements: string;
+  design: string;
+  testSpecifications: string;
+  implementationNotes: string;
+  unitTestResults: string;
+  integrationTestResults: string;
+  delivery: string;
+  learnings: string;
+  researchNotes: string;
+}
+
+/**
+ * Result from a single sub-agent reviewer.
+ */
+export interface ReviewResult {
+  pass: boolean;
+  reviewer: "architecture" | "code" | "testability" | "ux";
+  findings: string[];
+}
+
+/**
+ * Aggregated result from all sub-agent reviewers.
+ */
+export interface SubAgentReview {
+  results: ReviewResult[];
+  overallPass: boolean;
+}
+
+/**
+ * PRD review iteration state.
+ */
+export interface PRDReviewState {
+  iteration: number;
+  maxIterations: number;
+  reviewResults: PRDReviewResult[];
+  overallStatus: "pending" | "approved" | "deferred";
+}
+
+/**
+ * Result from a single PRD reviewer.
+ */
+export interface PRDReviewResult {
+  reviewer: "architecture" | "testability" | "ux";
+  score: number; // +2 for approve, -1 for block
+  findings: string[];
+}
+
+/**
+ * Aggregated PRD review results.
+ */
+export interface PRDReview {
+  results: PRDReviewResult[];
+  overallApproved: boolean;
+  iteration: number;
+}
+
+/**
+ * Delivery summary cache entry.
+ */
+export interface DeliverySummary {
+  milestoneId: number;
+  milestoneName: string;
+  deliverables: string[];
+  timestamp: string;
+  keyLearnings: string[];
 }
 
 /**
@@ -141,9 +185,3 @@ export interface StreamEvent {
   num_turns?: number;
 }
 
-/**
- * Type guard for valid VModelState values
- */
-export function isValidState(state: string): boolean {
-  return Object.values(VModelState).includes(state as VModelState);
-}
