@@ -8,9 +8,9 @@
     "vibe-model": "bin/vibe-model"
   },
   "scripts": {
-    "build": "bun build src/index.ts --outdir bin --target bun && bun build --compile --outfile bin/vibe-model src/index.ts --target bun",
+    "build": "bun build src/index.ts --outdir bin --target bun --define process.env.ASSERT_LEVEL='\"none\"' && bun build --compile --outfile bin/vibe-model src/index.ts --target bun --define process.env.ASSERT_LEVEL='\"none\"'",
     "build:js": "bun build src/index.ts --outdir bin --target bun",
-    "compile": "bun build --compile --outfile bin/vibe-model src/index.ts --target bun",
+    "compile": "bun build --compile --outfile bin/vibe-model src/index.ts --target bun --define process.env.ASSERT_LEVEL='\"none\"'",
     "compile:all": "bash scripts/build-all.sh",
     "dev": "bun run src/index.ts",
     "lint": "eslint src --ext .ts",

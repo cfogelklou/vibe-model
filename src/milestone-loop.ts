@@ -812,7 +812,13 @@ export async function milestoneLoop(prdPath: string): Promise<void> {
   // Ensure the milestone file exists
   try {
     await fs.access(milestonePath);
-  } catch {
+  } catch (error) {
+    // Only ENOENT means "absent, create it" — other failures (EACCES etc.)
+    // must surface, not be masked by recreation.
+    const code = (error as { code?: unknown }).code;
+    if (code !== "ENOENT") {
+      throw error;
+    }
     logInfo(`Creating milestone file: ${path.basename(milestonePath)}`);
     createMilestoneFile(projectDir, activeMilestone.id, activeMilestone.name);
 

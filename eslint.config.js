@@ -4,6 +4,7 @@
 import js from "@eslint/js";
 import tsParser from "@typescript-eslint/parser";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
+import noMaskedCatch from "./eslint-rules/no-masked-catch.js";
 
 export default [
   js.configs.recommended,
@@ -31,10 +32,14 @@ export default [
     },
     plugins: {
       "@typescript-eslint": tsPlugin,
+      local: { rules: { "no-masked-catch": noMaskedCatch } },
     },
     rules: {
       // TypeScript recommended rules (non-type-checked)
       ...tsPlugin.configs.recommended.rules,
+
+      // Local rules
+      "local/no-masked-catch": "error",
 
       // Override TypeScript rules
       "@typescript-eslint/no-unused-vars": ["warn", {
