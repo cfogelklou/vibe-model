@@ -21,6 +21,7 @@ import {
   milestoneFileName,
 } from "./constants";
 import { sedInplace } from "./file-utils";
+import { requires, toNonEmptyString } from "./contracts";
 
 // ---------------------------------------------------------------------------
 // Path helpers
@@ -34,11 +35,14 @@ export function getMilestoneFilePath(
   id: number,
   name: string
 ): string {
+  // Always-on domain validation: an empty name would produce a malformed
+  // milestone filename, so reject it before path construction.
+  const safeName = toNonEmptyString(name, `Milestone #${id} has an empty name`);
   return path.join(
     projectDir,
     VIBE_MODEL_DIR,
     MILESTONES_DIR,
-    milestoneFileName(id, name)
+    milestoneFileName(id, safeName)
   );
 }
 
@@ -197,6 +201,11 @@ export async function setMilestoneState(
   filePath: string,
   state: MilestoneState
 ): Promise<void> {
+  requires(filePath.trim().length > 0, "setMilestoneState: filePath must be non-empty");
+  requires(
+    Object.values(MilestoneState).includes(state),
+    `setMilestoneState: "${String(state)}" is not a MilestoneState`
+  );
   await sedInplace(filePath, /^- State: .*$/m, `- State: ${state}`);
 }
 
@@ -208,6 +217,11 @@ export async function setPendingTransition(
   filePath: string,
   state: MilestoneState | null
 ): Promise<void> {
+  requires(filePath.trim().length > 0, "setPendingTransition: filePath must be non-empty");
+  requires(
+    state === null || Object.values(MilestoneState).includes(state),
+    `setPendingTransition: "${String(state)}" is not a MilestoneState`
+  );
   const value = state === null ? "NONE" : state;
   await sedInplace(
     filePath,

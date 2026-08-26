@@ -19,6 +19,7 @@ import {
   MILESTONE_TABLE_SEPARATOR,
 } from "./constants";
 import { sedInplace } from "./file-utils";
+import { softCheck } from "./contracts";
 
 /**
  * Returns the full path to prd.md within the project.
@@ -131,6 +132,13 @@ export function parseMilestonesTable(content: string): Milestone[] {
     let modeOverride: Milestone["modeOverride"] = null;
     if (rawMode === "hil" || rawMode === "autonomous") {
       modeOverride = rawMode;
+    }
+
+    // A whitespace-only name would produce a malformed milestone file later;
+    // report it as a soft violation and skip the row instead of crashing.
+    if (name.length === 0) {
+      softCheck(false, `Milestones table row ${id} has an empty name; row skipped`);
+      continue;
     }
 
     milestones.push({ id, name, description, status, modeOverride });

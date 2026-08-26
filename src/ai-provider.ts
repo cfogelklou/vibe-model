@@ -18,6 +18,7 @@ import { logDebug, logInfo, logWarning } from "./logger";
 import { geminiReviewPrompt } from "./prompts/index";
 import { VModelError, type ClaudeCapabilities, type StreamEvent, type ReviewResult } from "./types";
 import type { ReviewerType } from "./constants";
+import { requires } from "./contracts";
 
 // Track child processes for cleanup
 export const childProcesses: Array<ReturnType<typeof spawn>> = [];
@@ -200,6 +201,7 @@ function resetStreamBuffer(): void {
  * Returns the AI exit code.
  */
 export function ensureSuccessfulAIExit(exitCode: number, operation: string): void {
+  requires(operation.trim().length > 0, "ensureSuccessfulAIExit: operation must be non-empty");
   if (exitCode !== 0) {
     throw new VModelError(
       `AI ${operation} failed with exit code ${exitCode}. No orchestrator state was advanced.`,
@@ -312,6 +314,8 @@ async function runAIOnce(
  * Always claude — external CLI consultation is replaced by claude subagents.
  */
 export async function runAIWithPrompt(promptFile: string): Promise<number> {
+  requires(promptFile.trim().length > 0, "runAIWithPrompt: promptFile must be non-empty");
+
   // Always claude (external CLI consultation removed).
   const capabilities = await detectClaudeCapabilities();
 
@@ -369,6 +373,12 @@ export async function consultGemini(
   designContent: string,
   researchContent?: string
 ): Promise<string> {
+  requires(phase.trim().length > 0, "consultGemini: phase must be non-empty");
+  requires(
+    designContent.trim().length > 0,
+    "consultGemini: designContent must be non-empty"
+  );
+
   // Use the new type-safe prompt system
   const hasResearch = Boolean(researchContent?.trim());
   const reviewPrompt = geminiReviewPrompt({
