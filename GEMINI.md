@@ -251,6 +251,21 @@ This ensures code quality and catches regressions early.
 
 ---
 
+## Review Skill Routing
+
+Reviews (self-review before reporting done, "review this" requests, and pre-commit reviews) MUST load the skill(s) matching the changed surface. Skills live in `~/.agents/skills/` (invoke by name). Pick by change type; combine when several apply:
+
+| Change type (diff touches...) | Skill to load |
+|---|---|
+| Session/state-machine code, async dependencies, error handling, catch blocks | `typescript-static-guards` |
+| TypeScript contracts, boundaries, invariants, assertion build modes, domain types | `typescript-defensive-programming` |
+| Structure/refactoring, module consolidation, coupling, testability, cross-cutting changes | `improve-codebase-architecture` |
+| Any non-trivial diff, as a complement to the above: dead code, hand-rolled stdlib, speculative abstraction, unneeded deps | `ponytail-review` (over-engineering only; hunts what to delete) |
+
+Routing rule: classify the diff first (files + nature of change), then load every matching skill BEFORE writing review findings. If no row matches, no skill needed; say so rather than force-fitting one.
+
+---
+
 ## Documentation Links
 
 - **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user manual with all commands and configuration
