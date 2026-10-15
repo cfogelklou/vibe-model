@@ -27,13 +27,13 @@ Replace legacy TypeScript CLI in cfogelklou/vibe-model with the markdown skill v
 - [x] Write `scripts/check.sh` (existence, frontmatter name/description, backtick-mention, relative .md links) — green incl. negative test
 - [x] Write `.github/workflows/ci.yml` (static check on push/PR — no Z.AI env, no owner gate)
 - [x] Write `.github/workflows/smoke-test.yml` (workflow_dispatch only; agent runs /vibe-model on seeded task)
-- [ ] Implementation gate: fresh review subagent on full branch diff → GO
-- [ ] Run `bash scripts/check.sh` → green
-- [ ] `/write-a-skill` audit → apply findings to canonical first, re-sync, commit
-- [ ] Readability pass on README.md + AGENTS.md
+- [x] Implementation gate: fresh review subagent on full branch diff → GO (0 blockers; 8 minor fixed in 5356b7e)
+- [x] Run `bash scripts/check.sh` → green (OK; negative tests pass)
+- [x] `/write-a-skill` audit → 3 MINOR fixes applied to canonical (f1a2a9a), re-synced (e16e58d)
+- [x] Readability pass on README.md + AGENTS.md (residual flags = table/enumeration artifacts, accepted)
 - [ ] Push branch, open PR (description: binary recovery SHA, dist/ rebuild note)
 - [ ] Pre-merge sweep: zero unchecked boxes, artifacts deleted (per waiver), squash merge
 
 ## Learnings promotion (end of epic)
 
-- [ ] Candidate AGENTS.md invariants → propose to user, then commit
+- [x] Candidate AGENTS.md invariants → in AGENTS.md already (canonical-first sync rule, check.sh gate); surfaced to user at wrap-up
