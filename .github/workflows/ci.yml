@@ -47,8 +47,8 @@ jobs:
           ANTHROPIC_BASE_URL: "https://api.z.ai/api/anthropic"
           ANTHROPIC_AUTH_TOKEN: ${{ secrets.Z_AI_KEY }}
           ANTHROPIC_DEFAULT_HAIKU_MODEL: "glm-4.7"
-          ANTHROPIC_DEFAULT_SONNET_MODEL: "glm-4.7"
-          ANTHROPIC_DEFAULT_OPUS_MODEL: "glm-4.7"
+          ANTHROPIC_DEFAULT_SONNET_MODEL: "glm-5.3-flash"
+          ANTHROPIC_DEFAULT_OPUS_MODEL: "glm-5.3-flash"
         run: |
           git init smoke-project && cd smoke-project
           git config user.email smoke@test.local && git config user.name smoke
