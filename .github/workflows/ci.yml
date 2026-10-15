@@ -48,7 +48,7 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/mattpocock/skills.git /tmp/mp-skills
           mkdir -p ~/.claude/skills
-          for s in tdd diagnose; do
+          for s in tdd code-review; do
             src="$(find /tmp/mp-skills/skills -type d -name "$s" | head -1)"
             test -n "$src" || { echo "::error::skill $s not found in mattpocock/skills"; exit 1; }
             cp -r "$src" ~/.claude/skills/"$s"
@@ -120,7 +120,7 @@ jobs:
             echo "::error::transcript shows no Skill tool invocations"
             exit 1
           fi
-          if grep -o '"skill":"[a-z0-9-]*"' session.jsonl | grep -v 'vibe-model' | grep -q 'tdd\|diagnose'; then
+          if grep -o '"skill":"[a-z0-9-]*"' session.jsonl | grep -v 'vibe-model' | grep -q 'tdd\|code-review'; then
             echo "a mattpocock engineering skill was invoked via the Skill tool"
           else
             echo "::warning::no mattpocock skill invocation found in transcript (Skill may have been used for vibe-model only)"
