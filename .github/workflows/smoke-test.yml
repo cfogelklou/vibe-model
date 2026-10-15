@@ -1,0 +1,41 @@
+name: Smoke test
+
+# Manual, dispatch-only end-to-end test: an agent loads this repo's skill and
+# runs /vibe-model on a tiny seeded task; the run passes if the skill produces
+# its epic plan file. Costs API tokens — run deliberately.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: Agent smoke test (/vibe-model on seeded task)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Install skill
+        run: |
+          mkdir -p ~/.claude/skills
+          cp -r skills/vibe-model ~/.claude/skills/vibe-model
+      - name: Run seeded task
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          git init smoke-project && cd smoke-project
+          git config user.email smoke@test.local && git config user.name smoke
+          echo "# Smoke project" > README.md && git add . && git commit -m init
+          claude --print --dangerously-skip-permissions \
+            "/vibe-model Add a hello function to README.md (single milestone)"
+      - name: Assert skill artifacts exist
+        run: |
+          test -f smoke-project/docs/plan-for-*.md || {
+            echo "::error::vibe-model did not produce docs/plan-for-*.md"
+            exit 1
+          }
+          test -d smoke-project/docs/vibe-model || {
+            echo "::error::vibe-model did not produce docs/vibe-model/ working files"
+            exit 1
+          }
