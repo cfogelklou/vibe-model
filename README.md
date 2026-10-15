@@ -32,8 +32,7 @@ The skill uses progressive disclosure:
 | `skills/vibe-model/SKILL.md` | The workflow (auto-loaded by agents) |
 | `skills/vibe-model/REFERENCE.md` | Deep reference (read on demand) |
 | `scripts/check.sh` | Static validation: files present, frontmatter valid, links resolve |
-| `.github/workflows/ci.yml` | Runs `check.sh` on pushes to `main` and on PRs |
-| `.github/workflows/smoke-test.yml` | Manual (`workflow_dispatch`) end-to-end agent smoke test |
+| `.github/workflows/ci.yml` | Static validation on pushes to `main`/PRs, plus a real `/vibe-model` loop on a seeded project when the `ANTHROPIC_API_KEY` secret is set (skipped otherwise; also manual-dispatch) |
 
 ## Legacy CLI
 

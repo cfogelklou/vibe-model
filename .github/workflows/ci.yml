@@ -4,12 +4,62 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   check:
     name: Static skill validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Validate skill files
         run: bash scripts/check.sh
+
+  api-key-gate:
+    name: API key present?
+    runs-on: ubuntu-latest
+    outputs:
+      has_key: ${{ steps.gate.outputs.has_key }}
+    steps:
+      - id: gate
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: echo "has_key=$HAS_KEY" >> "$GITHUB_OUTPUT"
+
+  vmodel-loop:
+    name: V-model loop smoke test
+    needs: api-key-gate
+    if: needs.api-key-gate.outputs.has_key == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Install skill
+        run: |
+          mkdir -p ~/.claude/skills
+          cp -r skills/vibe-model ~/.claude/skills/vibe-model
+      - name: Run v-model loop on a seeded project
+        working-directory: ${{ runner.temp }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+        run: |
+          git init smoke-project && cd smoke-project
+          git config user.email smoke@test.local && git config user.name smoke
+          echo "# Smoke project" > README.md && git add . && git commit -m init
+          claude --print --dangerously-skip-permissions \
+            "/vibe-model Add a hello function to README.md (single milestone)"
+      - name: Assert skill artifacts exist
+        working-directory: ${{ runner.temp }}
+        run: |
+          ls smoke-project/docs/plan-for-*.md \
+             smoke-project/docs/archive/plans/plan-for-*.md >/dev/null 2>&1 || {
+            echo "::error::vibe-model produced no epic plan (docs/plan-for-*.md or docs/archive/plans/)"
+            exit 1
+          }
+          test -d smoke-project/docs/vibe-model || {
+            echo "::error::vibe-model did not produce docs/vibe-model/ working files"
+            exit 1
+          }
