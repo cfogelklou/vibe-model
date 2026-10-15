@@ -49,6 +49,10 @@ jobs:
           ANTHROPIC_DEFAULT_HAIKU_MODEL: "glm-4.7"
           ANTHROPIC_DEFAULT_SONNET_MODEL: "glm-5.3-flash"
           ANTHROPIC_DEFAULT_OPUS_MODEL: "glm-5.3-flash"
+          # Trim non-essential model calls / telemetry; tolerate non-Anthropic model ids
+          DISABLE_NON_ESSENTIAL_MODEL_CALLS: "1"
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+          CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT: "1"
         run: |
           git init smoke-project && cd smoke-project
           git config user.email smoke@test.local && git config user.name smoke
