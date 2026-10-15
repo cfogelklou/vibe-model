@@ -134,7 +134,7 @@ State pointer lives in `docs/vibe-model/<epic>-handoff.md`.
 
 ### Phase 4 verify & closing gates
 - Review subagents (security when triggered, verification checks, repo gates).
-- Sanity checks and gate runs (`sanity_check_build_typescript.sh`, `lintall.sh`, `testall.sh`).
+- Sanity checks and gate runs (the repository's gate scripts, named in the phase map).
 - Acceptance evidence and updated requirement statuses.
 
 ### Iteration review (retrospective before the next milestone)
@@ -224,7 +224,7 @@ Use the dynamic skills inventories before requirements gathering for every task 
 1. **Global Skills Inventory**: `~/.agents/skills-inventory.md` (all machine-installed capabilities and their explicit triggers).
 2. **Workspace Skills Inventory**: `./.agents/skills-inventory.md` (project-specific guidelines, architecture, and constraints).
 
-Refresh either inventory if absent or stale.
+Refresh either inventory if stale. If one is absent, note the gap in the gate table and use the fallback rules below; do not block on creating it.
 
 ```text
 Project: <name/root>
