@@ -75,7 +75,7 @@ jobs:
           echo "# Smoke project" > README.md && git add . && git commit -m init
           claude --print --verbose --output-format stream-json \
             --dangerously-skip-permissions \
-            "/vibe-model Add a hello() function in hello.py that prints hello, and document it in README.md (single milestone). AUTONOMOUS CI SMOKE RUN: this session has no human. Do not ask any questions; take your own recommended option for every decision branch, skip grilling, and skip optional housekeeping proposals. Drive the full V-loop start to finish and finish with the milestone wrap-up commit." \
+            "/vibe-model Add a hello() function in hello.py that prints hello, and document it in README.md (single milestone). AUTONOMOUS CI SMOKE RUN: this session has no human. Do not ask any questions; take your own recommended option for every decision branch, skip grilling, and skip optional housekeeping proposals — EXCEPT the Phase 0 skills inventory: no skills-inventory.md exists in this repo or home, so author one yourself (workspace ./.agents/skills-inventory.md) from the installed skills before Phase 1. Drive the full V-loop start to finish and finish with the milestone wrap-up commit." \
             > "$RUNNER_TEMP/session.jsonl"
           echo "--- transcript saved: $RUNNER_TEMP/session.jsonl ---"
       - name: Assert milestone landed
@@ -103,13 +103,9 @@ jobs:
       - name: Assert Phase 0 inventory gate exercised
         working-directory: ${{ runner.temp }}
         run: |
-          # 1. The agent must have authored a skills inventory (workspace or home).
-          inv=""
-          for p in smoke-project/.agents/skills-inventory.md \
-                   "$HOME/.agents/skills-inventory.md" \
-                   smoke-project/docs/skills-inventory.md; do
-            [[ -s "$p" ]] && inv="$p" && break
-          done
+          # 1. The agent must have authored a skills inventory (anywhere sensible).
+          inv="$(find smoke-project "$HOME/.agents" "$HOME/.claude" -maxdepth 4 \
+                  -name 'skills-inventory.md' -size +0 2>/dev/null | head -1)"
           if [[ -z "$inv" ]]; then
             echo "::error::no skills-inventory.md was created — Phase 0 inventory gate not exercised"
             exit 1
@@ -126,3 +122,10 @@ jobs:
           else
             echo "::warning::no mattpocock skill invocation found in transcript (Skill may have been used for vibe-model only)"
           fi
+      - name: Upload session transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vmodel-smoke-session
+          path: /home/runner/work/_temp/session.jsonl
+          if-no-files-found: ignore
