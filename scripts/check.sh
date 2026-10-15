@@ -17,7 +17,13 @@ for f in "$skill_dir/SKILL.md" "$skill_dir/REFERENCE.md"; do
   fi
 done
 
-# --- 2. Frontmatter: name and description ----------------------------------
+# --- 2. Frontmatter: delimiters, name and description ----------------------
+if [[ "$(head -1 "$skill_dir/SKILL.md")" != "---" ]]; then
+  fail "SKILL.md does not start with a --- frontmatter delimiter"
+fi
+if ! sed -n '2,$p' "$skill_dir/SKILL.md" | grep -q '^---$'; then
+  fail "SKILL.md frontmatter has no closing --- delimiter"
+fi
 fm="$(sed -n '2,/^---$/p' "$skill_dir/SKILL.md" | sed -e '$d')"
 # fm now holds the lines between the opening --- and the closing ---.
 
@@ -50,25 +56,33 @@ fi
 # Only [text](path.md) patterns are checked. http(s), anchors and code-span
 # paths (runtime paths in the *user's* project) are intentionally skipped.
 extract_and_check_links() {
-  local file="$1" dir link line
+  local file="$1" dir link target
   dir="$(dirname "$file")"
-  while IFS= read -r line; do
-    line="$(printf '%s\n' "$line" | sed 's/`[^`]*`//g')"  # strip code spans (runtime paths, examples)
-    link="$(printf '%s\n' "$line" | sed -n 's/.*](\([^)]*\.md\)).*/\1/p')"
-    [[ -z "$link" ]] && continue
-    link="${link%%#*}"
+  while IFS= read -r link; do
     case "$link" in
       http://*|https://*|mailto:*) continue ;;
     esac
-    if [[ ! -f "$dir/$link" ]]; then
-      fail "$file links to missing file: $link"
+    target="${link%%#*}"
+    [[ -z "$target" ]] && continue
+    if [[ ! -f "$dir/$target" ]]; then
+      fail "$file links to missing file: $target"
     fi
-  done < <(grep '\](' "$file")
+  done < <(sed 's/`[^`]*`//g' "$file" | grep -o '\]([^)]*\.md[^)]*)' | sed 's/^\](//; s/)$//')
 }
 extract_and_check_links "README.md"
 extract_and_check_links "$skill_dir/SKILL.md"
 extract_and_check_links "$skill_dir/REFERENCE.md"
 extract_and_check_links "AGENTS.md"
+
+# --- 5. Byte-identity with canonical copy (local only) ----------------------
+canonical="$HOME/.agents/skills/vibe-model"
+if [[ -d "$canonical" ]]; then
+  if ! diff -r -q "$canonical" "$skill_dir" >/dev/null; then
+    fail "mirror has drifted from canonical $canonical — re-sync (canonical wins)"
+  fi
+else
+  echo "note: canonical copy not present locally; skipping identity check"
+fi
 
 # --- Result -----------------------------------------------------------------
 if (( errors > 0 )); then

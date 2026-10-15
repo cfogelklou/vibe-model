@@ -2,10 +2,14 @@ name: Smoke test
 
 # Manual, dispatch-only end-to-end test: an agent loads this repo's skill and
 # runs /vibe-model on a tiny seeded task; the run passes if the skill produces
-# its epic plan file. Costs API tokens — run deliberately.
+# its epic plan file (in the project or in the archive home after the plan
+# sweep). Costs API tokens — run deliberately.
 
 on:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   smoke:
@@ -23,6 +27,7 @@ jobs:
       - name: Run seeded task
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        working-directory: ${{ runner.temp }}
         run: |
           git init smoke-project && cd smoke-project
           git config user.email smoke@test.local && git config user.name smoke
@@ -30,9 +35,11 @@ jobs:
           claude --print --dangerously-skip-permissions \
             "/vibe-model Add a hello function to README.md (single milestone)"
       - name: Assert skill artifacts exist
+        working-directory: ${{ runner.temp }}
         run: |
-          test -f smoke-project/docs/plan-for-*.md || {
-            echo "::error::vibe-model did not produce docs/plan-for-*.md"
+          ls smoke-project/docs/plan-for-*.md \
+             smoke-project/docs/archive/plans/plan-for-*.md >/dev/null 2>&1 || {
+            echo "::error::vibe-model produced no epic plan (docs/plan-for-*.md or docs/archive/plans/)"
             exit 1
           }
           test -d smoke-project/docs/vibe-model || {
