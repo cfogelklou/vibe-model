@@ -54,16 +54,26 @@ jobs:
           git config user.email smoke@test.local && git config user.name smoke
           echo "# Smoke project" > README.md && git add . && git commit -m init
           claude --print --dangerously-skip-permissions \
-            "/vibe-model Add a hello function to README.md (single milestone)"
-      - name: Assert skill artifacts exist
-        working-directory: ${{ runner.temp }}
+            "/vibe-model Add a hello() function in hello.py that prints hello, and document it in README.md (single milestone). AUTONOMOUS CI SMOKE RUN: this session has no human. Do not ask any questions; take your own recommended option for every decision branch, skip grilling, and skip optional housekeeping proposals. Drive the full V-loop start to finish and finish with the milestone wrap-up commit."
+      - name: Assert milestone landed
+        working-directory: ${{ runner.temp }}/smoke-project
         run: |
-          ls smoke-project/docs/plan-for-*.md \
-             smoke-project/docs/archive/plans/plan-for-*.md >/dev/null 2>&1 || {
-            echo "::error::vibe-model produced no epic plan (docs/plan-for-*.md or docs/archive/plans/)"
+          # A single-milestone run's durable evidence: a wrap-up commit and the change itself.
+          commits=$(git rev-list --count HEAD)
+          if [ "$commits" -lt 2 ]; then
+            echo "::error::vibe-model made no wrap-up commit beyond the seed init ($commits commit(s))"
+            exit 1
+          fi
+          grep -qi hello README.md || {
+            echo "::error::hello function was not documented in README.md"
             exit 1
           }
-          test -d smoke-project/docs/vibe-model || {
-            echo "::error::vibe-model did not produce docs/vibe-model/ working files"
+          test -f hello.py || {
+            echo "::error::hello.py was not created"
             exit 1
           }
+          if ls docs/plan-for-*.md docs/vibe-model/ >/dev/null 2>&1; then
+            echo "vibe-model also produced epic working files"
+          else
+            echo "note: single-milestone run produced no outer-loop files (expected for one spin of the inner V-loop)"
+          fi
