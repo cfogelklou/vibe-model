@@ -23,7 +23,7 @@ jobs:
     steps:
       - id: gate
         env:
-          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          HAS_KEY: ${{ secrets.Z_AI_KEY != '' || secrets.ANTHROPIC_API_KEY != '' }}
         run: echo "has_key=$HAS_KEY" >> "$GITHUB_OUTPUT"
 
   vmodel-loop:
@@ -43,8 +43,12 @@ jobs:
       - name: Run v-model loop on a seeded project
         working-directory: ${{ runner.temp }}
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          # Z.AI endpoint (existing secret), like the pre-migration CI
+          ANTHROPIC_BASE_URL: "https://api.z.ai/api/anthropic"
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.Z_AI_KEY }}
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: "glm-4.7"
+          ANTHROPIC_DEFAULT_SONNET_MODEL: "glm-4.7"
+          ANTHROPIC_DEFAULT_OPUS_MODEL: "glm-4.7"
         run: |
           git init smoke-project && cd smoke-project
           git config user.email smoke@test.local && git config user.name smoke
