@@ -69,6 +69,7 @@ jobs:
           CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
           CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT: "1"
         run: |
+          git config --global init.defaultBranch main
           git init smoke-project && cd smoke-project
           git config user.email smoke@test.local && git config user.name smoke
           echo "# Smoke project" > README.md && git add . && git commit -m init
