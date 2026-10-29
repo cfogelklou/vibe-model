@@ -1,0 +1,18 @@
+#!/bin/sh
+# Blocks AI attribution trailers in commit messages.
+# Rationale: Applicaudia policy — user does merges for attribution; no AI
+# co-author trailers or "Generated with" footers in history. Plain sh so this
+# works without lefthook/node installed (this repo has no package.json).
+# Patterns anchored to line starts so prose *mentioning* the policy does not
+# false-positive; bot emails match anywhere. Fails closed on grep errors.
+grep -iqE '^co-authored-by[:(<]|^generated with|🤖|noreply@anthropic\.com|noreply@openai\.com' "$1"
+status=$?
+if [ "$status" -eq 0 ]; then
+    echo "ERROR: commit trailer banned by policy (Co-Authored-By / AI attribution). Strip it and commit again." >&2
+    exit 1
+fi
+if [ "$status" -gt 1 ]; then
+    echo "ERROR: grep failed while checking commit message; refusing to commit." >&2
+    exit 1
+fi
+exit 0
