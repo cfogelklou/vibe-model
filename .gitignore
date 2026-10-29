@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+bin/vibe-model
+.env
+.DS_Store
+*.log
+.idea/
+.vscode/
+coverage/
+bin/*.js
+example/remote/
+e2e-test-project/
+example/src/
+example/todo-smoke/
